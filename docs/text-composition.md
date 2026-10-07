@@ -94,11 +94,22 @@ re-renders; a word-unit backspace drops the word being typed.
 
 ## Language
 
-There is no globe key. The language tool in the ribbon's tools row flips between Bangla
-(transliteration) and English (letters typed as they are, spelling corrections from the device's spell checker via
-`SpellCheckerSession`, a quick double space gives `. `). The choice is saved. English also swaps the Bangla numerals for Latin
-digits on every page. The system's own switcher (navigation bar) reaches other keyboards;
-the `Key.Globe` and its picker code remain for a layout that asks for it.
+There is no globe key. Swiping the space bar left or right flips between Bangla
+(transliteration) and English (letters typed as they are, spelling corrections from the
+device's spell checker via `SpellCheckerSession`, a quick double space gives `. `); the
+ribbon's language tool does the same. The space bar shows the current language between two
+arrows and animates the swap. Holding the space bar first (350 ms) starts the cursor
+trackpad instead, so the two gestures do not collide. The choice is saved, and the swipe
+has a switch in Settings. English also swaps the Bangla numerals for Latin digits on every
+page. The system's own switcher (navigation bar) reaches other keyboards; the `Key.Globe`
+and its picker code remain for a layout that asks for it.
+
+## Clipboard keys
+
+Holding X or C acts after 420 ms: with nothing selected the whole field is the target.
+Sliding sideways while held selects words before or after the caret (like backspace's
+swipe-delete), and lifting the finger cuts or copies the selection; the cut or copy is
+deferred to release so a slide can refine it. V pastes immediately.
 
 ## Insets and rotation
 

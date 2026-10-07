@@ -29,12 +29,15 @@ tagged release yet.
   follows the system live. Adaptive launcher icon.
 - **Debug tooling.** `KeyboardPreviewActivity` and launch extras for reviewing any
   layout or screen without taps (debug builds only).
-- **Tests.** 35 unit tests, against the real artifacts for emoji.
+- **Tests.** 36 unit tests, against the real artifacts for emoji.
 
 - **Clipboard on the keys.** Long-press X, C or V to cut, copy or paste (all form
   factors; on tablets the key's symbol stays on the downward flick). With nothing
   selected, cut and copy take the whole field; copy restores the cursor. A small icon
   badge pops at the right of the suggestion bar to confirm, only when the action ran.
+- **Gboard-style icons and ribbon animation.** Shift is an outlined arrow, filled when
+  on and barred when locked; backspace is the tag-with-x glyph. The ribbon's tools
+  switch turns tiles into a chevron while suggestions and tools cross-slide.
 - **Typing sound.** Settings → Keyboard → Typing Sound (off by default) plays the system
   key click, with distinct space, return and delete clicks. It follows the phone's volume
   and "Touch sounds" setting.

@@ -371,6 +371,16 @@ class KeyboardView(context: Context) : View(context) {
             KeyIcons.returnKey(canvas, iconPaint, returnIcon, r.centerX(), r.centerY(), 22f * density)
             return
         }
+        if (cell.key == Key.Shift) {
+            iconPaint.color = theme.label
+            KeyIcons.shift(canvas, iconPaint, r.centerX(), r.centerY(), 24f * density, shiftActive || capsLock, capsLock)
+            return
+        }
+        if (cell.key == Key.Backspace) {
+            iconPaint.color = theme.label
+            KeyIcons.backspace(canvas, iconPaint, r.centerX(), r.centerY(), 26f * density)
+            return
+        }
         if (cell.key is Key.Space) { drawSpaceLabel(canvas, r); return }
         val label = label(cell.key)
         textPaint.color = theme.label

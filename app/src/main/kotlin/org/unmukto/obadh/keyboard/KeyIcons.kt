@@ -74,4 +74,43 @@ object KeyIcons {
         rect.set(7.6f, 8f, 16.4f, 17f); canvas.drawArc(rect, 25f, 130f, false, paint)
         canvas.restore()
     }
+
+    /** Gboard's shift: an outlined arrow, filled when on, with a bar under it when locked. */
+    fun shift(canvas: Canvas, paint: Paint, cx: Float, cy: Float, size: Float, on: Boolean, locked: Boolean) {
+        val u = size / 24f
+        canvas.save()
+        canvas.translate(cx - 12f * u, cy - 12f * u)
+        canvas.scale(u, u)
+        paint.strokeWidth = 2f
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.style = if (on) Paint.Style.FILL_AND_STROKE else Paint.Style.STROKE
+        path.reset()
+        val top = if (locked) 3f else 4f
+        path.moveTo(12f, top); path.lineTo(20f, top + 8.5f); path.lineTo(15.5f, top + 8.5f); path.lineTo(15.5f, top + 14f)
+        path.lineTo(8.5f, top + 14f); path.lineTo(8.5f, top + 8.5f); path.lineTo(4f, top + 8.5f); path.close()
+        canvas.drawPath(path, paint)
+        if (locked) { paint.style = Paint.Style.STROKE; canvas.drawLine(8.5f, 21f, 15.5f, 21f, paint) }
+        canvas.restore()
+    }
+
+    /** Gboard's backspace: a tag pointing left with an x inside. */
+    fun backspace(canvas: Canvas, paint: Paint, cx: Float, cy: Float, size: Float) {
+        val u = size / 24f
+        canvas.save()
+        canvas.translate(cx - 12f * u, cy - 12f * u)
+        canvas.scale(u, u)
+        paint.strokeWidth = 1.9f
+        paint.style = Paint.Style.STROKE
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.strokeCap = Paint.Cap.ROUND
+        path.reset()
+        path.moveTo(9f, 5.5f); path.lineTo(20f, 5.5f); path.quadTo(21.5f, 5.5f, 21.5f, 7f)
+        path.lineTo(21.5f, 17f); path.quadTo(21.5f, 18.5f, 20f, 18.5f); path.lineTo(9f, 18.5f)
+        path.lineTo(2.5f, 12f); path.close()
+        path.moveTo(11.5f, 9f); path.lineTo(17f, 15f)
+        path.moveTo(17f, 9f); path.lineTo(11.5f, 15f)
+        canvas.drawPath(path, paint)
+        canvas.restore()
+    }
 }

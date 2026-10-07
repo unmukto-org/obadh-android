@@ -35,6 +35,13 @@ and `baqq` → **বাঁ**.
 - **Phones and tablets, portrait and landscape.** Three tablet families chosen
   from the device's smallest width, each with its own row structure, plus
   landscape geometry for phones and tablets. ([the layouts](docs/layouts.md))
+- **Gestures that earn their keep.** Swipe the space bar to flip Bangla/English (the
+  bar shows the language and animates the swap); hold it for a cursor trackpad.
+  Swipe left on backspace to select and delete words. Hold X or C and slide to select
+  words, then lift to cut or copy; hold V to paste. Each gesture has a switch in
+  Settings. ([the details](docs/text-composition.md))
+- **Gboard-style chrome.** Outlined shift (filled when on, barred when locked) and
+  backspace icons, and an animated expand/collapse for the ribbon's tools row.
 - **No network.** The manifest declares no `INTERNET` permission, so nothing you
   type can leave the device.
 

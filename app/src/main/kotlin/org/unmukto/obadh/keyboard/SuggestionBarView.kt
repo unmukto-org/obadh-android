@@ -35,7 +35,26 @@ class SuggestionBarView(context: Context) : View(context) {
 
     /** True while the tools row is showing instead of the suggestions. */
     var toolsOpen = false
-        set(v) { field = v; invalidate() }
+        set(v) {
+            if (field == v) return
+            field = v
+            animateTools(v)
+        }
+
+    // 0 = suggestions, 1 = tools; eased between on toggle.
+    private var toolsProgress = 0f
+    private var toolsAnim: ValueAnimator? = null
+
+    private fun animateTools(open: Boolean) {
+        toolsAnim?.cancel()
+        if (width == 0 || !isAttachedToWindow) { toolsProgress = if (open) 1f else 0f; invalidate(); return }
+        toolsAnim = ValueAnimator.ofFloat(toolsProgress, if (open) 1f else 0f).apply {
+            duration = 200L
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { toolsProgress = it.animatedValue as Float; invalidate() }
+            start()
+        }
+    }
 
     var onSelect: ((Item) -> Unit)? = null
     var onSelectEmoji: ((EmojiSlot) -> Unit)? = null
@@ -87,6 +106,8 @@ class SuggestionBarView(context: Context) : View(context) {
 
     override fun onDetachedFromWindow() {
         flashAnimator.cancel()
+        toolsAnim?.cancel()
+        toolsProgress = if (toolsOpen) 1f else 0f
         super.onDetachedFromWindow()
     }
 
@@ -208,19 +229,31 @@ class SuggestionBarView(context: Context) : View(context) {
         iconPaint.alpha = 220
         iconPaint.style = Paint.Style.STROKE
         iconPaint.strokeWidth = 2f * density
-        if (toolsOpen) {
-            val a = 5f * density
-            iconPath.reset()
-            iconPath.moveTo(cx + a * 0.6f, cy - a * 1.3f); iconPath.lineTo(cx - a * 0.7f, cy); iconPath.lineTo(cx + a * 0.6f, cy + a * 1.3f)
-            canvas.drawPath(iconPath, iconPaint)
-        } else {
-            // Four rounded tiles: "more".
+        val p = toolsProgress
+        // Tiles turn and fade out as the chevron turns in, and back.
+        canvas.save()
+        canvas.rotate(90f * p, cx, cy)
+        iconPaint.alpha = (220 * (1 - p)).toInt()
+        iconPaint.color = theme.label
+        if (p < 1f) {
             val t = 4.6f * density; val g = 2.6f * density
             for (ix in 0..1) for (iy in 0..1) {
                 val x = cx - g / 2 - t + ix * (t + g); val y = cy - g / 2 - t + iy * (t + g)
                 iconRect.set(x, y, x + t, y + t)
                 canvas.drawRoundRect(iconRect, 1.4f * density, 1.4f * density, iconPaint)
             }
+        }
+        canvas.restore()
+        if (p > 0f) {
+            canvas.save()
+            canvas.rotate(-90f * (1 - p), cx, cy)
+            iconPaint.color = theme.accent
+            iconPaint.alpha = (220 * p).toInt()
+            val a = 5f * density
+            iconPath.reset()
+            iconPath.moveTo(cx + a * 0.6f, cy - a * 1.3f); iconPath.lineTo(cx - a * 0.7f, cy); iconPath.lineTo(cx + a * 0.6f, cy + a * 1.3f)
+            canvas.drawPath(iconPath, iconPaint)
+            canvas.restore()
         }
         iconPaint.color = android.graphics.Color.WHITE
         iconPaint.alpha = 255
@@ -234,30 +267,38 @@ class SuggestionBarView(context: Context) : View(context) {
         val left = switchWidth
         val slot = (width - left) / 3f
         divider.color = theme.divider
-        if (toolsOpen) {
+        val p = toolsProgress
+        val slide = 14f * density
+        if (p < 1f) {
+            canvas.saveLayerAlpha(left, 0f, width.toFloat(), height.toFloat(), (255 * (1 - p)).toInt())
+            canvas.translate(-slide * p, 0f)
+            items.take(textSlotCount).forEachIndexed { i, item ->
+                paint.color = if (item.highlighted) theme.accent else theme.label
+                val label = if (item.quoted) "\u201C${item.text}\u201D" else item.text
+                canvas.drawText(fit(label, slot - 16f * density), left + slot * i + slot / 2, baseline(), paint)
+            }
+            if (emojis.isNotEmpty()) {
+                val each = slot / emojis.size
+                paint.color = theme.label
+                paint.textSize = 24f * density
+                emojis.forEachIndexed { i, e -> canvas.drawText(e.display, left + slot * 2 + each * i + each / 2, baseline(), paint) }
+            }
+            val dividers = if (emojis.isEmpty()) items.size.coerceAtMost(3) else 3
+            for (i in 1 until dividers) {
+                canvas.drawLine(left + slot * i, height * 0.25f, left + slot * i, height * 0.75f, divider)
+            }
+            canvas.restore()
+        }
+        if (p > 0f) {
+            canvas.saveLayerAlpha(left, 0f, width.toFloat(), height.toFloat(), (255 * p).toInt())
+            canvas.translate(slide * (1 - p), 0f)
             val tools = Tool.entries
             val each = (width - left) / tools.size
             tools.forEachIndexed { i, t ->
                 drawToolIcon(canvas, t, left + each * i + each / 2, height / 2f, minOf(height * 0.5f, 24f * density))
                 if (i > 0) canvas.drawLine(left + each * i, height * 0.25f, left + each * i, height * 0.75f, divider)
             }
-            drawFlash(canvas)
-            return
-        }
-        items.take(textSlotCount).forEachIndexed { i, item ->
-            paint.color = if (item.highlighted) theme.accent else theme.label
-            val label = if (item.quoted) "\u201C${item.text}\u201D" else item.text
-            canvas.drawText(fit(label, slot - 16f * density), left + slot * i + slot / 2, baseline(), paint)
-        }
-        if (emojis.isNotEmpty()) {
-            val each = slot / emojis.size
-            paint.color = theme.label
-            paint.textSize = 24f * density
-            emojis.forEachIndexed { i, e -> canvas.drawText(e.display, left + slot * 2 + each * i + each / 2, baseline(), paint) }
-        }
-        val dividers = if (emojis.isEmpty()) items.size.coerceAtMost(3) else 3
-        for (i in 1 until dividers) {
-            canvas.drawLine(left + slot * i, height * 0.25f, left + slot * i, height * 0.75f, divider)
+            canvas.restore()
         }
         drawFlash(canvas)
     }
