@@ -1,4 +1,5 @@
 import java.time.OffsetDateTime
+import java.util.Properties
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -25,6 +26,15 @@ fun gitRevision(): String = try {
 fun buildTimeUtc(): String =
     OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) + " UTC"
 
+// Release signing comes from keystore.properties at the repo root (git-ignored), with keys
+// storeFile, storePassword, keyAlias, keyPassword. Without it a release build is UNSIGNED and
+// Android refuses to install it. `-PdebugSign` signs with the local debug key instead, which is
+// enough to test a release build on a device that already has the debug build (same signature).
+val keystoreProps = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
     namespace = "org.unmukto.obadh"
     compileSdk = 35
@@ -44,8 +54,24 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = when {
+                project.hasProperty("debugSign") -> signingConfigs.getByName("debug")
+                keystoreProps.isNotEmpty() -> signingConfigs.getByName("release")
+                else -> null
+            }
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

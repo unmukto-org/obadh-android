@@ -6,3 +6,6 @@ local.properties
 rust/obadh-jni/target/
 app/src/main/jniLibs/
 app/src/main/assets/ObadhModels/
+keystore.properties
+*.jks
+*.keystore
