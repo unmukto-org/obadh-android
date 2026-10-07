@@ -77,6 +77,8 @@ tagged release yet.
   in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
 - **Swipe space to switch language.** A quick slide left or right on the space bar flips
   Bangla/English (switch in Gestures). Holding for 350 ms first still starts the trackpad.
+- **Language on the space bar.** The bar names the current language between two arrows
+  (`◂ বাংলা ▸`, `◂ English ▸`) while the swipe switch is on; the arrows hide when it is off.
 - **Space returns to letters.** Optional switch (on by default): tapping space on the
   numbers or symbols page goes back to the letters. Off keeps the page open.
 - **Slide to select, cut or copy.** Hold X or C, then slide left or right: words before

@@ -371,16 +371,18 @@ class KeyboardView(context: Context) : View(context) {
             KeyIcons.returnKey(canvas, iconPaint, returnIcon, r.centerX(), r.centerY(), 22f * density)
             return
         }
-        val label = label(cell.key)
+        val label = if (cell.key is Key.Space) spaceLabel() else label(cell.key)
         textPaint.color = theme.label
         textPaint.typeface = if (cell.key is Key.Character || cell.key is Key.Symbol) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
-        textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else letterSp()) * density
+        textPaint.textSize = (if (cell.key is Key.Space) 13f else if (label.length > 1 && cell.key !is Key.Symbol) 15f else letterSp()) * density
+        if (cell.key is Key.Space) { textPaint.typeface = Typeface.DEFAULT; textPaint.alpha = 150 }
         // Long labels (Search, .com) shrink to fit the key instead of spilling over it.
         while (textPaint.measureText(label) > r.width() - 8 * density && textPaint.textSize > 9 * density) {
             textPaint.textSize *= 0.92f
         }
         val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(label, r.centerX(), y, textPaint)
+        textPaint.alpha = 255
 
         // The secondary glyph, quieter than the primary: top-left on a tablet, top-right on a
         // phone. Holding the key emits it (a downward flick too, on a tablet).
@@ -414,6 +416,12 @@ class KeyboardView(context: Context) : View(context) {
         family != null -> if (landscape) 26f else 24f
         landscape -> 20f
         else -> 22f
+    }
+
+    /** The language the space bar types in, with arrows when a swipe switches it. */
+    private fun spaceLabel(): String {
+        val name = if (english) "English" else "বাংলা"
+        return if (spaceSwipeLanguageEnabled) "◂  $name  ▸" else name
     }
 
     private fun label(key: Key): String = when (key) {
