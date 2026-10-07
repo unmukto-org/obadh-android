@@ -116,6 +116,7 @@ class KeyboardView(context: Context) : View(context) {
         Key.Backspace -> "⌫"
         is Key.ModeSwitch -> key.label
         Key.Globe -> "🌐"
+        Key.Emoji -> "🙂"
         Key.Space -> ""
         Key.Return -> "⏎"
     }

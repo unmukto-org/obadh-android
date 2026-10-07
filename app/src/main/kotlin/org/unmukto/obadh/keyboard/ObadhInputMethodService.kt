@@ -34,6 +34,9 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     private lateinit var keyboardView: KeyboardView
     private lateinit var suggestionBar: SuggestionBarView
+    private lateinit var emojiPanel: EmojiPanelView
+    @Volatile private var emojiCatalog: EmojiDataStore? = null
+    private var emojiPanelOpen = false
 
     private lateinit var emojiRecents: EmojiRecentStore
     private lateinit var emojiVariants: EmojiVariantPreferenceStore
@@ -88,6 +91,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onCreateInputView(): View {
         keyboardView = KeyboardView(this).also { it.listener = this }
+        emojiPanel = EmojiPanelView(this).also { it.listener = emojiPanelListener; it.visibility = View.GONE }
         suggestionBar = SuggestionBarView(this).also {
             it.onSelect = ::onSuggestionSelected
             it.onSelectEmoji = ::onEmojiSelected
@@ -97,6 +101,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             setBackgroundColor(keyboardView.theme.background)
             addView(suggestionBar)
             addView(keyboardView)
+            addView(emojiPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0).also { })
             // On Android 15+ the IME window is edge-to-edge and the system draws its
             // hide/switch buttons in the navigation-bar strip: keep keys clear of it.
             ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
@@ -109,6 +114,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        closeEmojiPanel()
         resetComposition()
         keyboardView.mode = KeyboardMode.LETTERS
         keyboardView.includesGlobeKey = true
@@ -118,6 +124,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        closeEmojiPanel()
         // The word is already real text in the field, so nothing to flush: just stop tracking.
         resetComposition()
         worker.execute { if (modelsReady) personal.save(engine) }
@@ -151,6 +158,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             Key.Shift -> toggleShift()
             is Key.ModeSwitch -> { commitActiveWord(); keyboardView.mode = key.target }
             Key.Globe -> { commitActiveWord(); switchToNextInputMethod(false) }
+            Key.Emoji -> openEmojiPanel()
             Key.Backspace -> Unit // handled via onBackspace
         }
     }
@@ -305,6 +313,59 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         document.insertText(slot.display)
         carriedEmojis = emptyList()
         emojiRecents.record(slot.display)
+        refreshRibbon()
+    }
+
+    // ------------------------------------------------------------ emoji panel
+
+    private val emojiPanelListener = object : EmojiPanelListener {
+        override fun onEmojiSelected(emoji: String, base: String) {
+            haptic()
+            document.insertText(emoji)
+            emojiRecents.record(emoji)
+            emojiPanel.recordRecent(emoji)
+        }
+
+        override fun onReturnToKeyboard() = closeEmojiPanel()
+
+        override fun onBackspace(unit: BackspaceDeletionUnit) = this@ObadhInputMethodService.onBackspace(unit)
+
+        override fun onVariantPicked(base: String, selected: String) {
+            emojiVariants.record(base, selected)
+            emojiPanel.updatePreference(base, selected)
+        }
+    }
+
+    private fun openEmojiPanel() {
+        commitActiveWord()
+        val height = suggestionBar.height + keyboardView.height
+        suggestionBar.visibility = View.GONE
+        keyboardView.visibility = View.GONE
+        emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = height }
+        emojiPanel.visibility = View.VISIBLE
+        emojiPanelOpen = true
+        val cached = emojiCatalog
+        if (cached != null) {
+            configureEmojiPanel(cached)
+        } else {
+            // ~1 MB catalog: decoded off the main thread, only when the panel first opens.
+            worker.execute {
+                val loaded = EmojiModels.dataStore(ModelInstaller.modelsDir(this))
+                emojiCatalog = loaded
+                main.post { if (emojiPanelOpen) configureEmojiPanel(loaded) }
+            }
+        }
+    }
+
+    private fun configureEmojiPanel(catalog: EmojiDataStore) =
+        emojiPanel.configure(catalog, emojiRecents.load(), emojiVariants.load())
+
+    private fun closeEmojiPanel() {
+        if (!::emojiPanel.isInitialized || !emojiPanelOpen) return
+        emojiPanelOpen = false
+        emojiPanel.visibility = View.GONE
+        suggestionBar.visibility = View.VISIBLE
+        keyboardView.visibility = View.VISIBLE
         refreshRibbon()
     }
 

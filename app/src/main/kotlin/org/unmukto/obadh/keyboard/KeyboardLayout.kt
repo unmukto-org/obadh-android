@@ -16,6 +16,7 @@ sealed interface Key {
     data object Backspace : Key { override val weight = 1.35 }
     data class ModeSwitch(val label: String, val target: KeyboardMode) : Key { override val weight = 1.25 }
     data object Globe : Key { override val weight = 1.25 }
+    data object Emoji : Key { override val weight = 1.25 }
     data object Space : Key { override val weight = 5.0 }
     data object Return : Key { override val weight = 2.25 }
 }
@@ -37,9 +38,10 @@ object KeyboardLayoutProvider {
     private val dari = Key.Symbol("।", terminator = true)
     private val punctuationTail = listOf(dari, Key.Symbol("."), Key.Symbol(","), Key.Symbol("?", terminator = true), Key.Symbol("!", terminator = true))
 
-    private fun commandRow(mode: Key, withGlobe: Boolean) = KeyboardRow(
+    private fun commandRow(mode: Key, withGlobe: Boolean, withEmoji: Boolean = false) = KeyboardRow(
         buildList {
             add(mode)
+            if (withEmoji) add(Key.Emoji)
             if (withGlobe) add(Key.Globe)
             add(Key.Space)
             add(Key.Return)
@@ -54,7 +56,7 @@ object KeyboardLayoutProvider {
                 listOf(Key.Shift) + "zxcvbnm".map { Key.Character(it.toString()) } + Key.Backspace,
                 weights = listOf(1.5) + List(7) { 1.0 } + 1.5,
             ),
-            commandRow(Key.ModeSwitch("123", KeyboardMode.NUMBERS), includesGlobeKey),
+            commandRow(Key.ModeSwitch("123", KeyboardMode.NUMBERS), includesGlobeKey, withEmoji = true),
         )
         KeyboardMode.NUMBERS -> listOf(
             KeyboardRow(bnDigits.map { Key.Symbol(it) }),
