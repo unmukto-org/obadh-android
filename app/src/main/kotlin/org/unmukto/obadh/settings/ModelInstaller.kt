@@ -14,6 +14,9 @@ object ModelInstaller {
         "autocorrect/bn.fst",
         "autocorrect/en_bn_loanwords.fst",
         "autosuggest/autosuggest-ngram-c64.bin",
+        "emoji/emoji.bin",
+        "emoji/emoji-bn.bin",
+        "emoji/emoji-bn-search.bin",
     )
 
     fun modelsDir(context: Context): File = File(context.applicationContext.filesDir, "models")

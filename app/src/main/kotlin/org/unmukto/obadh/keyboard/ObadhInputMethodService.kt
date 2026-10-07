@@ -10,6 +10,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import org.unmukto.obadh.emoji.*
 import org.unmukto.obadh.engine.*
 import org.unmukto.obadh.settings.*
 import java.util.concurrent.Executors
@@ -34,7 +35,13 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private lateinit var keyboardView: KeyboardView
     private lateinit var suggestionBar: SuggestionBarView
 
-    private var modelsReady = false
+    private lateinit var emojiRecents: EmojiRecentStore
+    private lateinit var emojiVariants: EmojiVariantPreferenceStore
+
+    @Volatile private var modelsReady = false
+
+    /** Emoji for the word just committed, kept on the ribbon after a space until the next letter. */
+    private var carriedEmojis: List<String> = emptyList()
     private var lastSpaceAt = 0L
     private var lastShiftTapAt = 0L
     private var spaceTapsInARow = 0
@@ -64,11 +71,16 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         learned = LearnedWordStore(this)
         personal = PersonalAutosuggestStore(this)
         composer = KeyboardComposer(engine)
+        PrefsEmojiKeyValueStore(this).let {
+            emojiRecents = EmojiRecentStore(it)
+            emojiVariants = EmojiVariantPreferenceStore(it)
+        }
         // Models are copied to app storage then opened off the main thread; until
         // ready the keyboard still types, using the deterministic engine only.
         worker.execute {
             val dir = ModelInstaller.ensureInstalled(this)
             engine.configureModels(dir)
+            composer.emojiSuggester = EmojiModels.suggestionStore(dir)
             personal.restore(engine)
             modelsReady = true
         }
@@ -76,7 +88,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onCreateInputView(): View {
         keyboardView = KeyboardView(this).also { it.listener = this }
-        suggestionBar = SuggestionBarView(this).also { it.onSelect = ::onSuggestionSelected }
+        suggestionBar = SuggestionBarView(this).also {
+            it.onSelect = ::onSuggestionSelected
+            it.onSelectEmoji = ::onEmojiSelected
+        }
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(keyboardView.theme.background)
@@ -141,6 +156,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     private fun typeLetter(letter: String) {
+        // The next letter starts a new word, so the previous word's emoji stop being offered.
+        carriedEmojis = emptyList()
         val cased = if (keyboardView.shiftActive || keyboardView.capsLock) letter.uppercase() else letter
         composer.append(cased)
         render()
@@ -247,6 +264,9 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             if (trailing.isNotEmpty()) document.insertText(trailing)
             return
         }
+        // Captured BEFORE the commit clears the composer, so a space does not snatch away
+        // the one suggestion the user was reaching for.
+        carriedEmojis = composer.activeEmojis
         val committed = composer.commitActiveInput().orEmpty()
         ic?.beginBatchEdit()
         try { composition.commit(committed, trailing, document) } finally { ic?.endBatchEdit() }
@@ -268,6 +288,23 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             composition.commitNextWordSuggestion(item.text, document)
             worker.execute { engine.commitAutosuggestToken(item.text) }
         }
+        refreshRibbon()
+    }
+
+    /**
+     * Tapping an inline emoji REPLACES the word being composed: the typed text was the
+     * emoji's query ("bhalobasha" + tap gives the emoji, not the word plus the emoji), so
+     * the discarded query is not committed to autosuggest learning.
+     */
+    private fun onEmojiSelected(slot: SuggestionBarView.EmojiSlot) {
+        haptic()
+        if (composer.hasActiveInput) {
+            composition.clearComposition(document)
+            composer.clear()
+        }
+        document.insertText(slot.display)
+        carriedEmojis = emptyList()
+        emojiRecents.record(slot.display)
         refreshRibbon()
     }
 
@@ -308,7 +345,9 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 SuggestionBarView.Item(s.text, quoted = isLiteral, highlighted = s.text == composer.commitText && i == 0)
             }
             suggestionBar.items = items
+            suggestionBar.emojis = emojiSlots(composer.activeEmojis)
         } else {
+            suggestionBar.emojis = emojiSlots(carriedEmojis)
             val context = (document.contextBeforeInput ?: "").takeLast(NEXT_WORD_CONTEXT_CHARS)
             if (!modelsReady || context.isBlank() || context.last().isWhitespace().not()) {
                 suggestionBar.items = emptyList()
@@ -319,6 +358,13 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 main.post { if (!composer.hasActiveInput) suggestionBar.items = next.map { SuggestionBarView.Item(it) } }
             }
         }
+    }
+
+    /** Resolve each base emoji to the user's remembered skin tone: a map lookup, no catalog load. */
+    private fun emojiSlots(bases: List<String>): List<SuggestionBarView.EmojiSlot> {
+        if (bases.isEmpty()) return emptyList()
+        val prefs = emojiVariants.load()
+        return bases.map { SuggestionBarView.EmojiSlot(it, prefs[it] ?: it) }
     }
 
     // Presence check on the main thread would cross the JNI per keystroke; cache the last answer.
@@ -334,6 +380,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     // -------------------------------------------------------------- helpers
 
     private fun resetComposition() {
+        carriedEmojis = emptyList()
         composer.clear()
         composition.resetHostState()
     }

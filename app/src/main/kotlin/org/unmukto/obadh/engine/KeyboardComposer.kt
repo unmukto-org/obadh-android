@@ -1,5 +1,7 @@
 package org.unmukto.obadh.engine
 
+import org.unmukto.obadh.emoji.BanglaEmojiSuggesting
+
 data class KeyboardSuggestion(val text: String, val source: Source) {
     enum class Source { DETERMINISTIC, AUTOCORRECT, AUTOSUGGEST }
 }
@@ -13,6 +15,8 @@ data class KeyboardSuggestion(val text: String, val source: Source) {
 class KeyboardComposer(
     private val engine: BanglaTypingEngine,
     var compositionSuggestionLimit: Int = 3,
+    /** Set once the emoji index is mapped; null until then (typing never waits for it). */
+    var emojiSuggester: BanglaEmojiSuggesting? = null,
 ) {
     var romanBuffer = ""
         private set
@@ -26,6 +30,14 @@ class KeyboardComposer(
     var exactLoanwordTarget: String? = null
         private set
     private var correctionsResolved = false
+
+    /**
+     * Up to 3 exact-match emoji for the composed word, best first. They take over the
+     * ribbon's third slot and are kept apart from the text candidates so the top two
+     * always survive. A binary search on a mapped index: safe on the keystroke path.
+     */
+    var activeEmojis: List<String> = emptyList()
+        private set
 
     val hasActiveInput: Boolean get() = romanBuffer.isNotEmpty()
 
@@ -124,6 +136,7 @@ class KeyboardComposer(
     fun clear() {
         romanBuffer = ""
         compositionSuggestions = emptyList()
+        activeEmojis = emptyList()
         autocorrectTarget = null
         exactLoanwordTarget = null
         correctionsResolved = false
@@ -138,11 +151,13 @@ class KeyboardComposer(
         correctionsResolved = false
         if (!hasActiveInput) {
             compositionSuggestions = emptyList()
+            activeEmojis = emptyList()
             return
         }
         val deterministic = engine.transliterate(engineInput)
         compositionSuggestions = if (deterministic.isEmpty()) emptyList()
         else listOf(KeyboardSuggestion(deterministic, KeyboardSuggestion.Source.DETERMINISTIC))
+        activeEmojis = if (deterministic.isEmpty()) emptyList() else emojiSuggester?.emojis(deterministic).orEmpty()
     }
 
     /** Merge async autocorrect candidates behind the deterministic preview; ignored if stale. */
