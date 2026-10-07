@@ -67,7 +67,18 @@ class KeyboardView(context: Context) : View(context) {
 
     private val density = resources.displayMetrics.density
     private val gap: Float get() = (family?.gapDp(landscape) ?: 5f) * density
-    private val vertPad = 6f * density
+    private val topPad = 6f * density
+
+    /**
+     * Safe area under the bottom row. The system navigation strip sits below the view, but keys
+     * pressed flush against it are hard to hit and look cramped, so the keys stop short of it.
+     */
+    val bottomPad: Float
+        get() = (when {
+            family != null -> 14f
+            landscape -> 10f
+            else -> 14f
+        }) * density
     /** One normal key row. A phone's landscape rows are shorter so the app stays visible above. */
     private val rowHeight: Float
         get() = (family?.rowHeightDp(landscape) ?: if (landscape) PHONE_LANDSCAPE_ROW_DP else 50f) * density
@@ -116,7 +127,7 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val w = MeasureSpec.getSize(widthSpec)
-        setMeasuredDimension(w, (keyBlockHeight() + vertPad * 2).toInt())
+        setMeasuredDimension(w, (keyBlockHeight() + topPad + bottomPad).toInt())
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = relayout()
@@ -124,8 +135,8 @@ class KeyboardView(context: Context) : View(context) {
     private fun relayout() {
         if (width == 0 || height == 0) return
         val side = sidePad(width)
-        val unitHeight = (height - vertPad * 2) / rows.sumOf { it.heightFactor }.toFloat()
-        var top = vertPad
+        val unitHeight = (height - topPad - bottomPad) / rows.sumOf { it.heightFactor }.toFloat()
+        var top = topPad
         cells = rows.map { row ->
             val rowH = unitHeight * row.heightFactor.toFloat()
             val total = (row.weights.sum() + row.leadingFlex + row.trailingFlex).toFloat()

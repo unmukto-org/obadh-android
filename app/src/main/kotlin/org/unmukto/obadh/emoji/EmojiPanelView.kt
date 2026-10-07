@@ -190,7 +190,11 @@ class EmojiPanelView(context: Context) : View(context) {
     private val maxScroll: Float get() = max(0f, contentWidth - width)
 
     private val gridTop: Float get() = headerH
-    private val gridHeight: Float get() = height - barH - headerH
+    /** Safe area under the bar, matching the keyboard's, set by the service. */
+    var bottomInset: Float = 0f
+        set(v) { field = v; invalidate() }
+    private val barTop: Float get() = height - barH - bottomInset
+    private val gridHeight: Float get() = barTop - headerH
     private val rowH: Float get() = gridHeight / rows
 
     // --------------------------------------------------------------- drawing
@@ -252,18 +256,18 @@ class EmojiPanelView(context: Context) : View(context) {
         val find = 40f * density
         val back = 52f * density
         val inner = (width - abc - find - back) / barCategories.size
-        val top = height - barH
+        val top = barTop
         val rects = ArrayList<RectF>()
-        rects += RectF(0f, top, abc, height.toFloat())                     // [0] ABC
-        rects += RectF(abc, top, abc + find, height.toFloat())             // [1] search
+        rects += RectF(0f, top, abc, top + barH)                     // [0] ABC
+        rects += RectF(abc, top, abc + find, top + barH)             // [1] search
         val start = abc + find
-        barCategories.forEachIndexed { i, _ -> rects += RectF(start + i * inner, top, start + (i + 1) * inner, height.toFloat()) }
-        rects += RectF(width - back, top, width.toFloat(), height.toFloat()) // [last] backspace
+        barCategories.forEachIndexed { i, _ -> rects += RectF(start + i * inner, top, start + (i + 1) * inner, top + barH) }
+        rects += RectF(width - back, top, width.toFloat(), top + barH) // [last] backspace
         return rects
     }
 
     private fun drawBar(canvas: Canvas) {
-        val top = height - barH
+        val top = barTop
         line.color = theme.divider
         canvas.drawLine(0f, top, width.toFloat(), top, line)
         val rects = barRects()
@@ -317,7 +321,7 @@ class EmojiPanelView(context: Context) : View(context) {
     // ----------------------------------------------------------------- touch
 
     private fun hitCell(x: Float, y: Float): Pair<Section, Int>? {
-        if (y < gridTop || y >= height - barH) return null
+        if (y < gridTop || y >= barTop) return null
         val cx = x + scrollPos
         val sec = sections.lastOrNull { it.startX <= cx && cx < it.startX + it.width } ?: return null
         val col = ((cx - sec.startX) / colW).toInt()
@@ -360,7 +364,7 @@ class EmojiPanelView(context: Context) : View(context) {
                 scroller.forceFinished(true)
                 downX = e.x; downY = e.y; lastX = e.x; dragging = false
                 velocity = VelocityTracker.obtain().also { it.addMovement(e) }
-                if (e.y >= height - barH) {
+                if (e.y >= barTop) {
                     val rects = barRects()
                     if (rects.last().contains(e.x, e.y)) {
                         backspaceDown = true; backspaceAt = SystemClock.uptimeMillis()
@@ -381,7 +385,7 @@ class EmojiPanelView(context: Context) : View(context) {
                     invalidate()
                     return true
                 }
-                if (!dragging && abs(e.x - downX) > slop && e.y < height - barH) {
+                if (!dragging && abs(e.x - downX) > slop && e.y < barTop) {
                     dragging = true
                     handler.removeCallbacks(longPress)
                     pressed = null
@@ -411,7 +415,7 @@ class EmojiPanelView(context: Context) : View(context) {
                     val vx = -(velocity?.xVelocity ?: 0f)
                     scroller.fling(scrollPos.toInt(), 0, vx.toInt(), 0, 0, maxScroll.toInt(), 0, 0)
                     postInvalidateOnAnimation()
-                } else if (e.y >= height - barH) {
+                } else if (e.y >= barTop) {
                     handleBarTap(e.x, e.y)
                 } else {
                     val hit = pressed

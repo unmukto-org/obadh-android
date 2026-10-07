@@ -403,6 +403,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         commitActiveWord()
         val height = suggestionBar.height + keyboardView.height
         emojiPanelFullHeight = height
+        // The bar keeps the same safe area under it as the keys do.
+        emojiPanel.bottomInset = keyboardView.bottomPad
         suggestionBar.visibility = View.GONE
         keyboardView.visibility = View.GONE
         emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = height }
