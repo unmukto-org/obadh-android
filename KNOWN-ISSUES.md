@@ -122,7 +122,7 @@ and, in setup, the flow advances without leaving the app.
 
 ## KI-007: Release build never run; app light mode never viewed
 
-`assembleRelease` succeeds (unsigned, about 43 MB) but the result has not been
+`assembleRelease` succeeds (unsigned, about 19 MB) but the result has not been
 installed, and R8 can strip JNI-reachable code, so a release build must be run
 before shipping. The app's UI was reviewed in dark mode only; light mode uses the
 same palette as iOS but was not looked at.

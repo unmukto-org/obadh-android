@@ -21,8 +21,13 @@ object ModelInstaller {
 
     fun modelsDir(context: Context): File = File(context.applicationContext.filesDir, "models")
 
+    /** How long the last copy took, or null if nothing needed copying. For the About/debug tooling. */
+    @Volatile var lastInstallMillis: Long? = null
+        private set
+
     @Synchronized
     fun ensureInstalled(context: Context): File {
+        lastInstallMillis = null
         val app = context.applicationContext
         val dir = modelsDir(app)
         val stamp = File(dir, ".installed")
@@ -32,6 +37,7 @@ object ModelInstaller {
         val complete = FILES.all { File(dir, it).exists() }
         if (complete && stamp.exists() && stamp.readText() == version) return dir
 
+        val started = android.os.SystemClock.elapsedRealtime()
         FILES.forEach { rel ->
             val target = File(dir, rel)
             target.parentFile?.mkdirs()
@@ -40,6 +46,8 @@ object ModelInstaller {
             check(tmp.renameTo(target)) { "Could not install $rel" }
         }
         stamp.writeText(version)
+        lastInstallMillis = android.os.SystemClock.elapsedRealtime() - started
+        android.util.Log.i("ObadhModels", "installed ${FILES.size} artifacts in ${lastInstallMillis} ms")
         return dir
     }
 }

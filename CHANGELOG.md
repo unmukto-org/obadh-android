@@ -31,6 +31,12 @@ tagged release yet.
   layout or screen without taps (debug builds only).
 - **Tests.** 35 unit tests, against the real artifacts for emoji.
 
+### Changed
+- **Download size 43.0 → 19.0 MB.** The models are deflated in the APK instead of
+  stored raw. The first launch copies them to private storage as before, now
+  decompressing as it goes (1.6-1.9 s on the test phone); the copies were verified
+  byte-identical to the originals. Installed size falls from about 83 to about 58 MB.
+
 ### Fixed
 - Words merging after a space: rewrites no longer delete by re-reading the text
   ([KI-003](KNOWN-ISSUES.md#ki-003); not confirmed on the reporting device).

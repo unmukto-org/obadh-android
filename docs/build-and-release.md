@@ -49,8 +49,35 @@ Copies the autocorrect FSTs, the autosuggest n-gram and the three emoji
 artifacts from obadh-ios into `app/src/main/assets/ObadhModels` (git-ignored), so
 both platforms ship byte-identical data. At runtime the first launch copies them
 to `filesDir/models` (versioned by app version and code) because the engine opens
-paths and APK assets are not files. The `.fst` and `.bin` extensions are stored
-uncompressed in the APK.
+paths and APK assets are not files. The APK **deflates** them (about 24 MB
+smaller than storing them raw), and the copy decompresses as it goes: about
+1.6-1.9 s on the test phone, once per app version. Until it finishes the keyboard
+still types with the deterministic engine; the copy is verified byte-identical to
+the source artifacts.
+
+## Size
+
+Measured on 2026-10-07 (decimal MB; the release build is unsigned and universal,
+all three ABIs).
+
+| | Before | After |
+|---|---|---|
+| Release APK (download) | 43.0 MB | **19.0 MB** |
+| Debug APK | 52.5 MB | 28.1 MB |
+| Installed on the phone (APK + extracted models) | about 83 MB | about 58 MB |
+
+What is in the release APK: the three model groups are 39.8 MB raw and about 15.8 MB
+deflated (autosuggest n-gram 29.5 → 10.9 MB, autocorrect FSTs 8.9 → 4.5 MB, emoji
+1.3 → 0.3 MB); the native library is 1.9 MB across three ABIs; code and resources
+are about 1.3 MB. A per-ABI split (a Play app bundle) saves only about 1.2 MB more,
+because the native libraries are small.
+
+The remaining cost is that the models exist twice on the device: compressed in the
+APK and extracted in `filesDir/models` (38.9 MB). Removing the second copy needs the
+engine to open a model from a file descriptor and offset, which means storing the
+assets uncompressed again (the two are mutually exclusive) and a change in
+`obadh_engine`, shared with iOS. Smaller models are the other lever, and also an
+engine-side change.
 
 ## Engine version bumps
 
@@ -94,7 +121,7 @@ keyboard on and select it themselves, so the app's setup flow is the way in.
 | Type | Purpose |
 |---|---|
 | `debug` | Development. Includes `KeyboardPreviewActivity` and honours the `screen` and `step` launch extras. |
-| `release` | R8-minified, with a keep rule for the JNI entry class. It **builds** (`./gradlew :app:assembleRelease`, unsigned, about 43 MB), but it has not been installed or run, and no signing config exists yet. |
+| `release` | R8-minified, with a keep rule for the JNI entry class. It **builds** (`./gradlew :app:assembleRelease`, unsigned, about 19 MB), but it has not been installed or run, and no signing config exists yet. |
 
 ## Releasing
 

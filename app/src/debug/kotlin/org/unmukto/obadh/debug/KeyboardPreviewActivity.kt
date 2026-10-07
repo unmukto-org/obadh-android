@@ -20,6 +20,15 @@ import org.unmukto.obadh.keyboard.KeyboardView
 class KeyboardPreviewActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Measures first-launch model installation: `--ez reinstall true` forgets the installed
+        // models, copies them again, and logs the time (tag ObadhModels).
+        if (intent.getBooleanExtra("reinstall", false)) {
+            Thread {
+                val dir = org.unmukto.obadh.settings.ModelInstaller.modelsDir(this)
+                java.io.File(dir, ".installed").delete()
+                org.unmukto.obadh.settings.ModelInstaller.ensureInstalled(this)
+            }.start()
+        }
         val sw = intent.getIntExtra("sw", 800)
         val landscape = intent.getBooleanExtra("land", false)
         // Landscape shows the device's longer side. 16:10 is the common tablet ratio, ~19.5:9 a phone.

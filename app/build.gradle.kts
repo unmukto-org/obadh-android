@@ -58,8 +58,10 @@ android {
     buildFeatures { compose = true }
     sourceSets["main"].java.srcDir("src/main/kotlin")
     sourceSets["test"].java.srcDir("src/test/kotlin")
-    // FSTs and the n-gram are already compact binaries; keep them uncompressed in the APK.
-    androidResources { noCompress += listOf("fst", "bin") }
+    // The models are NOT stored uncompressed any more. The engine opens them by path, so the first
+    // launch copies them out of the APK to private storage regardless; letting the APK deflate them
+    // cuts the download by about 24 MB (the n-gram falls to ~36%, the autocorrect FST to ~50%) at the
+    // cost of one slower first launch. See docs/build-and-release.md.
 }
 
 dependencies {
