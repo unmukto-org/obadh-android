@@ -206,7 +206,7 @@ class KeyboardView(context: Context) : View(context) {
     private fun latinDigits(row: KeyboardRow) = row.copy(keys = row.keys.map(::latinDigit))
 
     /** A held key's second glyph, with Latin digits when typing English. */
-    private fun secondary(key: Key): Key.Symbol? = KeyboardLayoutProvider.secondaryFor(key)?.let { latinDigit(it) as Key.Symbol }
+    private fun secondary(key: Key): Key.Symbol? = KeyboardLayoutProvider.secondaryFor(key)?.let { if (english) latinDigit(it) as Key.Symbol else it }
 
     private fun rebuildRows() {
         rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape).let { if (english) it.map(::latinDigits) else it }
