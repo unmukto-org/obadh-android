@@ -371,18 +371,17 @@ class KeyboardView(context: Context) : View(context) {
             KeyIcons.returnKey(canvas, iconPaint, returnIcon, r.centerX(), r.centerY(), 22f * density)
             return
         }
-        val label = if (cell.key is Key.Space) spaceLabel() else label(cell.key)
+        if (cell.key is Key.Space) { drawSpaceLabel(canvas, r); return }
+        val label = label(cell.key)
         textPaint.color = theme.label
         textPaint.typeface = if (cell.key is Key.Character || cell.key is Key.Symbol) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
-        textPaint.textSize = (if (cell.key is Key.Space) 13f else if (label.length > 1 && cell.key !is Key.Symbol) 15f else letterSp()) * density
-        if (cell.key is Key.Space) { textPaint.typeface = Typeface.DEFAULT; textPaint.alpha = 150 }
+        textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else letterSp()) * density
         // Long labels (Search, .com) shrink to fit the key instead of spilling over it.
         while (textPaint.measureText(label) > r.width() - 8 * density && textPaint.textSize > 9 * density) {
             textPaint.textSize *= 0.92f
         }
         val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(label, r.centerX(), y, textPaint)
-        textPaint.alpha = 255
 
         // The secondary glyph, quieter than the primary: top-left on a tablet, top-right on a
         // phone. Holding the key emits it (a downward flick too, on a tablet).
@@ -416,6 +415,52 @@ class KeyboardView(context: Context) : View(context) {
         family != null -> if (landscape) 26f else 24f
         landscape -> 20f
         else -> 22f
+    }
+
+    // Language swap: the old name slides out the way the finger went, the new one slides in.
+    private var langDir = -1
+    private var langOld = ""
+    private var langProgress = 1f
+    private var langAnim: android.animation.ValueAnimator? = null
+
+    /** Call just before the language changes, so the bar can animate from the old name. */
+    fun animateLanguageChange() {
+        if (width == 0) return
+        langOld = spaceLabel()
+        langAnim?.cancel()
+        langAnim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 220L
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { langProgress = it.animatedValue as Float; invalidate() }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(a: android.animation.Animator) { langProgress = 1f; langDir = -1; invalidate() }
+            })
+            start()
+        }
+    }
+
+    private fun drawSpaceLabel(canvas: Canvas, r: RectF) {
+        textPaint.color = theme.label
+        textPaint.typeface = Typeface.DEFAULT
+        textPaint.textSize = 13f * density
+        val now = spaceLabel()
+        while (textPaint.measureText(now) > r.width() - 8 * density && textPaint.textSize > 9 * density) textPaint.textSize *= 0.92f
+        val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
+        val t = langProgress
+        canvas.save()
+        canvas.clipRect(r)
+        if (t < 1f) {
+            val travel = r.width() * 0.4f
+            textPaint.alpha = (150 * (1 - t)).toInt()
+            canvas.drawText(langOld, r.centerX() + langDir * t * travel, y, textPaint)
+            textPaint.alpha = (150 * t).toInt()
+            canvas.drawText(now, r.centerX() - langDir * (1 - t) * travel, y, textPaint)
+        } else {
+            textPaint.alpha = 150
+            canvas.drawText(now, r.centerX(), y, textPaint)
+        }
+        canvas.restore()
+        textPaint.alpha = 255
     }
 
     /** The language the space bar types in, with arrows when a swipe switches it. */
@@ -541,6 +586,7 @@ class KeyboardView(context: Context) : View(context) {
                     // A quick slide, before the trackpad hold, flips the language.
                     if (spaceSwipeLanguageEnabled && !secondaryFired && abs(e.x - downX) > LANGUAGE_SWIPE_DP * density) {
                         secondaryFired = true
+                        langDir = if (e.x < downX) -1 else 1
                         listener?.onLanguageSwipe()
                     }
                 }

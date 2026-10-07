@@ -836,6 +836,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 resetComposition()
                 // The saved language applies to every field. Addresses and passwords default to
                 // English whatever it is; switching inside one is for that field only.
+                keyboardView.animateLanguageChange()
                 if (fieldKind.forcesEnglish) fieldLanguageEnglish = !englishMode
                 else prefs.englishMode = !prefs.englishMode
                 if (!englishMode) closeSpellSession()

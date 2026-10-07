@@ -79,6 +79,8 @@ tagged release yet.
   Bangla/English (switch in Gestures). Holding for 350 ms first still starts the trackpad.
 - **Language on the space bar.** The bar names the current language between two arrows
   (`◂ বাংলা ▸`, `◂ English ▸`) while the swipe switch is on; the arrows hide when it is off.
+- **Swap animation.** Switching language slides the old name out the way the finger went
+  and the new one in from the other side (220 ms, clipped to the space bar).
 - **Space returns to letters.** Optional switch (on by default): tapping space on the
   numbers or symbols page goes back to the letters. Off keeps the page open.
 - **Slide to select, cut or copy.** Hold X or C, then slide left or right: words before
