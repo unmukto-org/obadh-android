@@ -109,7 +109,17 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     /** The iOS-style callout over a pressed character or symbol key. */
+    // Feature switches, mirrored from the app's settings when a field starts.
+    var trackpadEnabled = true
+    var swipeDeleteEnabled = true
+    var longPressSymbolsEnabled = true
+        set(v) { field = v; invalidate() }
+    var clipboardKeysEnabled = true
+        set(v) { field = v; invalidate() }
+    var calloutEnabled = true
+
     private fun previewPress(cell: Cell?) {
+        if (!calloutEnabled) { popup?.hide(); return }
         val glyph = when (val k = cell?.key) {
             is Key.Character -> if (shiftActive || capsLock) k.value.uppercase() else k.value
             is Key.Symbol -> k.label
@@ -201,7 +211,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private fun clipboardFor(key: Key?): ClipboardAction? =
-        if (key is Key.Character) when (key.value.lowercase()) {
+        if (clipboardKeysEnabled && key is Key.Character) when (key.value.lowercase()) {
             "x" -> ClipboardAction.CUT
             "c" -> ClipboardAction.COPY
             "v" -> ClipboardAction.PASTE
@@ -258,7 +268,7 @@ class KeyboardView(context: Context) : View(context) {
         row.copy(keys = row.keys.map { if (it is Key.Symbol && it.output == "।") Key.Symbol(".", terminator = true) else it })
 
     /** A held key's second glyph, with Latin digits when typing English. */
-    private fun secondary(key: Key): Key.Symbol? = KeyboardLayoutProvider.secondaryFor(key)?.let { if (english) latinDigit(it) as Key.Symbol else it }
+    private fun secondary(key: Key): Key.Symbol? = if (!longPressSymbolsEnabled) null else KeyboardLayoutProvider.secondaryFor(key)?.let { if (english) latinDigit(it) as Key.Symbol else it }
 
     private fun rebuildRows() {
         rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape).let { built ->
@@ -428,7 +438,7 @@ class KeyboardView(context: Context) : View(context) {
                 previewPress(pressed)
                 val key = pressed?.key
                 if (key is Key.Space) {
-                    handler.postDelayed(startTrackpad, TRACKPAD_HOLD_MS)
+                    if (trackpadEnabled) handler.postDelayed(startTrackpad, TRACKPAD_HOLD_MS)
                 } else if (key is Key.Backspace) {
                     listener?.onBackspace(BackspaceDeletionUnit.CHARACTER)
                     handler.postDelayed(repeat, 380L)
@@ -439,7 +449,7 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (pressed?.key is Key.Backspace) {
+                if (swipeDeleteEnabled && pressed?.key is Key.Backspace) {
                     val dx = downX - e.x
                     if (!swipeDelete && dx > SWIPE_DELETE_START_DP * density) {
                         swipeDelete = true

@@ -75,6 +75,14 @@ tagged release yet.
 - The emoji key uses the same smiley icon as the tools row.
 - **Comma and full stop on the bottom row.** A comma sits left of the space and a dari (a full stop
   in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
+- **Plain-language settings.** Every switch in Settings now has a short description with an example under its title.
+- **Volume keys move the cursor.** Settings → Gestures → Volume Keys Move Cursor (off by default): while the
+  keyboard is showing, volume up steps the caret forward one character and volume down steps it back; holding
+  repeats. The volume panel does not appear while it is on.
+- **A switch for every feature.** Settings → Gestures (space-bar trackpad, swipe backspace, hold for
+  symbols, hold X/C/V, key preview bubble), Smart Typing (smart fields, auto-capitalise, English
+  spelling, pairs, return key actions) and Text Shortcuts (expand shortcuts) can each be turned off. All
+  are on by default; a change applies when the next field opens.
 - **Haptic strength.** Settings → Keyboard → Haptic Strength: Off, Light, Medium or Strong replaces the
   on/off switch (an old "off" stays off, "on" becomes Medium). It plays a short vibration at that
   amplitude, and now applies to long presses, flicks and the emoji panel too. Adds the normal

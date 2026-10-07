@@ -127,6 +127,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     /** The return key's icon from the field's action. An app-named action shows its own text. */
     private fun returnIconFor(info: EditorInfo?): ReturnIcon {
         info ?: return ReturnIcon.ENTER
+        if (!prefs.returnActionKey) return ReturnIcon.ENTER
         if (info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return ReturnIcon.ENTER
         return when (info.imeOptions and EditorInfo.IME_MASK_ACTION) {
             EditorInfo.IME_ACTION_SEARCH -> ReturnIcon.SEARCH
@@ -167,6 +168,26 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     /** No extract/fullscreen editing UI: a fullscreen IME window is laid out against the whole display. */
     override fun onEvaluateFullscreenMode(): Boolean = false
+
+    /** Volume up / down move the caret one character forward / back while the keys are showing. */
+    private fun volumeCursorActive(keyCode: Int): Boolean =
+        prefs.volumeKeyCursor && isInputViewShown && !emojiSearchActive && !clipboardPanelOpen &&
+            (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (!volumeCursorActive(keyCode)) return super.onKeyDown(keyCode, event)
+        // Holding the button keeps stepping; the host's arrow handling moves by grapheme cluster.
+        if (event.repeatCount == 0) commitActiveWord()
+        val ic = currentInputConnection ?: return true
+        arrow(ic, if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT, 1)
+        if (event.repeatCount == 0) haptic()
+        refreshRibbon()
+        return true
+    }
+
+    // The matching release must be swallowed too, or the system still shows its volume panel.
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        if (volumeCursorActive(keyCode)) true else super.onKeyUp(keyCode, event)
 
     /**
      * The input view is a full-height transparent surface with the keys anchored to its bottom
@@ -238,7 +259,12 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         closeClipboardPanel()
         resetComposition()
         Haptics.level = prefs.hapticStrength
-        fieldKind = FieldKind.of(info)
+        keyboardView.trackpadEnabled = prefs.spaceTrackpad
+        keyboardView.swipeDeleteEnabled = prefs.swipeToDelete
+        keyboardView.longPressSymbolsEnabled = prefs.longPressSymbols
+        keyboardView.clipboardKeysEnabled = prefs.clipboardKeys
+        keyboardView.calloutEnabled = prefs.keyCallout
+        fieldKind = if (prefs.smartFields) FieldKind.of(info) else FieldKind.TEXT
         fieldLanguageEnglish = null
         keyboardView.mode = when (fieldKind) {
             // Numeric and phone fields want digits first; the pad has its own way back to letters.
@@ -247,7 +273,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         }
         keyboardView.fieldKind = fieldKind
         keyboardView.returnIcon = returnIconFor(info)
-        keyboardView.returnLabel = info?.actionLabel?.toString()?.takeIf { it.isNotBlank() }?.take(8)
+        keyboardView.returnLabel = info?.takeIf { prefs.returnActionKey }?.actionLabel?.toString()?.takeIf { it.isNotBlank() }?.take(8)
         updateChrome()
         // No globe key: language is Bangla/English from the tools row, and the system's own
         // switcher (navigation bar) reaches other keyboards.
@@ -344,7 +370,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
      * last whitespace.
      */
     private fun expandShortcut(trailing: String): Boolean {
-        if (emojiSearchActive || shortcuts.all().isEmpty()) return false
+        if (!prefs.textShortcutsEnabled || emojiSearchActive || shortcuts.all().isEmpty()) return false
         if (composer.hasActiveInput) {
             val expansion = shortcuts.lookup(composer.romanBuffer) ?: return false
             composition.clearComposition(document)
@@ -393,7 +419,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val noEnterAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
         if (!noEnterAction && action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) {
             currentInputConnection?.performEditorAction(action)
-        } else if (!noEnterAction && singleLineText(currentInputEditorInfo) &&
+        } else if (prefs.returnActionKey && !noEnterAction && singleLineText(currentInputEditorInfo) &&
             currentInputConnection?.performEditorAction(EditorInfo.IME_ACTION_DONE) == true
         ) {
             // A single-line field has no line to add: done, like the label says.
@@ -409,7 +435,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         commitActiveWord()
         val result = if (literalField) SmartPunctuationResult.insert(key.output)
         else SmartPunctuation.literalSubstitution(key.output, document.contextBeforeInput ?: "")
-        if (!literalField && result.deleteBefore == 0 && typePair(result.insertion)) {
+        if (prefs.autoPairs && !literalField && result.deleteBefore == 0 && typePair(result.insertion)) {
             if (key.terminator) engine.clearAutosuggestSession()
             refreshRibbon()
             return
@@ -591,7 +617,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             // Backspacing the opener of an empty pair takes the closer with it.
             val ic = currentInputConnection
             val opener = context.lastOrNull()?.toString()
-            if (!literalField && ic != null && opener != null && PAIRS[opener] != null &&
+            if (prefs.autoPairs && !literalField && ic != null && opener != null && PAIRS[opener] != null &&
                 ic.getTextAfterCursor(1, 0)?.toString() == PAIRS[opener]
             ) ic.deleteSurroundingText(1, 1) else sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         } else {
@@ -678,7 +704,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     /** English sentence and word capitals, as the field asks for them (and Gboard does). */
     private fun autoShift() {
-        if (!englishMode || keyboardView.capsLock || keyboardView.mode != KeyboardMode.LETTERS) return
+        if (!prefs.autoCapitalize || !englishMode || keyboardView.capsLock || keyboardView.mode != KeyboardMode.LETTERS) return
         if (literalField) return
         var type = currentInputEditorInfo?.inputType ?: return
         if (type and android.text.InputType.TYPE_MASK_CLASS != android.text.InputType.TYPE_CLASS_TEXT) return
@@ -1035,7 +1061,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val word = currentEnglishWord()
         spellWord = word
         suggestionBar.items = emptyList()
-        if (word.length < 2 || fieldKind != FieldKind.TEXT) return
+        if (word.length < 2 || fieldKind != FieldKind.TEXT || !prefs.englishSpelling) return
         if (spellSession == null) {
             val tsm = getSystemService(android.view.textservice.TextServicesManager::class.java)
             spellSession = tsm?.newSpellCheckerSession(null, java.util.Locale.US, spellListener, false)

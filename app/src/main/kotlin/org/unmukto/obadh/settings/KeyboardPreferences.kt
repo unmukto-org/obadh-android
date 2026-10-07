@@ -19,6 +19,26 @@ class KeyboardPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_INSERT, false)
         set(v) = prefs.edit().putBoolean(KEY_AUTO_INSERT, v).apply()
 
+    private fun flag(key: String) = prefs.getBoolean(key, true)
+    private fun setFlag(key: String, v: Boolean) = prefs.edit().putBoolean(key, v).apply()
+
+    // Gestures and special features. Each is on by default and has its own switch in the app.
+    var spaceTrackpad: Boolean get() = flag("f_trackpad"); set(v) = setFlag("f_trackpad", v)
+    /** Off by default: it takes the volume buttons while the keyboard is open. */
+    var volumeKeyCursor: Boolean
+        get() = prefs.getBoolean("f_volume_cursor", false)
+        set(v) = prefs.edit().putBoolean("f_volume_cursor", v).apply()
+    var swipeToDelete: Boolean get() = flag("f_swipe_delete"); set(v) = setFlag("f_swipe_delete", v)
+    var longPressSymbols: Boolean get() = flag("f_long_press"); set(v) = setFlag("f_long_press", v)
+    var clipboardKeys: Boolean get() = flag("f_clip_keys"); set(v) = setFlag("f_clip_keys", v)
+    var keyCallout: Boolean get() = flag("f_callout"); set(v) = setFlag("f_callout", v)
+    var autoCapitalize: Boolean get() = flag("f_auto_caps"); set(v) = setFlag("f_auto_caps", v)
+    var autoPairs: Boolean get() = flag("f_pairs"); set(v) = setFlag("f_pairs", v)
+    var textShortcutsEnabled: Boolean get() = flag("f_shortcuts"); set(v) = setFlag("f_shortcuts", v)
+    var smartFields: Boolean get() = flag("f_smart_fields"); set(v) = setFlag("f_smart_fields", v)
+    var returnActionKey: Boolean get() = flag("f_return_action"); set(v) = setFlag("f_return_action", v)
+    var englishSpelling: Boolean get() = flag("f_spelling"); set(v) = setFlag("f_spelling", v)
+
     var keySoundEnabled: Boolean
         get() = prefs.getBoolean(KEY_SOUND, false)
         set(v) = prefs.edit().putBoolean(KEY_SOUND, v).apply()

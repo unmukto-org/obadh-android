@@ -95,41 +95,121 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
             }
         }
 
-        Section(
-            header = "Keyboard",
-            footer = "Clipboard History keeps text you copy, on this device only, for the keyboard's clipboard panel. Typing sound uses the system key click, so it follows your phone's volume and \"Touch sounds\" setting.",
-        ) {
-            SegmentedRow("Haptic Strength", listOf("Off", "Light", "Medium", "Strong"), selected = haptics) {
+        Section(header = "Keyboard") {
+            SegmentedRow(
+                "Haptic Strength", listOf("Off", "Light", "Medium", "Strong"), selected = haptics,
+                subtitle = "How firmly the phone vibrates on each key press. Try Light for a soft tick or Strong for a firm one.",
+            ) {
                 haptics = it
                 prefs.hapticStrength = it
                 Haptics.play(view, strength = it)
             }
             RowRule()
-            ToggleRow("Clipboard History", clipboard) { clipboard = it; prefs.clipboardHistoryEnabled = it }
-            RowRule()
-            ToggleRow("Typing Sound", keySound) {
+            ToggleRow(
+                "Typing Sound", keySound,
+                "Plays your phone's key click as you type. It follows your volume and the \"Touch sounds\" setting.",
+            ) {
                 keySound = it
                 prefs.keySoundEnabled = it
                 if (it) view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
             }
+            RowRule()
+            ToggleRow(
+                "Clipboard History", clipboard,
+                "Keeps what you copy so you can paste it again from the clipboard icon. Stays on this device; passwords are never saved.",
+            ) { clipboard = it; prefs.clipboardHistoryEnabled = it }
         }
 
-        Section(
-            header = "Text Shortcuts",
-            footer = "Type a shortcut, then space or return, and it becomes the full text. For example @@ can become your email address.",
-        ) {
+        Section(header = "Gestures") {
+            PrefToggle(
+                "Space Bar Trackpad", "Hold the space bar, then slide to move the cursor. Slide up or down to change line.",
+                prefs.spaceTrackpad,
+            ) { prefs.spaceTrackpad = it }
+            RowRule()
+            PrefToggle(
+                "Volume Keys Move Cursor",
+                "While the keyboard is open, volume up moves the cursor right and volume down moves it left, one character at a time. Off by default because it replaces the volume control while typing.",
+                prefs.volumeKeyCursor,
+            ) { prefs.volumeKeyCursor = it }
+            RowRule()
+            PrefToggle(
+                "Swipe Backspace to Delete",
+                "Slide left from the backspace key to select words, then lift to delete them. Slide further to take more words.",
+                prefs.swipeToDelete,
+            ) { prefs.swipeToDelete = it }
+            RowRule()
+            PrefToggle(
+                "Hold Keys for Symbols",
+                "Hold a key to type its small second character, like \u09E7 or 1 on Q, or @ on A. Lift on the key to type it.",
+                prefs.longPressSymbols,
+            ) { prefs.longPressSymbols = it }
+            RowRule()
+            PrefToggle(
+                "Hold X, C, V to Cut, Copy, Paste",
+                "Hold X to cut, C to copy and V to paste. With nothing selected, cut and copy take the whole text.",
+                prefs.clipboardKeys,
+            ) { prefs.clipboardKeys = it }
+            RowRule()
+            PrefToggle(
+                "Key Preview Bubble", "Shows a large bubble of the letter above your finger as you press a key.",
+                prefs.keyCallout,
+            ) { prefs.keyCallout = it }
+        }
+
+        Section(header = "Smart Typing") {
+            PrefToggle(
+                "Smart Fields",
+                "Adapts to the field: e-mail, web and password fields open in English with @, / and .com keys, and number or phone fields open on the number pad.",
+                prefs.smartFields,
+            ) { prefs.smartFields = it }
+            RowRule()
+            PrefToggle(
+                "Auto-Capitalize (English)",
+                "Starts sentences with a capital letter, like \"Hello. How are you\", and capitalises names in name fields.",
+                prefs.autoCapitalize,
+            ) { prefs.autoCapitalize = it }
+            RowRule()
+            PrefToggle(
+                "Spelling Suggestions (English)",
+                "Suggests fixes from your phone's spell checker, like \"teh\" to \"the\". Needs a spell checker turned on in system settings.",
+                prefs.englishSpelling,
+            ) { prefs.englishSpelling = it }
+            RowRule()
+            PrefToggle(
+                "Pair Brackets and Quotes",
+                "Typing ( also adds ) and puts the cursor between them. Typing the closing one steps over it.",
+                prefs.autoPairs,
+            ) { prefs.autoPairs = it }
+            RowRule()
+            PrefToggle(
+                "Return Key Actions",
+                "The return key shows what it will do, such as a magnifier for Search or an arrow for Next, and finishes single-line fields.",
+                prefs.returnActionKey,
+            ) { prefs.returnActionKey = it }
+        }
+
+        Section(header = "Text Shortcuts") {
+            PrefToggle(
+                "Expand Shortcuts",
+                "Type a shortcut then space, and it becomes the full text. For example @@ can become your e-mail address.",
+                prefs.textShortcutsEnabled,
+            ) { prefs.textShortcutsEnabled = it }
+            RowRule()
             NavRow("Shortcuts", value = shortcutCount.toString(), onClick = onOpenShortcuts)
         }
 
-        Section(
-            header = "Autocorrect",
-            footer = "Space inserts likely corrections. Exact English loanwords always use their Bangla spelling, even when this is off. Tap the quoted spelling to keep the literal.",
-        ) {
-            ToggleRow("Auto-Insert Corrections", autoInsert) { autoInsert = it; prefs.autoInsertCorrections = it }
+        Section(header = "Autocorrect") {
+            ToggleRow(
+                "Auto-Insert Corrections", autoInsert,
+                "Space replaces a likely typo with the right word, like \"bondu\" to \u09AC\u09A8\u09CD\u09A7\u09C1. Exact English loanwords always use their Bangla spelling, even when this is off. Tap the quoted spelling to keep what you typed.",
+            ) { autoInsert = it; prefs.autoInsertCorrections = it }
         }
 
         Section(header = "Emoji") {
-            SegmentedRow("Search Language", listOf("English", "বাংলা"), selected = if (emojiBangla) 1 else 0) {
+            SegmentedRow(
+                "Search Language", listOf("English", "বাংলা"), selected = if (emojiBangla) 1 else 0,
+                subtitle = "The language the emoji search starts in. You can switch it inside the emoji panel.",
+            ) {
                 emojiBangla = it == 1
                 prefs.emojiSearchBangla = emojiBangla
             }
@@ -184,14 +264,29 @@ fun Chevron() = Icon(
     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
 )
 
+/** A switch row that keeps its own state and writes through [onChange]. */
 @Composable
-fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+fun PrefToggle(title: String, subtitle: String, initial: Boolean, onChange: (Boolean) -> Unit) {
+    var on by remember { mutableStateOf(initial) }
+    ToggleRow(title, on, subtitle) { on = it; onChange(it) }
+}
+
+@Composable
+fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
     val dark = isSystemInDarkTheme()
     Row(
         Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, Modifier.weight(1f), fontSize = 16.sp)
+        Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+            Text(title, fontSize = 16.sp)
+            if (subtitle != null) {
+                Text(
+                    subtitle, Modifier.padding(top = 2.dp, end = 12.dp),
+                    fontSize = 13.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Switch(
             checked = checked, onCheckedChange = onChange,
             colors = SwitchDefaults.colors(
@@ -223,9 +318,10 @@ fun NavRow(title: String, value: String? = null, onClick: () -> Unit) {
 
 /** A two-or-more way picker in iOS's segmented idiom, in the brand colours. */
 @Composable
-fun SegmentedRow(title: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+fun SegmentedRow(title: String, options: List<String>, selected: Int, subtitle: String? = null, onSelect: (Int) -> Unit) {
     val dark = isSystemInDarkTheme()
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(title, Modifier.weight(1f), fontSize = 16.sp)
         Row(
             Modifier
@@ -247,5 +343,12 @@ fun SegmentedRow(title: String, options: List<String>, selected: Int, onSelect: 
                 )
             }
         }
+    }
+    if (subtitle != null) {
+        Text(
+            subtitle, Modifier.padding(top = 6.dp),
+            fontSize = 13.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
     }
 }
