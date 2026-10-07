@@ -399,7 +399,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         }
         // Quick double-space -> "। " (". " in English; time-gated, after a word, replaces the first space).
         val before = document.contextBeforeInput ?: ""
-        if (!literalField && now - lastSpaceAt <= DOUBLE_SPACE_MS && atEndOfText()) {
+        if (prefs.doubleSpacePeriod && !literalField && now - lastSpaceAt <= DOUBLE_SPACE_MS && atEndOfText()) {
             SmartPunctuation.doubleSpaceSubstitution(before)?.let {
                 replaceBeforeCaret(if (englishMode) it.copy(insertion = ". ") else it)
                 lastSpaceAt = 0

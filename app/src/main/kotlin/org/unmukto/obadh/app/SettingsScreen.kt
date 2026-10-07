@@ -176,6 +176,12 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
             ) { prefs.englishSpelling = it }
             RowRule()
             PrefToggle(
+                "Double Space for Full Stop",
+                "Tap space twice quickly to end a sentence: it types । in Bangla and a full stop in English, like \"Hello. \".",
+                prefs.doubleSpacePeriod,
+            ) { prefs.doubleSpacePeriod = it }
+            RowRule()
+            PrefToggle(
                 "Pair Brackets and Quotes",
                 "Typing ( also adds ) and puts the cursor between them. Typing the closing one steps over it.",
                 prefs.autoPairs,

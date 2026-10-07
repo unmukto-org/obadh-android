@@ -17,9 +17,12 @@ object Haptics {
 
     @Volatile var level = DEFAULT
 
-    // Milliseconds and amplitude (1-255) per level; a long press adds a little.
-    private val millis = intArrayOf(0, 9, 13, 20)
-    private val amplitude = intArrayOf(0, 55, 130, 255)
+    // Phones that can set the amplitude vary it (1-255) over a short pulse. Many cannot: their
+    // motor is on or off, so the pulse's length is the only strength, and it has to be longer
+    // than a tick to be felt at all. A long press adds a little.
+    private val millisWithAmplitude = intArrayOf(0, 12, 18, 26)
+    private val amplitude = intArrayOf(0, 70, 150, 255)
+    private val millisOnOff = intArrayOf(0, 16, 30, 48)
 
     /** A key tap, or with [long] the heavier tick of a long press or flick. */
     fun play(view: View, long: Boolean = false, strength: Int = level) {
@@ -30,8 +33,9 @@ object Haptics {
             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             return
         }
-        val ms = (millis[s] + if (long) 6 else 0).toLong()
-        val amp = if (vibrator.hasAmplitudeControl()) amplitude[s] else VibrationEffect.DEFAULT_AMPLITUDE
+        val variable = vibrator.hasAmplitudeControl()
+        val ms = ((if (variable) millisWithAmplitude[s] else millisOnOff[s]) + if (long) 10 else 0).toLong()
+        val amp = if (variable) amplitude[s] else VibrationEffect.DEFAULT_AMPLITUDE
         try { vibrator.vibrate(VibrationEffect.createOneShot(ms, amp)) }
         catch (_: Exception) { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) }
     }
