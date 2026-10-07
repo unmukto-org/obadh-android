@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # The models are shared byte-for-byte with iOS and synced from its repo (docs/build-and-release.md).
+      - uses: actions/checkout@v4
+        with:
+          repository: unmukto-org/obadh-ios
+          path: obadh-ios
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Rust toolchain (pinned in rust/obadh-jni/rust-toolchain.toml)
+        working-directory: rust/obadh-jni
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/obadh-jni
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Sync models and build the native library
+        env:
+          OBADH_MODELS_SRC: ${{ github.workspace }}/obadh-ios/Resources/ObadhModels
+        run: |
+          ./scripts/sync-models.sh
+          ./scripts/build-rust-android.sh
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: obadh-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

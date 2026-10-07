@@ -1,9 +1,16 @@
 # Changelog
 
-All notable changes. Dates are 2026-10-07 unless stated. The project has no
-tagged release yet.
+All notable changes. Dates are 2026-10-07 unless stated. A release is an
+annotated `v<version>` tag; pushing it builds, signs and publishes the APK
+([docs/build-and-release.md](docs/build-and-release.md#releasing)).
 
-## Unreleased (0.1.0)
+## Unreleased
+
+Nothing yet.
+
+## v0.1.0 — 2026-10-08
+
+Version: `0.1.0` (build `1`). Engine: `0.9.4`. Tag: `v0.1.0` (annotated). First release.
 
 ### Added
 - **The keyboard.** An `InputMethodService` over a JNI layer on the engine's C ABI,

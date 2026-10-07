@@ -145,10 +145,46 @@ installed over each other; uninstall one first, which clears its settings.
 Verify a signature with `$ANDROID_HOME/build-tools/<version>/apksigner verify
 --print-certs <apk>`.
 
-## Releasing
+## CI and releases
 
-Not configured yet: there is no production key (see Signing), no version-bump
-script, and no store listing. When it is, the checklist is: bump `versionName` and `versionCode`
-in `app/build.gradle.kts`, run the unit tests, build a signed release, **install
-and run the release build** (R8 can strip JNI-reachable code), verify Settings ›
-Version, and record the change in [CHANGELOG.md](../CHANGELOG.md).
+Two GitHub Actions workflows live in `.github/workflows/`.
+
+- **`ci.yml`** runs on every push to `main` and every pull request: it checks out this repo
+  and `unmukto-org/obadh-ios` (the models), syncs the models, builds the native library for
+  the three ABIs, runs the unit tests and builds the debug APK, which it uploads as an
+  artifact (14 days).
+- **`release.yml`** runs when a tag `v*` is pushed. It refuses a tag that does not match
+  `versionName` in `app/build.gradle.kts` or that has no matching section in
+  [CHANGELOG.md](../CHANGELOG.md) (that section becomes the release notes), runs the tests,
+  builds `assembleRelease` signed with the release key, checks the signature with
+  `apksigner verify`, and publishes a GitHub release with `obadh-<tag>.apk` and its
+  `.sha256`.
+
+### The release key
+
+The key is a 4096-bit RSA PKCS12 keystore (alias `obadh`, valid 10 000 days). CI reads it
+from four repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. The workflow writes `keystore.properties` and
+the keystore into the runner's temp directory and deletes them at the end. **The keystore is
+the app's identity: an update must be signed with the same key, and a lost key cannot be
+replaced.** Keep an offline backup of the `.jks` and its passwords; the secrets in GitHub
+cannot be read back.
+
+### Cutting a release
+
+1. Bump `versionName` and `versionCode` in `app/build.gradle.kts`.
+2. Move the finished entries in `CHANGELOG.md` under a heading `## v<version> — <date>`.
+3. Commit and push `main`, and wait for CI to pass.
+4. Tag and push the tag:
+
+   ```bash
+   git tag -a v0.1.0 -m "Obadh 0.1.0"
+   git push origin v0.1.0
+   ```
+
+5. The release workflow publishes the signed APK. Install it and check Settings › Version
+   before announcing it: R8 can strip JNI-reachable code, and the release build has not been
+   exercised on a device yet (see [KNOWN-ISSUES.md](../KNOWN-ISSUES.md)).
+
+Sideloading note: a debug build and a release build are signed with different keys, so
+Android will not install one over the other; uninstall first, which clears the settings.

@@ -1,0 +1,111 @@
+name: Release
+
+# Push an annotated tag such as v0.1.0 to build, sign and publish the APK.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: unmukto-org/obadh-ios
+          path: obadh-ios
+
+      - name: Tag must match versionName
+        run: |
+          name=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          if [ "${GITHUB_REF_NAME}" != "v${name}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match versionName ${name} in app/build.gradle.kts"
+            exit 1
+          fi
+          echo "VERSION=${name}" >> "$GITHUB_ENV"
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          # The section whose heading starts "## v<version>" (or "## <version>"), up to the next "## ".
+          awk -v v="${VERSION}" '
+            /^## / { on = ($0 ~ "^## v?" v "([ (]|$)") ; next }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for ${VERSION}"
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Rust toolchain
+        working-directory: rust/obadh-jni
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/obadh-jni
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Sync models and build the native library
+        env:
+          OBADH_MODELS_SRC: ${{ github.workspace }}/obadh-ios/Resources/ObadhModels
+        run: |
+          ./scripts/sync-models.sh
+          ./scripts/build-rust-android.sh
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || { echo "::error::signing secrets are not configured"; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+
+      - name: Build the signed release APK
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Verify the signature and name the asset
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          apk=app/build/outputs/apk/release/app-release.apk
+          "$apksigner" verify --print-certs "$apk"
+          mkdir dist
+          cp "$apk" "dist/obadh-${GITHUB_REF_NAME}.apk"
+          (cd dist && sha256sum "obadh-${GITHUB_REF_NAME}.apk" > "obadh-${GITHUB_REF_NAME}.apk.sha256")
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "Obadh ${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            --verify-tag
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f keystore.properties "$RUNNER_TEMP/release.jks"

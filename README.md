@@ -1,5 +1,7 @@
 # Obadh-Android: Modern Bangla Typing App for Android
 
+[![CI](https://github.com/unmukto-org/obadh-android/actions/workflows/ci.yml/badge.svg)](https://github.com/unmukto-org/obadh-android/actions/workflows/ci.yml)
+
 **Obadh** (অবাধ) is a project to modernize Bangla typing across all major
 platforms. At its core is
 [obadh_engine](https://github.com/nsssayom/obadh_engine), a deterministic
@@ -72,6 +74,9 @@ you through it. Details and the engine-bump workflow:
 <p align="center">
   <img src="docs/assets/app.png" alt="The Obadh app: welcome and settings" width="560">
 </p>
+
+Signed APKs are on the [Releases](https://github.com/unmukto-org/obadh-android/releases)
+page; allow installs from your browser or file manager, install, then turn Obadh on.
 
 ## How it's built
 
