@@ -179,13 +179,13 @@ class KeyboardView(context: Context) : View(context) {
      */
     val bottomPad: Float
         get() = (when {
-            family != null -> 14f
-            landscape -> 10f
-            else -> 14f
+            family != null -> 18f
+            landscape -> 14f
+            else -> 22f
         }) * density
     /** One normal key row. A phone's landscape rows are shorter so the app stays visible above. */
     private val rowHeight: Float
-        get() = (family?.rowHeightDp(landscape) ?: if (landscape) PHONE_LANDSCAPE_ROW_DP else 50f) * density
+        get() = (family?.rowHeightDp(landscape) ?: if (landscape) PHONE_LANDSCAPE_ROW_DP else 53f) * density
 
     /** Edge margin; a landscape phone also centres its keys in a capped width rather than stretching to the glass. */
     private fun sidePad(viewWidth: Int): Float {

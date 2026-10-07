@@ -49,7 +49,7 @@ Landscape is its own geometry, not a stretched portrait.
   the space bar a larger share and the side keys less. The compact home row is
   less indented with a shorter Return key. The extended number row is 75% of a
   normal row in both orientations.
-- **Phones** use shorter rows (38 dp against 50 dp) and a shorter suggestion
+- **Phones** use shorter rows (38 dp against 53 dp) and a shorter suggestion
   strip, so the app above stays visible, and the key block is capped at 820 dp
   and centred rather than stretched across the whole glass.
 - **Insets.** Left and right padding follows the navigation-bar and display-cutout

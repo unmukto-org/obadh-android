@@ -179,7 +179,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         // Holding the button keeps stepping; the host's arrow handling moves by grapheme cluster.
         if (event.repeatCount == 0) commitActiveWord()
         val ic = currentInputConnection ?: return true
-        arrow(ic, if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT, 1)
+        moveColumns(ic, if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) 1 else -1)
         if (event.repeatCount == 0) haptic()
         refreshRibbon()
         return true
@@ -503,13 +503,53 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     override fun onCursorMove(columns: Int, rows: Int) {
         if (emojiSearchActive || (columns == 0 && rows == 0)) return
         val ic = currentInputConnection ?: return
-        // The host's own arrow handling moves by grapheme cluster and visual line, and
-        // collapses a selection, so a conjunct is never split and no offsets are needed.
+        // The host's own arrow handling moves by grapheme cluster and visual line, but an arrow
+        // key at the edge of the text would hand focus to the next view. So every key is only sent
+        // when the text itself has room in that direction, and the caret never leaves the field.
         ic.beginBatchEdit()
         try {
-            arrow(ic, if (rows < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN, kotlin.math.abs(rows))
-            arrow(ic, if (columns < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, kotlin.math.abs(columns))
+            if (rows != 0) moveLines(ic, rows)
+            if (columns != 0) moveColumns(ic, columns)
         } finally { ic.endBatchEdit() }
+    }
+
+    private fun moveColumns(ic: android.view.inputmethod.InputConnection, columns: Int) {
+        val left = columns < 0
+        repeat(kotlin.math.abs(columns)) {
+            // Re-read each step: it is answered after the previous arrow has been applied.
+            val room = if (left) ic.getTextBeforeCursor(1, 0) else ic.getTextAfterCursor(1, 0)
+            if (room.isNullOrEmpty()) return
+            arrow(ic, if (left) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, 1)
+        }
+    }
+
+    /**
+     * Up and down. While another line exists in that direction the arrow key is safe and follows
+     * wrapped lines; at the first or last line the caret goes to the start or end of the text
+     * (as on iOS) instead of leaving the field.
+     */
+    private fun moveLines(ic: android.view.inputmethod.InputConnection, rows: Int) {
+        val up = rows < 0
+        repeat(kotlin.math.abs(rows)) {
+            val before = ic.getTextBeforeCursor(CURSOR_SCAN_CHARS, 0)?.toString().orEmpty()
+            val after = ic.getTextAfterCursor(CURSOR_SCAN_CHARS, 0)?.toString().orEmpty()
+            val hasLine = if (up) before.contains('\n') else after.contains('\n')
+            if (hasLine) {
+                arrow(ic, if (up) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN, 1)
+            } else if (up) {
+                if (before.isNotEmpty()) ic.setSelection(0, 0)
+            } else if (after.isNotEmpty() && after.length < CURSOR_SCAN_CHARS) {
+                val start = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)?.selectionStart
+                if (start != null) ic.setSelection(start + after.length, start + after.length)
+            }
+        }
+    }
+
+    private fun arrow(ic: android.view.inputmethod.InputConnection, code: Int, times: Int) {
+        repeat(times) {
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        }
     }
 
     // Swipe-to-delete from backspace: the words are shown selected, removed when the finger lifts.
@@ -555,13 +595,6 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         swipeLen = 0
         swipeText = ""
         refreshRibbon()
-    }
-
-    private fun arrow(ic: android.view.inputmethod.InputConnection, code: Int, times: Int) {
-        repeat(times) {
-            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
-            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
-        }
     }
 
     override fun onClipboard(action: ClipboardAction) {
@@ -1151,6 +1184,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val PAIRS = mapOf("(" to ")", "[" to "]", "{" to "}", "“" to "”")
         val PAIR_CLOSERS = PAIRS.values.toSet()
         const val SWIPE_DELETE_CHARS = 2_000
+        const val CURSOR_SCAN_CHARS = 3_000
         const val DOUBLE_SPACE_MS = 350L
         const val EMOJI_SEARCH_LIMIT = 40
         const val EMOJI_SEARCH_PANEL_DP = 104

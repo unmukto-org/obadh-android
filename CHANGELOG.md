@@ -75,6 +75,10 @@ tagged release yet.
 - The emoji key uses the same smiley icon as the tools row.
 - **Comma and full stop on the bottom row.** A comma sits left of the space and a dari (a full stop
   in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
+- **The caret stays in the field.** The space-bar trackpad and the volume keys no longer send an arrow key
+  when the text has no room that way, so they cannot move focus to another view. Up on the first line goes to
+  the start of the text and down on the last goes to the end (as on iOS).
+- **Roomier phone keys.** Portrait phone rows are 53 dp (was 50) and the safe area under the bottom row is 22 dp (was 14), so the keys sit higher and are a little larger.
 - **Double space switch.** Settings → Smart Typing → Double Space for Full Stop turns the quick double-space (`। ` in Bangla, `. ` in English) on or off.
 - **Plain-language settings.** Every switch in Settings now has a short description with an example under its title.
 - **Volume keys move the cursor.** Settings → Gestures → Volume Keys Move Cursor (off by default): while the
