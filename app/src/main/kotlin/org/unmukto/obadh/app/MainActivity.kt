@@ -74,6 +74,7 @@ private fun SettingsScreen() {
     val prefs = remember { KeyboardPreferences(context) }
     var haptics by remember { mutableStateOf(prefs.hapticsEnabled) }
     var autoInsert by remember { mutableStateOf(prefs.autoInsertCorrections) }
+    var emojiBangla by remember { mutableStateOf(prefs.emojiSearchBangla) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Text("Obadh", style = MaterialTheme.typography.headlineLarge)
@@ -84,6 +85,11 @@ private fun SettingsScreen() {
             "On space, replace a typo only when a strict confidence gate passes. Exact English loanwords are always converted.",
             autoInsert,
         ) { autoInsert = it; prefs.autoInsertCorrections = it }
+        ToggleRow(
+            "Search emoji in Bangla",
+            "The emoji search opens in Bangla (type Roman, it is converted). You can still switch inside the search bar.",
+            emojiBangla,
+        ) { emojiBangla = it; prefs.emojiSearchBangla = it }
         Spacer(Modifier.height(24.dp))
         Text(
             "Obadh never uses the network. Everything is computed on your device.",

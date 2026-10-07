@@ -21,6 +21,11 @@ class KeyboardPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SOUND, false)
         set(v) = prefs.edit().putBoolean(KEY_SOUND, v).apply()
 
+    /** Emoji search language when the panel's search opens. The in-bar chip toggles it per session. */
+    var emojiSearchBangla: Boolean
+        get() = prefs.getBoolean(KEY_EMOJI_BN, false)
+        set(v) = prefs.edit().putBoolean(KEY_EMOJI_BN, v).apply()
+
     var setupCompleted: Boolean
         get() = prefs.getBoolean(KEY_SETUP, false)
         set(v) = prefs.edit().putBoolean(KEY_SETUP, v).apply()
@@ -31,5 +36,6 @@ class KeyboardPreferences(context: Context) {
         const val KEY_AUTO_INSERT = "auto_insert"
         const val KEY_SOUND = "key_sound"
         const val KEY_SETUP = "setup_completed"
+        const val KEY_EMOJI_BN = "emoji_search_bangla"
     }
 }

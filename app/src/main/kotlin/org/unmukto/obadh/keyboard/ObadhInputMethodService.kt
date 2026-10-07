@@ -38,6 +38,12 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private lateinit var emojiPanel: EmojiPanelView
     @Volatile private var emojiCatalog: EmojiDataStore? = null
     private var emojiPanelOpen = false
+    private var emojiSearchActive = false
+    private var emojiSearchBangla = false
+    private var emojiSearchQuery = ""
+    private var emojiPanelFullHeight = 0
+    private var emojiSearchGeneration = 0
+    @Volatile private var banglaEmojiSearch: BanglaEmojiSearchStore? = null
 
     private lateinit var emojiRecents: EmojiRecentStore
     private lateinit var emojiVariants: EmojiVariantPreferenceStore
@@ -106,9 +112,11 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(keyboardView.theme.background)
+            // The panel sits ABOVE the keys: in search mode it is a short field + results row
+            // and the letter keyboard stays below it.
+            addView(emojiPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0))
             addView(suggestionBar)
             addView(keyboardView)
-            addView(emojiPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0).also { })
             // On Android 15+ the IME window is edge-to-edge and the system draws its
             // hide/switch buttons in the navigation-bar strip: keep keys clear of it.
             ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
@@ -157,6 +165,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onKey(key: Key) {
         haptic()
+        if (emojiSearchActive) { onSearchKey(key); return }
         when (key) {
             is Key.Character -> typeLetter(key.value)
             is Key.Symbol -> typeSymbol(key)
@@ -244,6 +253,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     override fun onBackspace(unit: BackspaceDeletionUnit) {
+        if (emojiSearchActive) { searchBackspace(); return }
         if (unit == BackspaceDeletionUnit.CHARACTER) haptic()
         if (composer.hasActiveInput && unit == BackspaceDeletionUnit.CHARACTER) {
             composer.deleteBackward()
@@ -349,11 +359,17 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             emojiVariants.record(base, selected)
             emojiPanel.updatePreference(base, selected)
         }
+
+        override fun onSearchRequested() = enterEmojiSearch()
+        override fun onSearchClosed() = exitEmojiSearch()
+        override fun onSearchCleared() { emojiSearchQuery = ""; syncEmojiSearch() }
+        override fun onSearchLanguageToggled() { emojiSearchBangla = !emojiSearchBangla; syncEmojiSearch() }
     }
 
     private fun openEmojiPanel() {
         commitActiveWord()
         val height = suggestionBar.height + keyboardView.height
+        emojiPanelFullHeight = height
         suggestionBar.visibility = View.GONE
         keyboardView.visibility = View.GONE
         emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = height }
@@ -378,10 +394,92 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private fun closeEmojiPanel() {
         if (!::emojiPanel.isInitialized || !emojiPanelOpen) return
         emojiPanelOpen = false
+        emojiSearchActive = false
+        emojiSearchQuery = ""
+        emojiPanel.setSearchActive(false)
         emojiPanel.visibility = View.GONE
         suggestionBar.visibility = View.VISIBLE
         keyboardView.visibility = View.VISIBLE
         refreshRibbon()
+    }
+
+    // ----------------------------------------------------------- emoji search
+
+    private fun enterEmojiSearch() {
+        if (!emojiPanelOpen) return
+        emojiSearchActive = true
+        emojiSearchQuery = ""
+        emojiSearchBangla = prefs.emojiSearchBangla
+        // The panel shrinks to a field + one row of results; the letters sit below it.
+        emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = (EMOJI_SEARCH_PANEL_DP * resources.displayMetrics.density).toInt() }
+        emojiPanel.setSearchActive(true)
+        keyboardView.mode = KeyboardMode.LETTERS
+        keyboardView.shiftActive = false
+        keyboardView.visibility = View.VISIBLE
+        suggestionBar.visibility = View.GONE
+        syncEmojiSearch()
+    }
+
+    private fun exitEmojiSearch() {
+        emojiSearchActive = false
+        emojiSearchQuery = ""
+        emojiSearchGeneration++
+        emojiPanel.setSearchActive(false)
+        keyboardView.visibility = View.GONE
+        emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = emojiPanelFullHeight }
+        if (emojiCatalog != null) configureEmojiPanel(emojiCatalog!!)
+        emojiPanel.requestLayout()
+    }
+
+    private fun onSearchKey(key: Key) {
+        val cased = { v: String -> if (keyboardView.shiftActive || keyboardView.capsLock) v.uppercase() else v }
+        when (key) {
+            is Key.Character -> {
+                emojiSearchQuery += cased(key.value)
+                if (keyboardView.shiftActive && !keyboardView.capsLock) keyboardView.shiftActive = false
+                syncEmojiSearch()
+            }
+            is Key.Symbol -> { emojiSearchQuery += key.output; syncEmojiSearch() }
+            Key.Space -> if (!emojiSearchQuery.lastOrNull().let { it == null || it.isWhitespace() }) {
+                emojiSearchQuery += " "; syncEmojiSearch()
+            }
+            Key.Shift -> toggleShift()
+            is Key.ModeSwitch -> keyboardView.mode = key.target
+            Key.Return, Key.Emoji, Key.Globe -> exitEmojiSearch()
+            Key.Backspace -> Unit // via onBackspace
+        }
+    }
+
+    private fun searchBackspace() {
+        if (emojiSearchQuery.isEmpty()) { exitEmojiSearch(); return }
+        emojiSearchQuery = emojiSearchQuery.dropLast(1)
+        syncEmojiSearch()
+    }
+
+    /** What the field shows: in Bangla, the typed Roman is transliterated into the query. */
+    private fun displayQuery(): String =
+        if (emojiSearchBangla) engine.transliterate(KeyboardComposer.engineInput(emojiSearchQuery)) else emojiSearchQuery
+
+    private fun syncEmojiSearch() {
+        val shown = displayQuery()
+        emojiPanel.setSearchState(shown, emojiSearchBangla)
+        val generation = ++emojiSearchGeneration
+        val bangla = emojiSearchBangla
+        val query = shown
+        val catalog = emojiCatalog
+        if (query.isBlank()) { emojiPanel.setSearchResults(emptyList()); return }
+        worker.execute {
+            val results: List<String> = if (bangla) {
+                // Loaded only when Bangla search is first used, so English pays nothing.
+                val store = banglaEmojiSearch ?: EmojiModels.banglaSearchStore(ModelInstaller.modelsDir(this))
+                    .also { banglaEmojiSearch = it }
+                store.search(query, EMOJI_SEARCH_LIMIT)
+            } else {
+                (catalog ?: EmojiModels.dataStore(ModelInstaller.modelsDir(this)).also { emojiCatalog = it })
+                    .search(query, EMOJI_SEARCH_LIMIT).map { it.emoji }
+            }
+            main.post { if (generation == emojiSearchGeneration && emojiSearchActive) emojiPanel.setSearchResults(results) }
+        }
     }
 
     // --------------------------------------------------------------- ribbon
@@ -489,5 +587,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         const val CONTEXT_CHARS = 128
         const val NEXT_WORD_CONTEXT_CHARS = 200
         const val DOUBLE_SPACE_MS = 350L
+        const val EMOJI_SEARCH_LIMIT = 40
+        const val EMOJI_SEARCH_PANEL_DP = 104
     }
 }

@@ -25,6 +25,10 @@ interface EmojiPanelListener {
     fun onBackspace(unit: BackspaceDeletionUnit)
     /** A tone was picked from the long-press popup; persist it. */
     fun onVariantPicked(base: String, selected: String)
+    fun onSearchRequested()
+    fun onSearchClosed()
+    fun onSearchCleared()
+    fun onSearchLanguageToggled()
 }
 
 /**
@@ -75,6 +79,15 @@ class EmojiPanelView(context: Context) : View(context) {
     private var backspaceDown = false
     private var backspaceAt = 0L
 
+    // search mode: a field row and one row of results; the letter keyboard sits below the panel
+    private var searchActive = false
+    private var searchText = ""
+    private var searchBangla = false
+    private var searchResults: List<Cell> = emptyList()
+    private var searchScroll = 0f
+    private var searchDownArea = -1
+    private val searchCell get() = 44f * density
+
     // long-press popup
     private var popupBase: EmojiItem? = null
     private var popupOptions: List<EmojiItem> = emptyList()
@@ -111,6 +124,31 @@ class EmojiPanelView(context: Context) : View(context) {
     fun updatePreference(base: String, selected: String) {
         preferences = if (base == selected) preferences - base else preferences + (base to selected)
         rebuild()
+        invalidate()
+    }
+
+    fun setSearchActive(active: Boolean) {
+        searchActive = active
+        searchText = ""
+        searchResults = emptyList()
+        searchScroll = 0f
+        clearPopup()
+        invalidate()
+    }
+
+    fun setSearchState(text: String, bangla: Boolean) {
+        searchText = text
+        searchBangla = bangla
+        invalidate()
+    }
+
+    /** [emojis] are base emoji; the remembered skin tone is applied for display. */
+    fun setSearchResults(emojis: List<String>) {
+        val s = store
+        searchResults = emojis.filter(::canDraw).map { base ->
+            Cell(preferences[base]?.takeIf(::canDraw) ?: base, s?.item(base))
+        }
+        searchScroll = 0f
         invalidate()
     }
 
@@ -157,6 +195,7 @@ class EmojiPanelView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(theme.background)
+        if (searchActive) { drawSearch(canvas); drawPopup(canvas); return }
         if (scroller.computeScrollOffset()) {
             scrollPos = scroller.currX.toFloat()
             postInvalidateOnAnimation()
@@ -207,14 +246,17 @@ class EmojiPanelView(context: Context) : View(context) {
 
     private val barCategories = EmojiCategory.visible
     private fun barRects(): List<RectF> {
-        val abc = 56f * density
-        val back = 56f * density
-        val inner = (width - abc - back) / barCategories.size
+        val abc = 52f * density
+        val find = 40f * density
+        val back = 52f * density
+        val inner = (width - abc - find - back) / barCategories.size
         val top = height - barH
         val rects = ArrayList<RectF>()
-        rects += RectF(0f, top, abc, height.toFloat())
-        barCategories.forEachIndexed { i, _ -> rects += RectF(abc + i * inner, top, abc + (i + 1) * inner, height.toFloat()) }
-        rects += RectF(width - back, top, width.toFloat(), height.toFloat())
+        rects += RectF(0f, top, abc, height.toFloat())                     // [0] ABC
+        rects += RectF(abc, top, abc + find, height.toFloat())             // [1] search
+        val start = abc + find
+        barCategories.forEachIndexed { i, _ -> rects += RectF(start + i * inner, top, start + (i + 1) * inner, height.toFloat()) }
+        rects += RectF(width - back, top, width.toFloat(), height.toFloat()) // [last] backspace
         return rects
     }
 
@@ -228,8 +270,11 @@ class EmojiPanelView(context: Context) : View(context) {
         paint.textSize = 15f * density
         canvas.drawText("ABC", rects.first().centerX(), rects.first().centerY() - (paint.descent() + paint.ascent()) / 2, paint)
         paint.textSize = 20f * density
+        paint.textSize = 18f * density
+        canvas.drawText("🔍", rects[1].centerX(), rects[1].centerY() - (paint.descent() + paint.ascent()) / 2, paint)
+        paint.textSize = 20f * density
         barCategories.forEachIndexed { i, cat ->
-            val r = rects[i + 1]
+            val r = rects[i + 2]
             if (cat == current) {
                 fill.color = theme.keyPressed
                 canvas.drawRoundRect(r.left + 4 * density, r.top + 6 * density, r.right - 4 * density, r.bottom - 6 * density, 10 * density, 10 * density, fill)
@@ -307,6 +352,7 @@ class EmojiPanelView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
+        if (searchActive) return onSearchTouch(e)
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 scroller.forceFinished(true)
@@ -394,8 +440,9 @@ class EmojiPanelView(context: Context) : View(context) {
     private fun handleBarTap(x: Float, y: Float) {
         val rects = barRects()
         if (rects.first().contains(x, y)) { listener?.onReturnToKeyboard(); return }
+        if (rects[1].contains(x, y)) { listener?.onSearchRequested(); return }
         barCategories.forEachIndexed { i, cat ->
-            if (rects[i + 1].contains(x, y)) scrollToCategory(cat)
+            if (rects[i + 2].contains(x, y)) scrollToCategory(cat)
         }
     }
 
@@ -405,6 +452,179 @@ class EmojiPanelView(context: Context) : View(context) {
         scroller.forceFinished(true)
         scroller.startScroll(scrollPos.toInt(), 0, (target - scrollPos).toInt(), 0, 280)
         postInvalidateOnAnimation()
+    }
+
+    // ---------------------------------------------------------------- search
+
+    private val fieldTop get() = 8f * density
+    private val fieldH get() = 40f * density
+    private val resultsTop get() = fieldTop + fieldH + 8f * density
+    private val backRect get() = RectF(0f, fieldTop, 44f * density, fieldTop + fieldH)
+    private val pillRect get() = RectF(48f * density, fieldTop, width - 8f * density, fieldTop + fieldH)
+    private val chipRect get() = pillRect.let { RectF(it.right - 52f * density, it.top, it.right, it.bottom) }
+    private val clearRect get() = pillRect.let { RectF(it.right - 52f * density - 36f * density, it.top, it.right - 52f * density, it.bottom) }
+
+    private fun drawSearch(canvas: Canvas) {
+        val pill = pillRect
+        fill.color = theme.key
+        canvas.drawRoundRect(pill, 20 * density, 20 * density, fill)
+
+        paint.textAlign = Paint.Align.CENTER
+        paint.color = theme.label; paint.alpha = 255; paint.textSize = 24f * density
+        val back = backRect
+        canvas.drawText("‹", back.centerX(), back.centerY() - (paint.descent() + paint.ascent()) / 2, paint)
+
+        // the query, end-aligned so the caret end is always visible
+        val textLeft = pill.left + 14f * density
+        val textRight = (if (searchText.isNotEmpty()) clearRect.left else chipRect.left) - 4f * density
+        paint.textSize = 17f * density
+        paint.textAlign = Paint.Align.LEFT
+        val shown = searchText.ifEmpty { "Search emoji" }
+        paint.alpha = if (searchText.isEmpty()) 120 else 255
+        val w = paint.measureText(shown)
+        canvas.save()
+        canvas.clipRect(textLeft, pill.top, textRight, pill.bottom)
+        val x = if (w > textRight - textLeft) textRight - w else textLeft
+        canvas.drawText(shown, x, pill.centerY() - (paint.descent() + paint.ascent()) / 2, paint)
+        canvas.restore()
+        paint.alpha = 255; paint.textAlign = Paint.Align.CENTER
+
+        if (searchText.isNotEmpty()) {
+            paint.textSize = 16f * density; paint.alpha = 170
+            canvas.drawText("✕", clearRect.centerX(), clearRect.centerY() - (paint.descent() + paint.ascent()) / 2, paint)
+            paint.alpha = 255
+        }
+        val chip = chipRect
+        fill.color = theme.keyPressed
+        canvas.drawRoundRect(chip.left + 2 * density, chip.top + 6 * density, chip.right - 6 * density, chip.bottom - 6 * density, 12 * density, 12 * density, fill)
+        paint.textSize = 13f * density; paint.color = theme.label
+        canvas.drawText(if (searchBangla) "বাং" else "EN", chip.centerX() - 2 * density, chip.centerY() - (paint.descent() + paint.ascent()) / 2, paint)
+
+        // results: one horizontally scrolling row
+        val top = resultsTop
+        val rowH = height - top
+        if (searchResults.isEmpty()) {
+            paint.textSize = 14f * density; paint.alpha = 140
+            canvas.drawText(if (searchText.isEmpty()) "Type to search" else "No emoji found", width / 2f, top + rowH / 2f, paint)
+            paint.alpha = 255
+            return
+        }
+        paint.textSize = 28f * density
+        searchResults.forEachIndexed { i, cell ->
+            val cx = leadInset + i * searchCell + searchCell / 2f - searchScroll
+            if (cx < -searchCell || cx > width + searchCell) return@forEachIndexed
+            if (pressed == null && searchPressed == i) {
+                fill.color = theme.keyPressed
+                canvas.drawRoundRect(cx - searchCell / 2, top, cx + searchCell / 2, top + rowH, 8 * density, 8 * density, fill)
+            }
+            paint.color = theme.label
+            canvas.drawText(cell.display, cx, top + rowH / 2f - (paint.descent() + paint.ascent()) / 2, paint)
+        }
+    }
+    private var searchPressed = -1
+
+    private val searchMaxScroll get() = max(0f, leadInset * 2 + searchResults.size * searchCell - width)
+
+    private fun searchIndexAt(x: Float, y: Float): Int {
+        if (y < resultsTop) return -1
+        val i = ((x + searchScroll - leadInset) / searchCell).toInt()
+        return if (i in searchResults.indices && x + searchScroll >= leadInset) i else -1
+    }
+
+    private fun onSearchTouch(e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                scroller.forceFinished(true)
+                downX = e.x; downY = e.y; lastX = e.x; dragging = false
+                velocity = VelocityTracker.obtain().also { it.addMovement(e) }
+                searchDownArea = when {
+                    backRect.contains(e.x, e.y) -> AREA_BACK
+                    searchText.isNotEmpty() && clearRect.contains(e.x, e.y) -> AREA_CLEAR
+                    chipRect.contains(e.x, e.y) -> AREA_CHIP
+                    pillRect.contains(e.x, e.y) -> AREA_PILL
+                    e.y >= resultsTop -> AREA_RESULTS
+                    else -> -1
+                }
+                searchPressed = if (searchDownArea == AREA_RESULTS) searchIndexAt(e.x, e.y) else -1
+                if (searchPressed >= 0) handler.postDelayed(searchLongPress, ViewConfiguration.getLongPressTimeout().toLong())
+                invalidate()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                velocity?.addMovement(e)
+                if (popupBase != null) { popupHover = popupIndexAt(e.x, e.y); invalidate(); return true }
+                if (searchDownArea == AREA_RESULTS) {
+                    if (!dragging && abs(e.x - downX) > slop) {
+                        dragging = true; searchPressed = -1
+                        handler.removeCallbacks(searchLongPress)
+                    }
+                    if (dragging) {
+                        searchScroll = (searchScroll - (e.x - lastX)).coerceIn(0f, searchMaxScroll)
+                        invalidate()
+                    }
+                }
+                lastX = e.x
+            }
+            MotionEvent.ACTION_UP -> {
+                handler.removeCallbacks(searchLongPress)
+                if (popupBase != null) {
+                    val picked = popupOptions.getOrNull(popupHover)
+                    val base = popupBase!!.emoji
+                    clearPopup()
+                    if (picked != null) {
+                        listener?.onVariantPicked(base, picked.emoji)
+                        listener?.onEmojiSelected(picked.emoji, base)
+                    }
+                } else if (!dragging) {
+                    when (searchDownArea) {
+                        AREA_BACK -> if (backRect.contains(e.x, e.y)) listener?.onSearchClosed()
+                        AREA_CLEAR -> if (clearRect.contains(e.x, e.y)) listener?.onSearchCleared()
+                        AREA_CHIP -> if (chipRect.contains(e.x, e.y)) listener?.onSearchLanguageToggled()
+                        AREA_RESULTS -> {
+                            val i = searchIndexAt(e.x, e.y)
+                            if (i >= 0 && i == searchPressed) {
+                                val cell = searchResults[i]
+                                listener?.onEmojiSelected(cell.display, cell.base?.emoji ?: cell.display)
+                            }
+                        }
+                    }
+                }
+                searchPressed = -1; searchDownArea = -1
+                velocity?.recycle(); velocity = null
+                invalidate()
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                handler.removeCallbacks(searchLongPress)
+                searchPressed = -1; searchDownArea = -1; clearPopup()
+                velocity?.recycle(); velocity = null
+                invalidate()
+            }
+        }
+        return true
+    }
+
+    private val searchLongPress = Runnable {
+        val i = searchPressed
+        if (i < 0) return@Runnable
+        val base = searchResults[i].base ?: return@Runnable
+        val options = store?.variantOptions(base).orEmpty().filter { canDraw(it.emoji) }
+        if (options.size < 2) return@Runnable
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        popupBase = options.first()
+        popupOptions = options
+        val left = leadInset + i * searchCell - searchScroll
+        popupAnchor = RectF(left, resultsTop, left + searchCell, height.toFloat())
+        popupHover = options.indexOfFirst { it.emoji == searchResults[i].display }.takeIf { it >= 0 } ?: 0
+        dragging = false
+        searchPressed = -1
+        invalidate()
+    }
+
+    private companion object {
+        const val AREA_BACK = 0
+        const val AREA_CLEAR = 1
+        const val AREA_CHIP = 2
+        const val AREA_PILL = 3
+        const val AREA_RESULTS = 4
     }
 
     override fun onMeasure(w: Int, h: Int) =
