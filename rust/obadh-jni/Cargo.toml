@@ -1,0 +1,20 @@
+[package]
+name = "obadh_jni"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# The FFI surface is the engine's own C ABI (`cabi` feature, header obadh.h).
+# This crate adds no API: each JNI function marshals bytes into one cabi call.
+obadh_engine = { version = "0.9.4", features = ["cabi"] }
+jni = "0.21"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

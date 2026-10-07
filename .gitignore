@@ -1,0 +1,8 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+rust/obadh-jni/target/
+app/src/main/jniLibs/
+app/src/main/assets/ObadhModels/
