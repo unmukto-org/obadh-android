@@ -1,0 +1,70 @@
+# Testing
+
+Behavior is verified against the real thing where that is possible without a
+device, and the remainder is listed honestly in [KNOWN-ISSUES.md](../KNOWN-ISSUES.md).
+
+## Unit tests (35)
+
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+They are plain JVM tests: no emulator, no device, no Robolectric.
+
+| Suite | Tests | Covers |
+|---|---|---|
+| `CoreLogicTest` | 11 | The `tq` / `qq` input rules and backspace units; stale autocorrect results being dropped; the auto-insert gate (unknown and completion channels never fire, protected words, the frequency floor, the 50× ratio on `manus`); in-place composition (append-only rendering, reshape, never deleting foreign text, the exact-deletion regression with a host whose key-event deletes land late); packed-record parsing; smart punctuation |
+| `EmojiStoresTest` | 8 | Against the **real artifacts**: curated words, misses and normalization, the three-emoji cap with no skin-tone variants, the catalog and English search, skin-tone grouping, Bangla search (exact, prefix, miss, fuzzy), recents eviction, variant preferences |
+| `KeyboardLayoutTest` | 16 | Family selection from smallest width; row structure per family; Tab and Caps Lock only where the family has them; the compact home row; the extended number row and pages that never resize; one backspace and one return per page; command-row structure; the unchanged phone layout; secondary glyphs; and the landscape rules |
+
+`EmojiStoresTest` needs the artifacts: run `./scripts/sync-models.sh` first. If
+they are absent it skips rather than fails.
+
+## Preview, not a screenshot test
+
+`KeyboardPreviewActivity` (debug only) renders the real keyboard view at a forced
+width and orientation, so every layout can be reviewed on a phone. It is a review
+tool, not an assertion: there is no automated screenshot comparison yet, and the
+measured parity suite iOS has (against Apple's keyboard) has no Android
+counterpart.
+
+## What is not covered
+
+- **No instrumented tests.** Nothing drives a real `InputConnection`, and no test
+  loads the native library. The JNI layer is exercised by running the app.
+- **No engine fingerprint pins** on Android, so a silent artifact swap on an
+  engine bump would not fail a test. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-005).
+- **Touch behaviour on a device**: the emoji panel and search, the flick-down and
+  long-press secondary glyphs, backspace repeat, rotation. These were built and
+  reviewed as renderings, not driven. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-002).
+- **A tablet.** Every tablet layout was reviewed through the preview on a phone.
+
+## Device notes
+
+Some phones will not accept injected input from `adb` (Xiaomi blocks it unless
+"USB debugging (Security settings)" is enabled), and `adb shell ime enable/set`
+needs `WRITE_SECURE_SETTINGS`. In that case a screenshot (`adb exec-out screencap
+-p`) works but taps do not, so interaction has to be done by hand. The debug
+activities accept launch extras so screens can be reached without taps:
+
+```bash
+adb shell am start -n org.unmukto.obadh/.app.MainActivity --es screen about
+adb shell am start -n org.unmukto.obadh/.app.MainActivity --es step setup
+```
+
+(`screen`: settings, privacy, about. `step`: welcome, setup, done. Honoured only
+in debuggable builds.)
+
+## Manual checklist for a device
+
+1. Enable and select Obadh; the app's banner and setup screen update on their own
+   when you choose it in the picker.
+2. Type `ami` → আমি; `sotq` → সৎ; `baqq` → বাঁ; backspace removes `qq` as one unit.
+3. Type `jukto borrno`; the two words stay separate.
+4. Space, double-space (dari), numbers, symbols, shift, caps lock.
+5. Open the emoji panel: scroll, jump categories, long-press a hand for tones,
+   search in English and in Bangla, return.
+6. On a tablet: every key, flick down and long-press on letters, Tab, Caps Lock,
+   hide. Rotate with the keyboard open.
+7. Switch away and back: the word is kept. Open recents with the keyboard up
+   ([KI-001](../KNOWN-ISSUES.md#ki-001)).
