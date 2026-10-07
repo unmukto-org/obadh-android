@@ -14,9 +14,13 @@ import org.unmukto.obadh.engine.BackspaceDeletionUnit
 import org.unmukto.obadh.engine.BackspaceRepeatPolicy
 import kotlin.math.abs
 
+/** Clipboard actions on a long press of X, C and V (the keys' positions in Cut, Copy, Paste). */
+enum class ClipboardAction { CUT, COPY, PASTE }
+
 interface KeyboardViewListener {
     fun onKey(key: Key)
     fun onBackspace(unit: BackspaceDeletionUnit)
+    fun onClipboard(action: ClipboardAction)
 }
 
 /**
@@ -105,9 +109,27 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    /** Holding a key that has a secondary glyph emits it, like a flick (tablet layouts). */
+    private fun clipboardFor(key: Key?): ClipboardAction? =
+        if (key is Key.Character) when (key.value.lowercase()) {
+            "x" -> ClipboardAction.CUT
+            "c" -> ClipboardAction.COPY
+            "v" -> ClipboardAction.PASTE
+            else -> null
+        } else null
+
+    /**
+     * Holding X, C or V cuts, copies or pastes (on every form factor; on a tablet the key's
+     * symbol stays on the downward flick). Otherwise holding a key that has a secondary glyph
+     * emits it, like a flick (tablet layouts).
+     */
     private val secondaryLongPress = Runnable {
         val cell = pressed ?: return@Runnable
+        clipboardFor(cell.key)?.let {
+            secondaryFired = true
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            listener?.onClipboard(it)
+            return@Runnable
+        }
         val secondary = KeyboardLayoutProvider.secondaryFor(cell.key) ?: return@Runnable
         secondaryFired = true
         performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
@@ -236,7 +258,9 @@ class KeyboardView(context: Context) : View(context) {
                 if (key is Key.Backspace) {
                     listener?.onBackspace(BackspaceDeletionUnit.CHARACTER)
                     handler.postDelayed(repeat, 380L)
-                } else if (family != null && key != null && KeyboardLayoutProvider.secondaryFor(key) != null) {
+                } else if (clipboardFor(key) != null ||
+                    (family != null && key != null && KeyboardLayoutProvider.secondaryFor(key) != null)
+                ) {
                     handler.postDelayed(secondaryLongPress, 420L)
                 }
             }

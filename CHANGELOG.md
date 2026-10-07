@@ -31,6 +31,11 @@ tagged release yet.
   layout or screen without taps (debug builds only).
 - **Tests.** 35 unit tests, against the real artifacts for emoji.
 
+- **Clipboard on the keys.** Long-press X, C or V to cut, copy or paste (all form
+  factors; on tablets the key's symbol stays on the downward flick). With nothing
+  selected, cut and copy take the whole field; copy restores the cursor. A small icon
+  badge pops at the right of the suggestion bar to confirm, only when the action ran.
+
 ### Changed
 - **Download size 43.0 → 19.0 MB.** The models are deflated in the APK instead of
   stored raw. The first launch copies them to private storage as before, now

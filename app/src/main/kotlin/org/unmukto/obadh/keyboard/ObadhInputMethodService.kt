@@ -317,6 +317,40 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         lastShiftTapAt = now
     }
 
+    /**
+     * Long press on X, C or V. The word being typed is ordinary text in the field, so cut and copy
+     * act on the host's selection like any other text; the composition is dropped first so a
+     * paste (or a cut of the word's own selection) never leaves a stale composed string tracked.
+     * With nothing selected, cut and copy take the whole field (copy puts the cursor back).
+     */
+    override fun onClipboard(action: ClipboardAction) {
+        if (emojiSearchActive) return
+        resetComposition()
+        val ic = currentInputConnection ?: return
+        val done = when (action) {
+            ClipboardAction.PASTE -> {
+                val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+                if (clipboard?.hasPrimaryClip() == true) ic.performContextMenuAction(android.R.id.paste) else false
+            }
+            ClipboardAction.CUT, ClipboardAction.COPY -> {
+                val id = if (action == ClipboardAction.CUT) android.R.id.cut else android.R.id.copy
+                if (ic.getSelectedText(0).isNullOrEmpty()) {
+                    val before = ic.getTextBeforeCursor(WHOLE_FIELD_CHARS, 0)?.length ?: 0
+                    val after = ic.getTextAfterCursor(WHOLE_FIELD_CHARS, 0)?.length ?: 0
+                    if (before + after == 0) return
+                    ic.setSelection(0, before + after)
+                    val ok = ic.performContextMenuAction(id)
+                    if (action == ClipboardAction.COPY) ic.setSelection(before, before)
+                    ok
+                } else {
+                    ic.performContextMenuAction(id)
+                }
+            }
+        }
+        if (done) suggestionBar.flash(action)
+        refreshRibbon()
+    }
+
     override fun onBackspace(unit: BackspaceDeletionUnit) {
         if (emojiSearchActive) { searchBackspace(); return }
         if (unit == BackspaceDeletionUnit.CHARACTER) haptic()
@@ -656,6 +690,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private companion object {
         const val CONTEXT_CHARS = 128
         const val NEXT_WORD_CONTEXT_CHARS = 200
+        const val WHOLE_FIELD_CHARS = 100_000
         const val DOUBLE_SPACE_MS = 350L
         const val EMOJI_SEARCH_LIMIT = 40
         const val EMOJI_SEARCH_PANEL_DP = 104
