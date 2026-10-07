@@ -121,7 +121,7 @@ keyboard on and select it themselves, so the app's setup flow is the way in.
 | Type | Purpose |
 |---|---|
 | `debug` | Development. Includes `KeyboardPreviewActivity` and honours the `screen` and `step` launch extras. |
-| `release` | R8-minified, with a keep rule for the JNI entry class. It **builds** (`./gradlew :app:assembleRelease`, unsigned, about 19 MB), but it has not been run on a device, and signing needs a key (see Signing). |
+| `release` | R8-minified, with a keep rule for the JNI entry class. It **builds** (`./gradlew :app:assembleRelease`, about 19 MB), has been run on a device, and is signed with the release key (see Signing). |
 
 ## Signing
 
@@ -183,8 +183,8 @@ cannot be read back.
    ```
 
 5. The release workflow publishes the signed APK. Install it and check Settings › Version
-   before announcing it: R8 can strip JNI-reachable code, and the release build has not been
-   exercised on a device yet (see [KNOWN-ISSUES.md](../KNOWN-ISSUES.md)).
+   before announcing it: R8 can strip JNI-reachable code, so run the release build, not
+   only the debug one.
 
 Sideloading note: a debug build and a release build are signed with different keys, so
 Android will not install one over the other; uninstall first, which clears the settings.

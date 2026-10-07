@@ -34,9 +34,8 @@ counterpart.
   loads the native library. The JNI layer is exercised by running the app.
 - **No engine fingerprint pins** on Android, so a silent artifact swap on an
   engine bump would not fail a test. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-005).
-- **Touch behaviour on a device**: the emoji panel and search, the flick-down and
-  long-press secondary glyphs, backspace repeat, rotation. These were built and
-  reviewed as renderings, not driven. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-002).
+- **Touch behaviour is checked by hand**, not by a test: nothing injects taps on the
+  test phone, so the emoji panel, gestures and rotation follow the manual checklist.
 - **A tablet.** Every tablet layout was reviewed through the preview on a phone.
 
 ## Device notes

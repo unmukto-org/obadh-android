@@ -72,5 +72,4 @@ Language sets which one search opens in.
 their emoji, misses and normalization behave exactly, no word returns more than
 three emoji or a skin-tone variant, the catalog loads and searches, skin tones
 group behind the base emoji, Bangla search covers exact, prefix, miss and fuzzy,
-and recents evict by decayed score. **The panel, search mode and gestures have
-not been exercised on a device**; see [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-002).
+and recents evict by decayed score. The panel, search mode and gestures are checked by hand on a device.

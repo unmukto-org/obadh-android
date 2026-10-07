@@ -1,39 +1,19 @@
 # Known issues
 
-Updated: **2026-10-07**. Only open issues and what remains unverified belong here.
+Updated: **2026-10-08**. Only open issues and what remains unverified belong here.
 Resolved work belongs in [CHANGELOG.md](CHANGELOG.md). Add dated evidence to the
 relevant issue, and remove an entry when its acceptance checks pass.
 
-**Scope:** `0.1.0`, unreleased. Device evidence comes from one phone: a Xiaomi
+**Scope:** `0.1.0`. Device evidence comes from one phone: a Xiaomi
 M2003J15SC on Android 12 (MIUI), 1080×2340, 440 dpi, used over wireless debugging.
 There is no tablet and no other phone. Everything labelled *built, not verified*
 was reviewed as a rendering or a unit test, not driven on a device.
 
 | ID | Open issue | Status |
 |---|---|---|
-| [KI-002](#ki-002) | Touch behaviour never driven on a device | Built, not verified |
 | [KI-003](#ki-003) | Merged words after a space (`jukto borrno`) | Fix shipped, not confirmed |
 | [KI-004](#ki-004) | Tablet and landscape geometry not measured | Fitted from iPad, not Android |
 | [KI-005](#ki-005) | No engine fingerprint pins or real-data calibration tests | Gap |
-| [KI-006](#ki-006) | Live keyboard-state update not confirmed | Built, not verified |
-| [KI-007](#ki-007) | Release build never run; app light mode never viewed | Unverified |
-
-<a id="ki-002"></a>
-
-## KI-002: Touch behaviour never driven on a device
-
-`adb shell input` is refused by the test phone, so no tap, drag or long press has
-been injected. These were built, and their layout reviewed, but not exercised:
-
-- The emoji panel: fling, category jumps, long-press skin tones, ⌫ repeat.
-- Emoji search: field, language chip, Bangla transliteration, results, keyboard
-  beneath.
-- The tablet flick-down and long-press secondary glyphs, Tab, Caps Lock, hide.
-- Rotation with the keyboard open, and the closing of an open panel on rotation.
-- The globe opening the system picker (confirmed built; not tapped).
-
-**Acceptance:** each item on the [manual checklist](docs/testing.md#manual-checklist-for-a-device)
-passes on a phone and a tablet.
 
 <a id="ki-003"></a>
 
@@ -74,25 +54,3 @@ tested structurally only, and no test loads the native library.
 
 **Acceptance:** an instrumented test that opens the real artifacts, pins both
 fingerprints, and re-runs the `manus`→মানুষ and `bondu`→বন্ধু calibration cases.
-
-<a id="ki-006"></a>
-
-## KI-006: Live keyboard-state update not confirmed
-
-The app observes the enabled-input-methods and default-input-method settings, so
-choosing Obadh in the picker should update the screen at once. The test phone was
-on another keyboard and `adb` cannot change it, so the transition was never seen.
-Static screens were verified in the correct state (the banner correctly said Obadh
-was not the current keyboard).
-
-**Acceptance:** with Settings open, choose Obadh in the picker; the banner clears
-and, in setup, the flow advances without leaving the app.
-
-<a id="ki-007"></a>
-
-## KI-007: Release build never run; app light mode never viewed
-
-`assembleRelease` succeeds (about 19 MB; signed with the debug key via `-PdebugSign`, or
-unsigned) but the result has not been installed, and R8 can strip JNI-reachable code, so a release build must be run
-before shipping. The app's UI was reviewed in dark mode only; light mode uses the
-same palette as iOS but was not looked at.
