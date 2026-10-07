@@ -7,9 +7,9 @@ is data plus a few rules, which is why it is unit-tested without a device.
 ## Phone
 
 Four rows: the three letter rows, then a command row. The home row is indented
-by half a key on each side. The command row is `123`, emoji, globe, space,
-return. The number page emits Bangla numerals ০–৯ and the punctuation page
-carries `৳` and `।`. There is no Latin digit row; Obadh has no English mode.
+by half a key on each side. The command row is `123`, emoji, space,
+return (no globe; see "Language" in text-composition.md). The number page emits Bangla numerals ০–৯ and the punctuation page
+carries `৳` and `।`. Latin digits appear on every page while the language is English.
 
 ## Tablet families
 

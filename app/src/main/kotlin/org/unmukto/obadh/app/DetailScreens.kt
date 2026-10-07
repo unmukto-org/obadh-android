@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import org.unmukto.obadh.R
+import org.unmukto.obadh.settings.ClipboardHistory
 import org.unmukto.obadh.settings.LearnedWordStore
 import org.unmukto.obadh.settings.PersonalAutosuggestStore
 
@@ -111,6 +112,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var confirming by remember { mutableStateOf(false) }
     var cleared by remember { mutableStateOf(false) }
+    var clipCleared by remember { mutableStateOf(false) }
 
     DetailScaffold("Privacy", onBack) {
         Spacer(Modifier.height(8.dp))
@@ -137,6 +139,17 @@ fun PrivacyScreen(onBack: () -> Unit) {
             Text(
                 "Clear Learned Words",
                 Modifier.fillMaxWidth().clickable { confirming = true }.padding(horizontal = 16.dp, vertical = 14.dp),
+                fontSize = 16.sp, color = MaterialTheme.colorScheme.error,
+            )
+        }
+        Section(
+            footer = if (clipCleared) "Clipboard history cleared."
+            else "Removes the copied items the keyboard's clipboard panel has kept.",
+        ) {
+            Text(
+                "Clear Clipboard History",
+                Modifier.fillMaxWidth().clickable { ClipboardHistory(context).clear(); clipCleared = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 fontSize = 16.sp, color = MaterialTheme.colorScheme.error,
             )
         }

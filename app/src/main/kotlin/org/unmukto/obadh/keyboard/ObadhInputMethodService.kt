@@ -44,6 +44,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private lateinit var emojiPanel: EmojiPanelView
     @Volatile private var emojiCatalog: EmojiDataStore? = null
     private var emojiPanelOpen = false
+    private lateinit var clipboardPanel: ClipboardPanelView
+    private lateinit var clipboardHistory: ClipboardHistory
+    private var clipboardPanelOpen = false
+    private val clipListener = android.content.ClipboardManager.OnPrimaryClipChangedListener { captureClipboard() }
     private var emojiSearchActive = false
     private var emojiSearchBangla = false
     private var emojiSearchQuery = ""
@@ -84,6 +88,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         super.onCreate()
         engine = ObadhBridgeClient()
         prefs = KeyboardPreferences(this)
+        clipboardHistory = ClipboardHistory(this)
+        getSystemService(android.content.ClipboardManager::class.java)?.addPrimaryClipChangedListener(clipListener)
         learned = LearnedWordStore(this)
         personal = PersonalAutosuggestStore(this)
         composer = KeyboardComposer(engine)
@@ -122,6 +128,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         super.onConfigurationChanged(newConfig)
         if (!::keyboardView.isInitialized) return
         closeEmojiPanel()
+        closeClipboardPanel()
         keyboardRoot.minimumHeight = resources.displayMetrics.heightPixels
         keyboardView.refreshForConfiguration()
         applyChrome()
@@ -151,7 +158,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     override fun onCreateInputView(): View {
         keyboardView = KeyboardView(this).also { it.listener = this }
         emojiPanel = EmojiPanelView(this).also { it.listener = emojiPanelListener; it.visibility = View.GONE }
+        clipboardPanel = ClipboardPanelView(this).also { it.listener = clipboardPanelListener; it.visibility = View.GONE }
         suggestionBar = SuggestionBarView(this).also {
+            it.onToggleTools = { it.toolsOpen = !it.toolsOpen }
+            it.onTool = ::onTool
             it.onSelect = ::onSuggestionSelected
             it.onSelectEmoji = ::onEmojiSelected
         }
@@ -164,6 +174,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             // The panel sits ABOVE the keys: in search mode it is a short field + results row
             // and the letter keyboard stays below it.
             addView(emojiPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0))
+            addView(clipboardPanel, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0))
             addView(suggestionBar)
             addView(keyboardView)
             // On Android 15+ the IME window is edge-to-edge and the system draws its
@@ -182,6 +193,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 keyboardColumn,
                 FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM),
             )
+            // Above everything, for the held-key preview. It never takes a touch.
+            val popup = KeyPopupView(this@ObadhInputMethodService).apply { isClickable = false }
+            addView(popup, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            keyboardView.popup = popup
         }
         return keyboardRoot
     }
@@ -189,16 +204,23 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         closeEmojiPanel()
+        closeClipboardPanel()
         resetComposition()
         keyboardView.mode = KeyboardMode.LETTERS
-        keyboardView.includesGlobeKey = true
+        // No globe key: language is Bangla/English from the tools row, and the system's own
+        // switcher (navigation bar) reaches other keyboards.
+        keyboardView.includesGlobeKey = false
+        applyLanguage()
         keyboardView.shiftActive = false
         engine.clearAutosuggestSession()
+        // A fresh field starts on the tools; the first key moves to suggestions.
+        suggestionBar.toolsOpen = true
         refreshRibbon()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         closeEmojiPanel()
+        closeClipboardPanel()
         // The word is already real text in the field, so nothing to flush: just stop tracking.
         resetComposition()
         worker.execute { if (modelsReady) personal.save(engine) }
@@ -224,6 +246,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onKey(key: Key) {
         haptic()
+        suggestionBar.toolsOpen = false
         keySound(
             when (key) {
                 Key.Space -> AudioManager.FX_KEYPRESS_SPACEBAR
@@ -249,6 +272,13 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     private fun typeLetter(letter: String) {
+        if (prefs.englishMode) {
+            val cased = if (keyboardView.shiftActive || keyboardView.capsLock) letter.uppercase() else letter
+            document.insertText(cased)
+            if (keyboardView.shiftActive && !keyboardView.capsLock) keyboardView.shiftActive = false
+            refreshRibbon()
+            return
+        }
         // The next letter starts a new word, so the previous word's emoji stop being offered.
         carriedEmojis = emptyList()
         val cased = if (keyboardView.shiftActive || keyboardView.capsLock) letter.uppercase() else letter
@@ -272,11 +302,11 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             lastSpaceAt = now
             return
         }
-        // Quick double-space -> "। " (time-gated, after a word, replaces the first space).
+        // Quick double-space -> "। " (". " in English; time-gated, after a word, replaces the first space).
         val before = document.contextBeforeInput ?: ""
         if (now - lastSpaceAt <= DOUBLE_SPACE_MS && atEndOfText()) {
             SmartPunctuation.doubleSpaceSubstitution(before)?.let {
-                replaceBeforeCaret(it)
+                replaceBeforeCaret(if (prefs.englishMode) it.copy(insertion = ". ") else it)
                 lastSpaceAt = 0
                 refreshRibbon()
                 return
@@ -437,6 +467,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     private fun onSuggestionSelected(item: SuggestionBarView.Item) {
         haptic()
+        if (prefs.englishMode) { applyEnglishSuggestion(item.text); return }
         if (composer.hasActiveInput) {
             // The quoted literal is the user's own spelling: protect it forever.
             if (item.quoted) learned.protect(item.text)
@@ -475,6 +506,112 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
      */
     private fun showKeyboardPicker() {
         (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
+    }
+
+    // ------------------------------------------------------------ tools and clipboard
+
+    /** Pushes the saved language to the views. */
+    private fun applyLanguage() {
+        val english = prefs.englishMode
+        keyboardView.english = english
+        suggestionBar.english = english
+    }
+
+    private fun onTool(tool: SuggestionBarView.Tool) {
+        haptic()
+        // Language flips in place so its icon shows the result; everything else leaves the row.
+        if (tool != SuggestionBarView.Tool.LANGUAGE) suggestionBar.toolsOpen = false
+        when (tool) {
+            SuggestionBarView.Tool.LANGUAGE -> {
+                commitActiveWord()
+                resetComposition()
+                prefs.englishMode = !prefs.englishMode
+                if (!prefs.englishMode) closeSpellSession()
+                applyLanguage()
+                refreshRibbon()
+            }
+            SuggestionBarView.Tool.CLIPBOARD -> openClipboardPanel()
+            SuggestionBarView.Tool.NUMBERS -> { commitActiveWord(); keyboardView.mode = if (prefs.englishMode) KeyboardMode.NUMPAD_EN else KeyboardMode.NUMPAD_BN }
+            SuggestionBarView.Tool.EMOJI -> openEmojiPanel()
+            SuggestionBarView.Tool.SETTINGS -> {
+                startActivity(
+                    android.content.Intent(this, org.unmukto.obadh.app.MainActivity::class.java)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
+    }
+
+    private fun isSensitiveField(): Boolean {
+        val type = currentInputEditorInfo?.inputType ?: return false
+        val cls = type and android.text.InputType.TYPE_MASK_CLASS
+        val variation = type and android.text.InputType.TYPE_MASK_VARIATION
+        return when (cls) {
+            android.text.InputType.TYPE_CLASS_TEXT ->
+                variation == android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                    variation == android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+                    variation == android.text.InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+            android.text.InputType.TYPE_CLASS_NUMBER -> variation == android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else -> false
+        }
+    }
+
+    /** Records the current clip. Passwords and clips the source marks sensitive are never kept. */
+    private fun captureClipboard() {
+        if (!prefs.clipboardHistoryEnabled || isSensitiveField()) return
+        val cm = getSystemService(android.content.ClipboardManager::class.java) ?: return
+        val clip = try { cm.primaryClip } catch (_: SecurityException) { null } ?: return
+        val extras = clip.description.extras
+        if (extras?.getBoolean("android.content.extra.IS_SENSITIVE", false) == true) return
+        if (clip.itemCount == 0) return
+        val text = try { clip.getItemAt(0).coerceToText(this)?.toString() } catch (_: Exception) { null } ?: return
+        if (clipboardHistory.add(text) && clipboardPanelOpen) clipboardPanel.items = clipboardHistory.all()
+    }
+
+    private val clipboardPanelListener = object : ClipboardPanelListener {
+        override fun onPaste(text: String) {
+            haptic()
+            closeClipboardPanel()
+            resetComposition()
+            currentInputConnection?.commitText(text, 1)
+            suggestionBar.flash(ClipboardAction.PASTE)
+            refreshRibbon()
+        }
+
+        override fun onDelete(text: String) {
+            clipboardHistory.remove(text)
+            clipboardPanel.items = clipboardHistory.all()
+        }
+
+        override fun onClear() {
+            clipboardHistory.clear()
+            clipboardPanel.items = emptyList()
+        }
+
+        override fun onClose() = closeClipboardPanel()
+    }
+
+    private fun openClipboardPanel() {
+        commitActiveWord()
+        captureClipboard()
+        val height = suggestionBar.height + keyboardView.height
+        clipboardPanel.bottomInset = keyboardView.bottomPad
+        clipboardPanel.collecting = prefs.clipboardHistoryEnabled
+        clipboardPanel.items = clipboardHistory.all()
+        suggestionBar.visibility = View.GONE
+        keyboardView.visibility = View.GONE
+        clipboardPanel.layoutParams = clipboardPanel.layoutParams.also { it.height = height }
+        clipboardPanel.visibility = View.VISIBLE
+        clipboardPanelOpen = true
+    }
+
+    private fun closeClipboardPanel() {
+        if (!::clipboardPanel.isInitialized || !clipboardPanelOpen) return
+        clipboardPanelOpen = false
+        clipboardPanel.visibility = View.GONE
+        suggestionBar.visibility = View.VISIBLE
+        keyboardView.visibility = View.VISIBLE
+        refreshRibbon()
     }
 
     // ------------------------------------------------------------ emoji panel
@@ -651,6 +788,11 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     private fun refreshRibbon() {
         if (!::suggestionBar.isInitialized) return
+        if (prefs.englishMode) {
+            suggestionBar.emojis = emptyList()
+            requestEnglishSpelling()
+            return
+        }
         if (composer.hasActiveInput) {
             val shown = composer.activeSuggestions
             val oov = modelsReady && composer.preview.isNotEmpty() && !engineIsWordCached(composer.preview)
@@ -673,6 +815,63 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 main.post { if (!composer.hasActiveInput) suggestionBar.items = next.map { SuggestionBarView.Item(it) } }
             }
         }
+    }
+
+    // ------------------------------------------------------- English spelling (system checker)
+
+    private var spellSession: android.view.textservice.SpellCheckerSession? = null
+    private var spellWord = ""
+
+    private val spellListener = object : android.view.textservice.SpellCheckerSession.SpellCheckerSessionListener {
+        override fun onGetSuggestions(results: Array<out android.view.textservice.SuggestionsInfo>?) {
+            val info = results?.firstOrNull() ?: return
+            val found = (0 until info.suggestionsCount).map { info.getSuggestionAt(it) }.filter { it.isNotBlank() }.take(3)
+            main.post {
+                // Stale answers (the word moved on) and a language flip are dropped.
+                if (prefs.englishMode && spellWord == currentEnglishWord()) {
+                    suggestionBar.items = found.map { SuggestionBarView.Item(it) }
+                }
+            }
+        }
+
+        override fun onGetSentenceSuggestions(results: Array<out android.view.textservice.SentenceSuggestionsInfo>?) = Unit
+    }
+
+    private fun currentEnglishWord(): String =
+        (document.contextBeforeInput ?: "").takeLastWhile { it.isLetter() || it == '\'' || it == '\u2019' }
+
+    /**
+     * The device's own spell checker, nothing bundled: when no checker is enabled in system
+     * settings the session is null and the ribbon stays empty.
+     */
+    private fun requestEnglishSpelling() {
+        val word = currentEnglishWord()
+        spellWord = word
+        suggestionBar.items = emptyList()
+        if (word.length < 2) return
+        if (spellSession == null) {
+            val tsm = getSystemService(android.view.textservice.TextServicesManager::class.java)
+            spellSession = tsm?.newSpellCheckerSession(null, java.util.Locale.US, spellListener, false)
+                ?: tsm?.newSpellCheckerSession(null, null, spellListener, true)
+        }
+        @Suppress("DEPRECATION")
+        spellSession?.getSuggestions(android.view.textservice.TextInfo(word), MAX_SPELLING)
+    }
+
+    private fun applyEnglishSuggestion(text: String) {
+        val word = currentEnglishWord()
+        val ic = currentInputConnection ?: return
+        ic.beginBatchEdit()
+        try {
+            if (word.isNotEmpty()) ic.deleteSurroundingText(word.length, 0)
+            ic.commitText("$text ", 1)
+        } finally { ic.endBatchEdit() }
+        suggestionBar.items = emptyList()
+    }
+
+    private fun closeSpellSession() {
+        spellSession?.close()
+        spellSession = null
     }
 
     /** Resolve each base emoji to the user's remembered skin tone: a map lookup, no catalog load. */
@@ -726,6 +925,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     override fun onDestroy() {
+        closeSpellSession()
+        getSystemService(android.content.ClipboardManager::class.java)?.removePrimaryClipChangedListener(clipListener)
         worker.shutdown()
         super.onDestroy()
     }
@@ -733,6 +934,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private companion object {
         const val CONTEXT_CHARS = 128
         const val NEXT_WORD_CONTEXT_CHARS = 200
+        const val MAX_SPELLING = 5
         const val WHOLE_FIELD_CHARS = 100_000
         const val DOUBLE_SPACE_MS = 350L
         const val EMOJI_SEARCH_LIMIT = 40

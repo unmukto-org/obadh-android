@@ -1,6 +1,7 @@
 package org.unmukto.obadh.keyboard
 
-enum class KeyboardMode { LETTERS, NUMBERS, SYMBOLS }
+/** NUMPAD_BN and NUMPAD_EN are the number pad in Bangla and Latin digits (reached from the ribbon's tools). */
+enum class KeyboardMode { LETTERS, NUMBERS, SYMBOLS, NUMPAD_BN, NUMPAD_EN }
 
 sealed interface Key {
     val weight: Double
@@ -109,9 +110,34 @@ object KeyboardLayoutProvider {
         family: TabletFamily? = null,
         landscape: Boolean = false,
     ): List<KeyboardRow> =
-        if (family != null) tabletRows(mode, family, includesGlobeKey, landscape) else phoneRows(mode, includesGlobeKey, landscape)
+        when {
+            mode == KeyboardMode.NUMPAD_BN || mode == KeyboardMode.NUMPAD_EN -> numpadRows(mode)
+            family != null -> tabletRows(mode, family, includesGlobeKey, landscape)
+            else -> phoneRows(mode, includesGlobeKey, landscape)
+        }
+
+    /**
+     * A dialler-style pad: digits in the middle, operators and punctuation down the left,
+     * backspace and return on the right. The switch key flips between Bangla and Latin digits.
+     */
+    private fun numpadRows(mode: KeyboardMode): List<KeyboardRow> {
+        val bangla = mode == KeyboardMode.NUMPAD_BN
+        val d = if (bangla) listOf("০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯") else ('0'..'9').map { it.toString() }
+        fun n(i: Int) = Key.Symbol(d[i])
+        val other = if (bangla) Key.ModeSwitch("EN", KeyboardMode.NUMPAD_EN) else Key.ModeSwitch("বাং", KeyboardMode.NUMPAD_BN)
+        return listOf(
+            KeyboardRow(listOf(Key.Symbol("+"), n(1), n(2), n(3), Key.Backspace), weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0)),
+            KeyboardRow(listOf(Key.Symbol("-"), n(4), n(5), n(6), Key.Symbol(",")), weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0)),
+            KeyboardRow(listOf(Key.Symbol("."), n(7), n(8), n(9), Key.Return), weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0)),
+            KeyboardRow(
+                listOf(Key.ModeSwitch("ABC", KeyboardMode.LETTERS), other, n(0), Key.Space),
+                weights = listOf(1.0, 1.0, 1.0, 2.0),
+            ),
+        )
+    }
 
     private fun phoneRows(mode: KeyboardMode, includesGlobeKey: Boolean, landscape: Boolean): List<KeyboardRow> = when (mode) {
+        KeyboardMode.NUMPAD_BN, KeyboardMode.NUMPAD_EN -> numpadRows(mode)
         KeyboardMode.LETTERS -> listOf(
             KeyboardRow(chars("qwertyuiop")),
             KeyboardRow(chars("asdfghjkl"), leadingFlex = 0.5, trailingFlex = 0.5),
@@ -221,6 +247,7 @@ object KeyboardLayoutProvider {
         // not repeat the digits: it moves everything up a row and uses the freed row for symbols.
         val extended = family == TabletFamily.EXTENDED
         return when (mode) {
+            KeyboardMode.NUMPAD_BN, KeyboardMode.NUMPAD_EN -> numpadRows(mode)
             KeyboardMode.LETTERS -> tabletLetterRows(family, withGlobe, landscape)
             KeyboardMode.NUMBERS -> tabletSymbolRows(
                 family, withGlobe, landscape, modeLabel = "#+=", target = KeyboardMode.SYMBOLS,
@@ -344,7 +371,7 @@ object KeyboardLayoutProvider {
         "৬" to "6", "৭" to "7", "৮" to "8", "৯" to "9", "০" to "0",
     )
 
-    /** The flick-down/long-press glyph for [key], or null. Tablet layouts only. */
+    /** The long-press (and, on tablets, flick-down) glyph for [key], or null. */
     fun secondaryFor(key: Key): Key.Symbol? = when (key) {
         is Key.Character -> secondaryByCharacter[key.value]?.let { Key.Symbol(it) }
         is Key.Symbol -> secondaryBySymbolOutput[key.output]?.let { label ->

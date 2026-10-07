@@ -3,7 +3,7 @@
 Behavior is verified against the real thing where that is possible without a
 device, and the remainder is listed honestly in [KNOWN-ISSUES.md](../KNOWN-ISSUES.md).
 
-## Unit tests (35)
+## Unit tests (36)
 
 ```bash
 ./gradlew :app:testDebugUnitTest
@@ -15,7 +15,7 @@ They are plain JVM tests: no emulator, no device, no Robolectric.
 |---|---|---|
 | `CoreLogicTest` | 11 | The `tq` / `qq` input rules and backspace units; stale autocorrect results being dropped; the auto-insert gate (unknown and completion channels never fire, protected words, the frequency floor, the 50× ratio on `manus`); in-place composition (append-only rendering, reshape, never deleting foreign text, the exact-deletion regression with a host whose key-event deletes land late); packed-record parsing; smart punctuation |
 | `EmojiStoresTest` | 8 | Against the **real artifacts**: curated words, misses and normalization, the three-emoji cap with no skin-tone variants, the catalog and English search, skin-tone grouping, Bangla search (exact, prefix, miss, fuzzy), recents eviction, variant preferences |
-| `KeyboardLayoutTest` | 16 | Family selection from smallest width; row structure per family; Tab and Caps Lock only where the family has them; the compact home row; the extended number row and pages that never resize; one backspace and one return per page; command-row structure; the unchanged phone layout; secondary glyphs; and the landscape rules |
+| `KeyboardLayoutTest` | 17 | Family selection from smallest width; row structure per family; Tab and Caps Lock only where the family has them; the compact home row; the extended number row and pages that never resize; one backspace and one return per page; command-row structure; the unchanged phone layout; secondary glyphs; the number pad's digits and switch keys; and the landscape rules |
 
 `EmojiStoresTest` needs the artifacts: run `./scripts/sync-models.sh` first. If
 they are absent it skips rather than fails.

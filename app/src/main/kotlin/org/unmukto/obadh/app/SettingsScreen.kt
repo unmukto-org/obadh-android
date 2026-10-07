@@ -41,6 +41,7 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
     val dark = isSystemInDarkTheme()
     var haptics by remember { mutableStateOf(prefs.hapticsEnabled) }
     var keySound by remember { mutableStateOf(prefs.keySoundEnabled) }
+    var clipboard by remember { mutableStateOf(prefs.clipboardHistoryEnabled) }
     var autoInsert by remember { mutableStateOf(prefs.autoInsertCorrections) }
     var emojiBangla by remember { mutableStateOf(prefs.emojiSearchBangla) }
 
@@ -93,13 +94,15 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
 
         Section(
             header = "Keyboard",
-            footer = "Typing sound uses the system key click, so it follows your phone's volume and \"Touch sounds\" setting.",
+            footer = "Clipboard History keeps text you copy, on this device only, for the keyboard's clipboard panel. Typing sound uses the system key click, so it follows your phone's volume and \"Touch sounds\" setting.",
         ) {
             ToggleRow("Haptic Feedback", haptics) {
                 haptics = it
                 prefs.hapticsEnabled = it
                 if (it) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             }
+            RowRule()
+            ToggleRow("Clipboard History", clipboard) { clipboard = it; prefs.clipboardHistoryEnabled = it }
             RowRule()
             ToggleRow("Typing Sound", keySound) {
                 keySound = it

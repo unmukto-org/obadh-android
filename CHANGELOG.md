@@ -41,6 +41,31 @@ tagged release yet.
 - **Space-bar trackpad.** Hold space (350 ms), then slide to move the caret one character
   per 9 dp sideways and one line per 22 dp up or down, by grapheme cluster through the host's own arrow handling. Letters dim while
   it is active; releasing does not type a space.
+- **Long-press symbols on phones.** Holding a letter key types its second glyph (Bangla
+  digits on the top row, then @ # ৳ & * ( ) ' " % / ; :), and holding a symbol key types its
+  shifted partner (`,` → `!`, `-` → `_`, Bangla digit → Latin digit). The glyph is hinted in
+  the key's top-right. While held, a bubble above the key shows what will be typed; it is
+  typed when you lift on the key, and sliding off the key dismisses it with nothing typed.
+  X, C and V keep cut, copy and paste only.
+- **Key-press callout.** Pressing a letter or symbol raises an iOS-style bubble above the key
+  showing the character, flowing into the key through rounded fillets, following the finger
+  across keys and clamped at the screen edges. It is drawn on a full-window overlay so the top
+  row can pop above the keyboard.
+- **Tools switch.** A switch at the left of the suggestion ribbon swaps the suggestions for
+  four icons: Clipboard, Numbers, Emoji and Settings. A new field opens on the tools; the
+  first key typed moves to suggestions.
+- **Clipboard panel.** Everything copied while Obadh is running, newest first (30 items), as
+  tappable cards: tap pastes, the cross removes one, Clear removes all. Stored only in private
+  app storage; passwords and clips marked sensitive are skipped. Turn it off under Settings →
+  Keyboard → Clipboard History; Privacy has Clear Clipboard History.
+- **Number pad.** A dialler-style pad in Bangla or Latin digits (EN / বাং switch) with
+  `+ - . ,`, space, return and backspace.
+- **English / Bangla.** A language tool in the ribbon's tools row (shows বাং or EN) flips between
+  transliteration and plain English typing, saved across sessions. The bottom-row globe is gone;
+  the system's switcher reaches other keyboards. English types letters as-is with Latin digits,
+  and double space gives `. `. The ribbon shows spelling corrections from the device's own spell
+  checker (nothing bundled); with no checker enabled in system settings it stays empty.
+- The emoji key uses the same smiley icon as the tools row.
 
 ### Changed
 - **Download size 43.0 → 19.0 MB.** The models are deflated in the APK instead of

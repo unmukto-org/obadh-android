@@ -65,7 +65,7 @@ drawn from nothing on a `Canvas`: no stock Android keyboard widget is used.
 | Doc | Covers |
 |---|---|
 | [architecture.md](docs/architecture.md) | Components, the JNI boundary, threading, the composer boundary, state and storage |
-| [text-composition.md](docs/text-composition.md) | Why not composing spans, exact deletion, touch routing, the ribbon, space and dari, backspace, the globe |
+| [text-composition.md](docs/text-composition.md) | Why not composing spans, exact deletion, touch routing, the ribbon, space and dari, backspace, language |
 | [autocorrect.md](docs/autocorrect.md) | The engine/client policy split and the auto-insert confidence gate |
 | [emoji.md](docs/emoji.md) | Data, inline suggestions, the panel, search, recents, skin tones |
 | [layouts.md](docs/layouts.md) | Phone, tablet families, landscape, secondary glyphs, the debug preview |

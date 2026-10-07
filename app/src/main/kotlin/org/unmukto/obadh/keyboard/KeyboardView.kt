@@ -44,6 +44,9 @@ class KeyboardView(context: Context) : View(context) {
         set(v) { field = v; rebuildRows() }
     var includesGlobeKey = true
         set(v) { field = v; rebuildRows() }
+    /** English typing: Latin digits replace the Bangla numerals on every page. */
+    var english = false
+        set(v) { field = v; rebuildRows() }
     var shiftActive = false
         set(v) { field = v; invalidate() }
     var capsLock = false
@@ -75,6 +78,33 @@ class KeyboardView(context: Context) : View(context) {
     private var downY = 0f
     private var secondaryFired = false
 
+    /** Where the held-key preview is drawn; null in the debug preview. */
+    var popup: KeyPopupView? = null
+
+    /** A held key's second glyph, shown in the popup and typed only if the finger lifts on the key. */
+    private var armed: Key.Symbol? = null
+
+    /** The rectangle a key is actually drawn in (rows are inset vertically). */
+    private fun drawnRect(cell: Cell): RectF {
+        val vGap = if (family != null) minOf(gap, 10f * density) else if (landscape) 6f * density else gap
+        return RectF(cell.rect.left, cell.rect.top + vGap / 2, cell.rect.right, cell.rect.bottom - vGap / 2)
+    }
+
+    /** The iOS-style callout over a pressed character or symbol key. */
+    private fun previewPress(cell: Cell?) {
+        val glyph = when (val k = cell?.key) {
+            is Key.Character -> if (shiftActive || capsLock) k.value.uppercase() else k.value
+            is Key.Symbol -> k.label
+            else -> null
+        }
+        if (cell == null || glyph == null) popup?.hide() else popup?.show(this, drawnRect(cell), glyph)
+    }
+
+    private fun disarm() {
+        armed = null
+        popup?.hide()
+    }
+
     // Space-bar trackpad: hold space, then slide to move the caret.
     private var trackpad = false
     private var trackpadX = 0f
@@ -85,6 +115,7 @@ class KeyboardView(context: Context) : View(context) {
     private val startTrackpad = Runnable {
         if (pressed?.key !is Key.Space) return@Runnable
         trackpad = true
+        popup?.hide()
         trackpadX = downX
         trackpadY = downY
         trackpadRemainder = 0f
@@ -128,6 +159,7 @@ class KeyboardView(context: Context) : View(context) {
     /** Total height of the key block, honouring rows that are shorter than the rest. */
     private fun keyBlockHeight(): Float = rows.sumOf { it.heightFactor }.toFloat() * rowHeight
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.ROUND }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val handler = Handler(Looper.getMainLooper())
 
@@ -150,24 +182,34 @@ class KeyboardView(context: Context) : View(context) {
     /**
      * Holding X, C or V cuts, copies or pastes (on every form factor; on a tablet the key's
      * symbol stays on the downward flick). Otherwise holding a key that has a secondary glyph
-     * emits it, like a flick (tablet layouts).
+     * emits it: a digit, symbol or punctuation mark, on phones and tablets alike.
      */
     private val secondaryLongPress = Runnable {
         val cell = pressed ?: return@Runnable
         clipboardFor(cell.key)?.let {
             secondaryFired = true
             performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            popup?.hide()
             listener?.onClipboard(it)
             return@Runnable
         }
-        val secondary = KeyboardLayoutProvider.secondaryFor(cell.key) ?: return@Runnable
+        val secondary = secondary(cell.key) ?: return@Runnable
         secondaryFired = true
         performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-        listener?.onKey(secondary)
+        armed = secondary
+        popup?.show(this, drawnRect(cell), secondary.label)
     }
 
+    private fun latinDigit(k: Key): Key =
+        if (k is Key.Symbol && k.output in BN_DIGITS) Key.Symbol(BN_DIGITS.indexOf(k.output).toString()) else k
+
+    private fun latinDigits(row: KeyboardRow) = row.copy(keys = row.keys.map(::latinDigit))
+
+    /** A held key's second glyph, with Latin digits when typing English. */
+    private fun secondary(key: Key): Key.Symbol? = KeyboardLayoutProvider.secondaryFor(key)?.let { latinDigit(it) as Key.Symbol }
+
     private fun rebuildRows() {
-        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape)
+        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape).let { if (english) it.map(::latinDigits) else it }
         relayout()
     }
 
@@ -222,9 +264,14 @@ class KeyboardView(context: Context) : View(context) {
             else -> theme.key
         }
         val vGap = if (family != null) minOf(gap, 10f * density) else if (landscape) 6f * density else gap
-        val r = RectF(cell.rect.left, cell.rect.top + vGap / 2, cell.rect.right, cell.rect.bottom - vGap / 2)
+        val r = drawnRect(cell)
         canvas.drawRoundRect(r, 6 * density, 6 * density, keyPaint)
 
+        if (cell.key == Key.Emoji) {
+            iconPaint.color = theme.label
+            KeyIcons.smiley(canvas, iconPaint, r.centerX(), r.centerY(), 25f * density)
+            return
+        }
         val label = label(cell.key)
         textPaint.color = theme.label
         textPaint.typeface = if (cell.key is Key.Character || cell.key is Key.Symbol) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
@@ -232,12 +279,16 @@ class KeyboardView(context: Context) : View(context) {
         val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(label, r.centerX(), y, textPaint)
 
-        // The secondary glyph, in the key's top-left, quieter than the primary.
-        if (family != null) KeyboardLayoutProvider.secondaryFor(cell.key)?.let {
-            textPaint.textSize = 11f * density
+        // The secondary glyph, quieter than the primary: top-left on a tablet, top-right on a
+        // phone. Holding the key emits it (a downward flick too, on a tablet).
+        // On a phone X, C and V are cut, copy and paste, and carry nothing else.
+        secondary(cell.key)?.takeIf { family != null || clipboardFor(cell.key) == null }?.let {
+            val tablet = family != null
+            textPaint.textSize = (if (tablet) 11f else 10f) * density
             textPaint.alpha = 140
-            textPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText(it.label, r.left + 6 * density, r.top + 15 * density, textPaint)
+            textPaint.textAlign = if (tablet) Paint.Align.LEFT else Paint.Align.RIGHT
+            val x = if (tablet) r.left + 6 * density else r.right - 4 * density
+            canvas.drawText(it.label, x, r.top + (if (tablet) 15f else 12f) * density, textPaint)
             textPaint.textAlign = Paint.Align.CENTER
             textPaint.alpha = 255
         }
@@ -285,6 +336,7 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private companion object {
+        val BN_DIGITS = listOf("০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯")
         const val TRACKPAD_HOLD_MS = 350L
         const val TRACKPAD_STEP_DP = 9f
         const val TRACKPAD_LINE_DP = 22f
@@ -303,6 +355,7 @@ class KeyboardView(context: Context) : View(context) {
                 downX = e.x
                 trackpad = false
                 invalidate()
+                previewPress(pressed)
                 val key = pressed?.key
                 if (key is Key.Space) {
                     handler.postDelayed(startTrackpad, TRACKPAD_HOLD_MS)
@@ -310,7 +363,7 @@ class KeyboardView(context: Context) : View(context) {
                     listener?.onBackspace(BackspaceDeletionUnit.CHARACTER)
                     handler.postDelayed(repeat, 380L)
                 } else if (clipboardFor(key) != null ||
-                    (family != null && key != null && KeyboardLayoutProvider.secondaryFor(key) != null)
+                    (key != null && secondary(key) != null)
                 ) {
                     handler.postDelayed(secondaryLongPress, 420L)
                 }
@@ -332,6 +385,12 @@ class KeyboardView(context: Context) : View(context) {
                     if (columns != 0 || rows != 0) listener?.onCursorMove(columns, rows)
                     return true
                 }
+                armed?.let {
+                    // Sliding off the key withdraws the choice: nothing is typed on release.
+                    val key = pressed
+                    if (key == null || !key.rect.contains(e.x, e.y)) disarm()
+                    return true
+                }
                 if (pressed?.key is Key.Space && abs(e.x - downX) > TRACKPAD_SLOP_DP * density) {
                     handler.removeCallbacks(startTrackpad)
                 }
@@ -340,14 +399,15 @@ class KeyboardView(context: Context) : View(context) {
                     // A downward flick on a key with a secondary emits it, like iPadOS.
                     val key = pressed?.key
                     if (family != null && key != null && e.y - downY > 22 * density) {
-                        KeyboardLayoutProvider.secondaryFor(key)?.let {
+                        secondary(key)?.let {
                             secondaryFired = true
                             handler.removeCallbacks(secondaryLongPress)
+                            popup?.hide()
                             performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                             listener?.onKey(it)
                         }
                     }
-                    if (!secondaryFired && now !== pressed) { pressed = now; invalidate() }
+                    if (!secondaryFired && now !== pressed) { pressed = now; invalidate(); previewPress(now) }
                 }
             }
             MotionEvent.ACTION_UP -> {
@@ -361,13 +421,17 @@ class KeyboardView(context: Context) : View(context) {
                 handler.removeCallbacks(startTrackpad)
                 handler.removeCallbacks(repeat)
                 handler.removeCallbacks(secondaryLongPress)
+                val chosen = armed
+                disarm()
                 val wasBackspace = pressed?.key is Key.Backspace
                 val cell = if (wasBackspace || secondaryFired) null else resolve(e.x, e.y)
                 pressed = null
                 invalidate()
                 if (cell != null) listener?.onKey(cell.key)
+                else if (chosen != null) listener?.onKey(chosen)
             }
             MotionEvent.ACTION_CANCEL -> {
+                disarm()
                 endTrackpad()
                 handler.removeCallbacks(repeat)
                 handler.removeCallbacks(secondaryLongPress)

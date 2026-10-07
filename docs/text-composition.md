@@ -92,13 +92,13 @@ repeat, then word chunks on a sustained hold (`BackspaceRepeatPolicy`). While a
 word is being composed, a character-unit backspace edits the Roman buffer and
 re-renders; a word-unit backspace drops the word being typed.
 
-## The globe
+## Language
 
-The globe finishes the current word and opens the **system keyboard picker**
-(`InputMethodManager.showInputMethodPicker`). It deliberately does not cycle to
-the next keyboard on its own: the user chooses. There is no English typing mode;
-Obadh does one thing, and choosing another keyboard is how you type English.
-This differs from iOS, where the globe cycles to the next keyboard.
+There is no globe key. The language tool in the ribbon's tools row flips between Bangla
+(transliteration) and English (letters typed as they are, spelling corrections from the device's spell checker via
+`SpellCheckerSession`, a quick double space gives `. `). The choice is saved. English also swaps the Bangla numerals for Latin
+digits on every page. The system's own switcher (navigation bar) reaches other keyboards;
+the `Key.Globe` and its picker code remain for a layout that asks for it.
 
 ## Insets and rotation
 

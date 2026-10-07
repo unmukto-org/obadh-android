@@ -81,8 +81,20 @@ class KeyboardLayoutTest {
         }
     }
 
+    @Test fun numberPadHasEveryDigitOnceAndSwitchesNumerals() {
+        for (family in listOf(null) + TabletFamily.entries) {
+            val bn = rows(KeyboardMode.NUMPAD_BN, family).flatMap { it.keys }.filterIsInstance<Key.Symbol>().map { it.label }
+            val en = rows(KeyboardMode.NUMPAD_EN, family).flatMap { it.keys }.filterIsInstance<Key.Symbol>().map { it.label }
+            assertEquals(listOf("০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"), bn.filter { it in "০১২৩৪৫৬৭৮৯".map(Char::toString) }.sorted())
+            assertEquals(('0'..'9').map { it.toString() }, en.filter { it.length == 1 && it[0].isDigit() }.sorted())
+            val switchBn = rows(KeyboardMode.NUMPAD_BN, family).flatMap { it.keys }.filterIsInstance<Key.ModeSwitch>()
+            assertTrue(switchBn.any { it.target == KeyboardMode.NUMPAD_EN } && switchBn.any { it.target == KeyboardMode.LETTERS })
+            assertEquals(1, rows(KeyboardMode.NUMPAD_BN, family).flatMap { it.keys }.count { it == Key.Space })
+        }
+    }
+
     @Test fun everyTabletCommandRowHasOneSpaceEmojiAndHideKey() {
-        for (family in TabletFamily.entries) for (mode in KeyboardMode.entries) {
+        for (family in TabletFamily.entries) for (mode in KeyboardMode.entries.filter { it != KeyboardMode.NUMPAD_BN && it != KeyboardMode.NUMPAD_EN }) {
             val command = rows(mode, family).last()
             assertEquals(1, command.keys.count { it == Key.Space })
             assertEquals(1, command.keys.count { it == Key.Emoji })
