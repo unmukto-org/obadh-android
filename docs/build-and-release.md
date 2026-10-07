@@ -121,12 +121,34 @@ keyboard on and select it themselves, so the app's setup flow is the way in.
 | Type | Purpose |
 |---|---|
 | `debug` | Development. Includes `KeyboardPreviewActivity` and honours the `screen` and `step` launch extras. |
-| `release` | R8-minified, with a keep rule for the JNI entry class. It **builds** (`./gradlew :app:assembleRelease`, unsigned, about 19 MB), but it has not been installed or run, and no signing config exists yet. |
+| `release` | R8-minified, with a keep rule for the JNI entry class. It **builds** (`./gradlew :app:assembleRelease`, unsigned, about 19 MB), but it has not been run on a device, and signing needs a key (see Signing). |
+
+## Signing
+
+Android refuses to install an unsigned APK ("App not installed as package appears
+to be invalid"), and a plain `assembleRelease` with no key is unsigned.
+
+| Build | Signed with | Use |
+|---|---|---|
+| `./gradlew :app:assembleRelease -PdebugSign` | the local debug key | Testing a release build on a device that already has the debug build: same signature, so it installs over it. **Not shippable.** Output: `app/build/outputs/apk/release/app-release.apk`. |
+| `./gradlew :app:assembleRelease` with `keystore.properties` | your release key | The shippable build. |
+| `./gradlew :app:assembleRelease` with neither | unsigned | Cannot be installed. |
+
+`keystore.properties` lives at the repo root and is git-ignored, as are `*.jks` and
+`*.keystore`. It has four keys: `storeFile` (a path, relative to the repo root or
+absolute), `storePassword`, `keyAlias`, `keyPassword`. Create the key once with
+`keytool -genkeypair -v -keystore <file>.jks -alias obadh -keyalg RSA -keysize 4096
+-validity 10000`, and **back the keystore up outside the repo**: an app signed with a
+lost key can never be updated. A debug-key build and a release-key build cannot be
+installed over each other; uninstall one first, which clears its settings.
+
+Verify a signature with `$ANDROID_HOME/build-tools/<version>/apksigner verify
+--print-certs <apk>`.
 
 ## Releasing
 
-Not configured yet: there is no signing config, no version-bump script, and no
-store listing. When it is, the checklist is: bump `versionName` and `versionCode`
+Not configured yet: there is no production key (see Signing), no version-bump
+script, and no store listing. When it is, the checklist is: bump `versionName` and `versionCode`
 in `app/build.gradle.kts`, run the unit tests, build a signed release, **install
 and run the release build** (R8 can strip JNI-reachable code), verify Settings ›
 Version, and record the change in [CHANGELOG.md](../CHANGELOG.md).

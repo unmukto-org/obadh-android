@@ -37,6 +37,11 @@ tagged release yet.
   decompressing as it goes (1.6-1.9 s on the test phone); the copies were verified
   byte-identical to the originals. Installed size falls from about 83 to about 58 MB.
 
+### Added (build)
+- Release signing from a git-ignored `keystore.properties`, and `-PdebugSign` to sign
+  a release build with the debug key for on-device testing. An unsigned release APK
+  cannot be installed.
+
 ### Fixed
 - Words merging after a space: rewrites no longer delete by re-reading the text
   ([KI-003](KNOWN-ISSUES.md#ki-003); not confirmed on the reporting device).
