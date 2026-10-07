@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.unmukto.obadh.settings.Haptics
 import org.unmukto.obadh.settings.KeyboardPreferences
 import org.unmukto.obadh.settings.TextShortcuts
 import org.unmukto.obadh.settings.KeyboardState
@@ -40,7 +41,7 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
     val context = LocalContext.current
     val view = LocalView.current
     val dark = isSystemInDarkTheme()
-    var haptics by remember { mutableStateOf(prefs.hapticsEnabled) }
+    var haptics by remember { mutableStateOf(prefs.hapticStrength) }
     var keySound by remember { mutableStateOf(prefs.keySoundEnabled) }
     var clipboard by remember { mutableStateOf(prefs.clipboardHistoryEnabled) }
     var autoInsert by remember { mutableStateOf(prefs.autoInsertCorrections) }
@@ -98,10 +99,10 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
             header = "Keyboard",
             footer = "Clipboard History keeps text you copy, on this device only, for the keyboard's clipboard panel. Typing sound uses the system key click, so it follows your phone's volume and \"Touch sounds\" setting.",
         ) {
-            ToggleRow("Haptic Feedback", haptics) {
+            SegmentedRow("Haptic Strength", listOf("Off", "Light", "Medium", "Strong"), selected = haptics) {
                 haptics = it
-                prefs.hapticsEnabled = it
-                if (it) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                prefs.hapticStrength = it
+                Haptics.play(view, strength = it)
             }
             RowRule()
             ToggleRow("Clipboard History", clipboard) { clipboard = it; prefs.clipboardHistoryEnabled = it }

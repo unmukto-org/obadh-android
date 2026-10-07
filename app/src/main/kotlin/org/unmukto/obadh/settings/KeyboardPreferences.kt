@@ -8,9 +8,11 @@ class KeyboardPreferences(context: Context) {
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
-    var hapticsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_HAPTICS, true)
-        set(v) = prefs.edit().putBoolean(KEY_HAPTICS, v).apply()
+    /** 0 off, 1 light, 2 medium, 3 strong. Falls back to the old on/off switch when never set. */
+    var hapticStrength: Int
+        get() = if (prefs.contains(KEY_HAPTIC_STRENGTH)) prefs.getInt(KEY_HAPTIC_STRENGTH, Haptics.DEFAULT)
+        else if (prefs.getBoolean(KEY_HAPTICS, true)) Haptics.DEFAULT else Haptics.OFF
+        set(v) = prefs.edit().putInt(KEY_HAPTIC_STRENGTH, v.coerceIn(0, 3)).apply()
 
     /** Ordinary typo auto-insert is opt-in (exact loanwords are not governed by it). */
     var autoInsertCorrections: Boolean
@@ -48,6 +50,7 @@ class KeyboardPreferences(context: Context) {
     private companion object {
         const val NAME = "obadh_prefs"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_HAPTIC_STRENGTH = "haptic_strength"
         const val KEY_AUTO_INSERT = "auto_insert"
         const val KEY_SOUND = "key_sound"
         const val KEY_CLIP = "clipboard_history"

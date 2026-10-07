@@ -110,6 +110,36 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         }
     }
 
+    /** A number or phone field on the pad has nothing to suggest, so the ribbon gives its room back. */
+    private fun updateChrome() {
+        if (!::suggestionBar.isInitialized) return
+        val pad = (fieldKind == FieldKind.NUMBER || fieldKind == FieldKind.PHONE) &&
+            (keyboardView.mode == KeyboardMode.NUMPAD_EN || keyboardView.mode == KeyboardMode.NUMPAD_BN)
+        suggestionBar.visibility = if (pad) View.GONE else View.VISIBLE
+    }
+
+    private fun singleLineText(info: EditorInfo?): Boolean {
+        val type = info?.inputType ?: return false
+        return type and android.text.InputType.TYPE_MASK_CLASS == android.text.InputType.TYPE_CLASS_TEXT &&
+            type and android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE == 0
+    }
+
+    /** The return key's face from the field's action: Search, Go, Send, Next, Done. */
+    private fun returnLabelFor(info: EditorInfo?): String? {
+        info ?: return null
+        info.actionLabel?.toString()?.takeIf { it.isNotBlank() }?.let { return it.take(8) }
+        if (info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return null
+        return when (info.imeOptions and EditorInfo.IME_MASK_ACTION) {
+            EditorInfo.IME_ACTION_SEARCH -> "Search"
+            EditorInfo.IME_ACTION_GO -> "Go"
+            EditorInfo.IME_ACTION_SEND -> "Send"
+            EditorInfo.IME_ACTION_NEXT -> "Next"
+            EditorInfo.IME_ACTION_PREVIOUS -> "Prev"
+            EditorInfo.IME_ACTION_DONE -> "Done"
+            else -> if (singleLineText(info)) "Done" else null
+        }
+    }
+
     /** Height of the suggestion strip for this device and orientation. */
     private fun applyChrome() {
         if (!::suggestionBar.isInitialized) return
@@ -208,13 +238,17 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         closeEmojiPanel()
         closeClipboardPanel()
         resetComposition()
+        Haptics.level = prefs.hapticStrength
         fieldKind = FieldKind.of(info)
+        fieldLanguageEnglish = null
         keyboardView.mode = when (fieldKind) {
             // Numeric and phone fields want digits first; the pad has its own way back to letters.
             FieldKind.NUMBER, FieldKind.PHONE -> KeyboardMode.NUMPAD_EN
             else -> KeyboardMode.LETTERS
         }
         keyboardView.fieldKind = fieldKind
+        keyboardView.returnLabel = returnLabelFor(info)
+        updateChrome()
         // No globe key: language is Bangla/English from the tools row, and the system's own
         // switcher (navigation bar) reaches other keyboards.
         keyboardView.includesGlobeKey = false
@@ -269,7 +303,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             Key.Space -> typeSpace()
             Key.Return -> typeReturn()
             Key.Shift -> toggleShift()
-            is Key.ModeSwitch -> { commitActiveWord(); keyboardView.mode = key.target }
+            is Key.ModeSwitch -> { commitActiveWord(); keyboardView.mode = key.target; updateChrome() }
             Key.Globe -> { commitActiveWord(); showKeyboardPicker() }
             Key.Emoji -> openEmojiPanel()
             Key.Tab -> { commitActiveWord(); sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB) }
@@ -339,7 +373,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         }
         // Quick double-space -> "। " (". " in English; time-gated, after a word, replaces the first space).
         val before = document.contextBeforeInput ?: ""
-        if (now - lastSpaceAt <= DOUBLE_SPACE_MS && atEndOfText()) {
+        if (!literalField && now - lastSpaceAt <= DOUBLE_SPACE_MS && atEndOfText()) {
             SmartPunctuation.doubleSpaceSubstitution(before)?.let {
                 replaceBeforeCaret(if (englishMode) it.copy(insertion = ". ") else it)
                 lastSpaceAt = 0
@@ -359,6 +393,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val noEnterAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
         if (!noEnterAction && action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) {
             currentInputConnection?.performEditorAction(action)
+        } else if (!noEnterAction && singleLineText(currentInputEditorInfo) &&
+            currentInputConnection?.performEditorAction(EditorInfo.IME_ACTION_DONE) == true
+        ) {
+            // A single-line field has no line to add: done, like the label says.
         } else {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
         }
@@ -369,10 +407,38 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private fun typeSymbol(key: Key.Symbol) {
         // Punctuation commits the word first (exact loanwords/auto-insert still apply).
         commitActiveWord()
-        val result = SmartPunctuation.literalSubstitution(key.output, document.contextBeforeInput ?: "")
+        val result = if (literalField) SmartPunctuationResult.insert(key.output)
+        else SmartPunctuation.literalSubstitution(key.output, document.contextBeforeInput ?: "")
+        if (!literalField && result.deleteBefore == 0 && typePair(result.insertion)) {
+            if (key.terminator) engine.clearAutosuggestSession()
+            refreshRibbon()
+            return
+        }
         replaceBeforeCaret(result)
         if (key.terminator) engine.clearAutosuggestSession()
         refreshRibbon()
+    }
+
+    /**
+     * Brackets and opening quotes come as a pair with the caret between, and a closing one typed
+     * right before the same closer just steps over it. Only before the end of a line or a space,
+     * so it never doubles up inside a word. Returns true when it handled the key.
+     */
+    private fun typePair(text: String): Boolean {
+        val ic = currentInputConnection ?: return false
+        val close = PAIRS[text]
+        val next = ic.getTextAfterCursor(1, 0)?.toString().orEmpty()
+        if (close != null) {
+            if (next.isNotEmpty() && !next[0].isWhitespace() && next[0].toString() !in PAIR_CLOSERS) return false
+            ic.beginBatchEdit()
+            try { ic.commitText(text, 1); ic.commitText(close, 0) } finally { ic.endBatchEdit() }
+            return true
+        }
+        if (text in PAIR_CLOSERS && next == text) {
+            arrow(ic, KeyEvent.KEYCODE_DPAD_RIGHT, 1)
+            return true
+        }
+        return false
     }
 
     private fun toggleCapsLock() {
@@ -518,7 +584,12 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val context = document.contextBeforeInput ?: ""
         if (context.isEmpty()) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL); return }
         if (unit == BackspaceDeletionUnit.CHARACTER) {
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+            // Backspacing the opener of an empty pair takes the closer with it.
+            val ic = currentInputConnection
+            val opener = context.lastOrNull()?.toString()
+            if (!literalField && ic != null && opener != null && PAIRS[opener] != null &&
+                ic.getTextAfterCursor(1, 0)?.toString() == PAIRS[opener]
+            ) ic.deleteSurroundingText(1, 1) else sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         } else {
             val n = BackspaceDeletionPlanner.deleteCount(context, unit)
             val chars = context.offsetByCodePoints(context.length, -n.coerceAtMost(context.codePointCount(0, context.length)))
@@ -542,7 +613,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val committed = composer.commitActiveInput().orEmpty()
         ic?.beginBatchEdit()
         try { composition.commit(committed, trailing, document) } finally { ic?.endBatchEdit() }
-        if (committed.isNotEmpty()) worker.execute { engine.commitAutosuggestToken(committed) }
+        if (committed.isNotEmpty() && !literalField) worker.execute { engine.commitAutosuggestToken(committed) }
         refreshRibbon()
     }
 
@@ -594,7 +665,24 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     /** Pushes the saved language to the views. */
     /** What the focused field wants; e-mail, web and password fields are typed in English. */
     private var fieldKind = FieldKind.TEXT
-    private val englishMode get() = prefs.englishMode || fieldKind.forcesEnglish
+    /** The language chosen from the tools inside this field; null follows the field's default. */
+    private var fieldLanguageEnglish: Boolean? = null
+    private val englishMode get() = fieldLanguageEnglish ?: (prefs.englishMode || fieldKind.forcesEnglish)
+
+    /** Addresses and passwords take what is typed literally: no smart quotes, dashes or dari. */
+    private val literalField get() = fieldKind.forcesEnglish
+
+    /** English sentence and word capitals, as the field asks for them (and Gboard does). */
+    private fun autoShift() {
+        if (!englishMode || keyboardView.capsLock || keyboardView.mode != KeyboardMode.LETTERS) return
+        if (literalField) return
+        var type = currentInputEditorInfo?.inputType ?: return
+        if (type and android.text.InputType.TYPE_MASK_CLASS != android.text.InputType.TYPE_CLASS_TEXT) return
+        // Names and addresses are capitalised whether or not the app asked.
+        if (fieldKind == FieldKind.NAME) type = type or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        val caps = currentInputConnection?.getCursorCapsMode(type) ?: return
+        keyboardView.shiftActive = caps != 0
+    }
 
     private fun applyLanguage() {
         val english = englishMode
@@ -610,7 +698,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             SuggestionBarView.Tool.LANGUAGE -> {
                 commitActiveWord()
                 resetComposition()
-                prefs.englishMode = !prefs.englishMode
+                // The saved language applies to every field. Addresses and passwords default to
+                // English whatever it is; switching inside one is for that field only.
+                if (fieldKind.forcesEnglish) fieldLanguageEnglish = !englishMode
+                else prefs.englishMode = !prefs.englishMode
                 if (!englishMode) closeSpellSession()
                 applyLanguage()
                 refreshRibbon()
@@ -879,7 +970,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     private fun refreshRibbon() {
         if (!::suggestionBar.isInitialized) return
-        if (prefs.englishMode) {
+        autoShift()
+        if (englishMode) {
             suggestionBar.emojis = emptyList()
             requestEnglishSpelling()
             return
@@ -1005,8 +1097,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     private fun haptic() {
-        if (!prefs.hapticsEnabled) return
-        keyboardView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        Haptics.play(keyboardView, strength = prefs.hapticStrength)
     }
 
     /** The system's own key click, so volume and the "touch sounds" setting still apply. */
@@ -1027,6 +1118,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         const val NEXT_WORD_CONTEXT_CHARS = 200
         const val MAX_SPELLING = 5
         const val WHOLE_FIELD_CHARS = 100_000
+        val PAIRS = mapOf("(" to ")", "[" to "]", "{" to "}", "“" to "”")
+        val PAIR_CLOSERS = PAIRS.values.toSet()
         const val SWIPE_DELETE_CHARS = 2_000
         const val DOUBLE_SPACE_MS = 350L
         const val EMOJI_SEARCH_LIMIT = 40

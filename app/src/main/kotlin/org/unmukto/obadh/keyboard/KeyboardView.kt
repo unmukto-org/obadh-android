@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.view.View
 import org.unmukto.obadh.engine.BackspaceDeletionUnit
 import org.unmukto.obadh.engine.BackspaceRepeatPolicy
+import org.unmukto.obadh.settings.Haptics
 import kotlin.math.abs
 
 /** Clipboard actions on a long press of X, C and V (the keys' positions in Cut, Copy, Paste). */
@@ -59,6 +60,9 @@ class KeyboardView(context: Context) : View(context) {
     /** The bottom row's comma becomes @ in e-mail fields and / in web-address fields. */
     var fieldKind = FieldKind.TEXT
         set(v) { field = v; rebuildRows() }
+    /** What the return key does in this field ("Search", "Next"...); null is a plain return. */
+    var returnLabel: String? = null
+        set(v) { field = v; invalidate() }
     var shiftActive = false
         set(v) { field = v; invalidate() }
     var capsLock = false
@@ -143,7 +147,7 @@ class KeyboardView(context: Context) : View(context) {
         trackpadY = downY
         trackpadRemainder = 0f
         trackpadRemainderY = 0f
-        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        Haptics.play(this, long = true)
         listener?.onCursorDragStart()
         invalidate()
     }
@@ -211,14 +215,14 @@ class KeyboardView(context: Context) : View(context) {
         val cell = pressed ?: return@Runnable
         clipboardFor(cell.key)?.let {
             secondaryFired = true
-            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+            Haptics.play(this, long = true)
             popup?.hide()
             listener?.onClipboard(it)
             return@Runnable
         }
         val secondary = secondary(cell.key) ?: return@Runnable
         secondaryFired = true
-        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        Haptics.play(this, long = true)
         armed = secondary
         popup?.show(this, drawnRect(cell), secondary.label)
     }
@@ -229,9 +233,23 @@ class KeyboardView(context: Context) : View(context) {
     private fun latinDigits(row: KeyboardRow) = row.copy(keys = row.keys.map(::latinDigit))
 
     /** The letters page's bottom-row dari becomes a full stop when typing English. */
+    /** E-mail and web fields: `@` or `/` for the comma, and a `.com` key after the full stop. */
     private fun fieldComma(row: KeyboardRow): KeyboardRow {
         val glyph = when (fieldKind) { FieldKind.EMAIL -> "@"; FieldKind.URL -> "/"; else -> return row }
-        return row.copy(keys = row.keys.map { if (it is Key.Symbol && it.output == ",") Key.Symbol(glyph) else it })
+        val keys = row.keys.toMutableList()
+        val weights = row.weights.toMutableList()
+        for (i in keys.indices) {
+            val k = keys[i]
+            if (k is Key.Symbol && k.output == ",") keys[i] = Key.Symbol(glyph)
+        }
+        val stop = keys.indexOfFirst { it is Key.Symbol && (it.output == "." || it.output == "।") }
+        val space = keys.indexOf(Key.Space)
+        if (stop >= 0 && space >= 0 && weights[space] > 2.2) {
+            keys.add(stop + 1, Key.Symbol(".com"))
+            weights.add(stop + 1, 1.5)
+            weights[space] = weights[space] - 1.5
+        }
+        return KeyboardRow(keys, weights)
     }
 
     private fun fullStop(row: KeyboardRow) =
@@ -313,6 +331,10 @@ class KeyboardView(context: Context) : View(context) {
         textPaint.color = theme.label
         textPaint.typeface = if (cell.key is Key.Character || cell.key is Key.Symbol) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
         textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else letterSp()) * density
+        // Long labels (Search, .com) shrink to fit the key instead of spilling over it.
+        while (textPaint.measureText(label) > r.width() - 8 * density && textPaint.textSize > 9 * density) {
+            textPaint.textSize *= 0.92f
+        }
         val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(label, r.centerX(), y, textPaint)
 
@@ -359,7 +381,7 @@ class KeyboardView(context: Context) : View(context) {
         Key.Globe -> "🌐"
         Key.Emoji -> "🙂"
         Key.Space -> ""
-        Key.Return -> "⏎"
+        Key.Return -> returnLabel ?: "⏎"
         Key.Tab -> "⇥"
         Key.CapsLock -> "⇪"
         Key.HideKeyboard -> "⌄"
@@ -457,7 +479,7 @@ class KeyboardView(context: Context) : View(context) {
                             secondaryFired = true
                             handler.removeCallbacks(secondaryLongPress)
                             popup?.hide()
-                            performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                            Haptics.play(this)
                             listener?.onKey(it)
                         }
                     }

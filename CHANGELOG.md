@@ -75,6 +75,20 @@ tagged release yet.
 - The emoji key uses the same smiley icon as the tools row.
 - **Comma and full stop on the bottom row.** A comma sits left of the space and a dari (a full stop
   in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
+- **Haptic strength.** Settings → Keyboard → Haptic Strength: Off, Light, Medium or Strong replaces the
+  on/off switch (an old "off" stays off, "on" becomes Medium). It plays a short vibration at that
+  amplitude, and now applies to long presses, flicks and the emoji panel too. Adds the normal
+  `VIBRATE` permission.
+- **Smarter fields.** E-mail, web-address and password fields open in English but you can switch to
+  Bangla from the language tool for that field (it resets on the next field and never changes your saved
+  language). They also type punctuation literally (no curly quotes, dashes or dari on double space) and
+  do not learn words. English mode capitalises sentences, words or characters as the field asks.
+- **More field smarts.** The return key shows the field's action (Search, Go, Send, Next, Done), and on
+  a single-line field with no action it finishes the field instead of adding a line. E-mail and web
+  fields get a `.com` key. Name and address fields always capitalise words (e-mail, web and password
+  fields never do). Brackets and opening quotes type as a pair with the caret inside, a typed closer
+  steps over its twin, and backspacing an empty pair removes both. The ribbon hides on the number
+  pad in number and phone fields.
 - **Field-aware keys.** Number, phone and date fields open on the number pad. E-mail, web-address and
   password fields type in English (your saved language is untouched) with no spelling suggestions;
   the comma key becomes `@` in e-mail fields and `/` in web-address fields.

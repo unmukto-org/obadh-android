@@ -9,6 +9,7 @@ enum class FieldKind(val forcesEnglish: Boolean = false) {
     EMAIL(true),
     URL(true),
     PASSWORD(true),
+    NAME,
     NUMBER,
     PHONE;
 
@@ -24,6 +25,8 @@ enum class FieldKind(val forcesEnglish: Boolean = false) {
                     InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
                     InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> EMAIL
                     InputType.TYPE_TEXT_VARIATION_URI -> URL
+                    InputType.TYPE_TEXT_VARIATION_PERSON_NAME,
+                    InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS -> NAME
                     InputType.TYPE_TEXT_VARIATION_PASSWORD,
                     InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
                     InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD -> PASSWORD

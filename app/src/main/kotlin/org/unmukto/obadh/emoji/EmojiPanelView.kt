@@ -341,7 +341,7 @@ class EmojiPanelView(context: Context) : View(context) {
         val base = sec.cells[index].base ?: return
         val options = store?.variantOptions(base).orEmpty().filter { canDraw(it.emoji) }
         if (options.size < 2) return
-        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        org.unmukto.obadh.settings.Haptics.play(this, long = true)
         popupBase = options.first()
         popupOptions = options
         popupAnchor = cellRect(sec, index)
@@ -614,7 +614,7 @@ class EmojiPanelView(context: Context) : View(context) {
         val base = searchResults[i].base ?: return@Runnable
         val options = store?.variantOptions(base).orEmpty().filter { canDraw(it.emoji) }
         if (options.size < 2) return@Runnable
-        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        org.unmukto.obadh.settings.Haptics.play(this, long = true)
         popupBase = options.first()
         popupOptions = options
         val left = leadInset + i * searchCell - searchScroll
