@@ -61,6 +61,25 @@ class KeyboardLayoutTest {
         }
     }
 
+    @Test fun extendedNumbersPageDoesNotRepeatTheDigitRowItAlreadyHas() {
+        val digits = (1..10).map { Key.Symbol("১২৩৪৫৬৭৮৯০"[it - 1].toString()) }
+        for (mode in listOf(KeyboardMode.NUMBERS, KeyboardMode.SYMBOLS)) {
+            val page = rows(mode, TabletFamily.EXTENDED)
+            // Row 0 is the number row; no other row may be a second copy of the digits.
+            assertTrue(page.drop(1).none { r -> r.keys.filter { it in digits }.size >= 5 })
+        }
+        // Smaller families have no number row, so their numbers page keeps the digits.
+        assertTrue(rows(KeyboardMode.NUMBERS, TabletFamily.STANDARD).any { r -> r.keys.count { it in digits } >= 10 })
+    }
+
+    @Test fun everyPageHasExactlyOneBackspaceAndOneReturn() {
+        for (family in listOf(null) + TabletFamily.entries) for (mode in KeyboardMode.entries) {
+            val keys = rows(mode, family).flatMap { it.keys }
+            assertEquals("$family $mode backspace", 1, keys.count { it == Key.Backspace })
+            assertEquals("$family $mode return", 1, keys.count { it == Key.Return })
+        }
+    }
+
     @Test fun everyTabletCommandRowHasOneSpaceEmojiAndHideKey() {
         for (family in TabletFamily.entries) for (mode in KeyboardMode.entries) {
             val command = rows(mode, family).last()

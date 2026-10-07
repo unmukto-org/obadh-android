@@ -180,16 +180,28 @@ object KeyboardLayoutProvider {
         weights = List(13) { 1.0 } + W.Extended.BACKSPACE,
     )
 
-    private fun tabletRows(mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> = when (mode) {
-        KeyboardMode.LETTERS -> tabletLetterRows(family, withGlobe)
-        KeyboardMode.NUMBERS -> tabletSymbolRows(
-            family, withGlobe, modeLabel = "#+=", target = KeyboardMode.SYMBOLS,
-            first = bnDigits.map { Key.Symbol(it) }, second = numbersRow2, third = punctuationTail,
-        )
-        KeyboardMode.SYMBOLS -> tabletSymbolRows(
-            family, withGlobe, modeLabel = "123", target = KeyboardMode.NUMBERS,
-            first = symbolsRow1, second = symbolsRow2, third = punctuationTail,
-        )
+    /** Currency and common marks: the extended symbols page's second row (₹ for Bangla readers). */
+    private val currencyAndMarks = lit("€", "£", "¥", "₹", "¢", "©", "®", "™", "°", "•")
+
+    private fun tabletRows(mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> {
+        // The extended family always shows the Bangla-numeral row on top, so its numbers page must
+        // not repeat the digits: it moves everything up a row and uses the freed row for symbols.
+        val extended = family == TabletFamily.EXTENDED
+        return when (mode) {
+            KeyboardMode.LETTERS -> tabletLetterRows(family, withGlobe)
+            KeyboardMode.NUMBERS -> tabletSymbolRows(
+                family, withGlobe, modeLabel = "#+=", target = KeyboardMode.SYMBOLS,
+                first = if (extended) numbersRow2 else bnDigits.map { Key.Symbol(it) },
+                second = if (extended) symbolsRow1 else numbersRow2,
+                third = punctuationTail,
+            )
+            KeyboardMode.SYMBOLS -> tabletSymbolRows(
+                family, withGlobe, modeLabel = "123", target = KeyboardMode.NUMBERS,
+                first = if (extended) symbolsRow2 else symbolsRow1,
+                second = if (extended) currencyAndMarks else symbolsRow2,
+                third = punctuationTail,
+            )
+        }
     }
 
     private fun tabletLetterRows(family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> {
@@ -251,10 +263,13 @@ object KeyboardLayoutProvider {
         val shiftR = when (family) { TabletFamily.COMPACT -> W.Compact.RIGHT_SHIFT; TabletFamily.STANDARD -> W.Standard.RIGHT_SHIFT; else -> W.Extended.SHIFT }
 
         val rows = ArrayList<KeyboardRow>()
-        if (family == TabletFamily.EXTENDED) rows += numberRow()
+        // The extended number row already carries the page's backspace; a second one would
+        // be a duplicate key.
+        val hasNumberRow = family == TabletFamily.EXTENDED
+        if (hasNumberRow) rows += numberRow()
         rows += KeyboardRow(
-            (if (compact) emptyList() else listOf<Key>(Key.Tab)) + first + Key.Backspace,
-            (if (compact) emptyList() else listOf(edge)) + List(first.size) { 1.0 } + edge,
+            (if (compact) emptyList() else listOf<Key>(Key.Tab)) + first + (if (hasNumberRow) emptyList() else listOf(Key.Backspace)),
+            (if (compact) emptyList() else listOf(edge)) + List(first.size) { 1.0 } + (if (hasNumberRow) emptyList() else listOf(edge)),
         )
         rows += KeyboardRow(
             (if (compact) emptyList() else listOf<Key>(Key.CapsLock)) + second + Key.Return,

@@ -41,7 +41,7 @@ class KeyboardPreviewActivity : Activity() {
         keyboard.post { stage.layoutParams = stage.layoutParams.also { p -> p.height = (keyboard.height * scale).toInt() } }
 
         val label = TextView(this).apply {
-            text = "sw ${sw}dp  ·  ${keyboard.family ?: "phone"}  ·  $mode  ·  ${keyboard.height}px at 1:${"%.2f".format(1 / scale)}"
+            text = "sw ${sw}dp  ·  ${keyboard.family ?: "phone"}  ·  $mode  ·  shown at 1:${"%.2f".format(1 / scale)}"
             setTextColor(Color.WHITE); textSize = 12f; gravity = Gravity.CENTER
             setPadding(0, (40 * density).toInt(), 0, (12 * density).toInt())
         }
