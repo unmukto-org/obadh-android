@@ -66,5 +66,6 @@ in debuggable builds.)
    search in English and in Bangla, return.
 6. On a tablet: every key, flick down and long-press on letters, Tab, Caps Lock,
    hide. Rotate with the keyboard open.
-7. Switch away and back: the word is kept. Open recents with the keyboard up
-   ([KI-001](../KNOWN-ISSUES.md#ki-001)).
+7. Switch away and back: the word is kept. Open recents with the keyboard up: the
+   card must show the keys at the bottom (see "Window shape" in
+   [text-composition.md](text-composition.md)).

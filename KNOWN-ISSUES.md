@@ -11,7 +11,6 @@ was reviewed as a rendering or a unit test, not driven on a device.
 
 | ID | Open issue | Status |
 |---|---|---|
-| [KI-001](#ki-001) | Keyboard drawn at the top of the app preview in recents | Reproduced; cause not isolated |
 | [KI-002](#ki-002) | Touch behaviour never driven on a device | Built, not verified |
 | [KI-003](#ki-003) | Merged words after a space (`jukto borrno`) | Fix shipped, not confirmed |
 | [KI-004](#ki-004) | Tablet and landscape geometry not measured | Fitted from iPad, not Android |
@@ -19,34 +18,6 @@ was reviewed as a rendering or a unit test, not driven on a device.
 | [KI-006](#ki-006) | Live keyboard-state update not confirmed | Built, not verified |
 | [KI-007](#ki-007) | Release build never run; app light mode never viewed | Unverified |
 | [KI-008](#ki-008) | No typing sounds | Not implemented |
-
-<a id="ki-001"></a>
-
-## KI-001: Keyboard drawn at the top of the app preview in recents
-
-**Known:** with the keyboard open, tapping the system *recents* button shows the
-app's task card with Obadh's keyboard drawn at the **top** of the preview instead
-of the bottom (observed with Keep Notes as the host). Reproduced on 2026-10-07 on
-the phone above. The user reported it for Obadh only; **it has not been compared
-with another keyboard**, so it is not known to be Obadh-specific.
-
-**Evidence (2026-10-07):**
-
-- The task snapshot for the host reports `mHasImeSurface=true`: the system
-  composites the keyboard window into the preview.
-- The live keyboard window is placed correctly: `mFrame=[0,1506][1080,2340]`,
-  `gr=BOTTOM`, `fillxwrap`, `mSurfacePosition=(0,1506)`.
-- The system takes its screenshots of the host while the keyboard is still showing,
-  within milliseconds of the launcher taking focus; the keyboard hides about
-  150 ms later. So the keyboard is captured, and the system draws it at the top.
-
-**Attempted, no effect:** colouring the navigation-bar strip (this fixed an
-unrelated black band under the keys) and turning fullscreen/extract mode off.
-
-**Next:** compare with Mint or Gboard on the same phone. If theirs also sits at the
-top, it is a MIUI/Android 12 recents quirk and not ours. If theirs does not, change
-how the keyboard window is built one variable at a time (root view type, layout
-params, insets handling) and re-test each. Needs a person to switch keyboards.
 
 <a id="ki-002"></a>
 

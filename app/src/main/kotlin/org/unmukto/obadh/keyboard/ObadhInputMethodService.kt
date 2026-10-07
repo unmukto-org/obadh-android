@@ -3,11 +3,13 @@ package org.unmukto.obadh.keyboard
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -34,6 +36,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private val composition = TextCompositionController()
 
     private lateinit var keyboardView: KeyboardView
+    private lateinit var keyboardColumn: LinearLayout
+    private lateinit var keyboardRoot: FrameLayout
     private lateinit var suggestionBar: SuggestionBarView
     private lateinit var emojiPanel: EmojiPanelView
     @Volatile private var emojiCatalog: EmojiDataStore? = null
@@ -116,12 +120,31 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         super.onConfigurationChanged(newConfig)
         if (!::keyboardView.isInitialized) return
         closeEmojiPanel()
+        keyboardRoot.minimumHeight = resources.displayMetrics.heightPixels
         keyboardView.refreshForConfiguration()
         applyChrome()
     }
 
     /** No extract/fullscreen editing UI: a fullscreen IME window is laid out against the whole display. */
     override fun onEvaluateFullscreenMode(): Boolean = false
+
+    /**
+     * The input view is a full-height transparent surface with the keys anchored to its bottom
+     * ([keyboardColumn]). The system composites the keyboard into the recents screenshot of the
+     * host app by laying the IME layer out from the top of the capture, so a surface only as tall
+     * as the keys is drawn at the TOP of the card; a surface as tall as the display has the keys
+     * land at the bottom (KI-001). The window still behaves like a bottom keyboard: the app
+     * resizes above [keyboardColumn] and touches above it fall through to the app.
+     */
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        if (!::keyboardColumn.isInitialized) return
+        val top = keyboardColumn.top
+        outInsets.contentTopInsets = top
+        outInsets.visibleTopInsets = top
+        outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_REGION
+        outInsets.touchableRegion.set(keyboardColumn.left, top, keyboardColumn.right, keyboardColumn.bottom)
+    }
 
     override fun onCreateInputView(): View {
         keyboardView = KeyboardView(this).also { it.listener = this }
@@ -133,7 +156,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         // The system paints the navigation-bar strip under the keyboard; match it to the keys
         // instead of leaving the default black.
         window?.window?.navigationBarColor = keyboardView.theme.background
-        return LinearLayout(this).apply {
+        keyboardColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(keyboardView.theme.background)
             // The panel sits ABOVE the keys: in search mode it is a short field + results row
@@ -149,7 +172,16 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 v.setPadding(safe.left, 0, safe.right, safe.bottom)
                 insets
             }
-        }.also { applyChrome() }
+        }
+        applyChrome()
+        keyboardRoot = FrameLayout(this).apply {
+            minimumHeight = resources.displayMetrics.heightPixels
+            addView(
+                keyboardColumn,
+                FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM),
+            )
+        }
+        return keyboardRoot
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {

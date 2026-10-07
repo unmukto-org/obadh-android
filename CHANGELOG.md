@@ -45,10 +45,17 @@ tagged release yet.
 ### Fixed
 - Words merging after a space: rewrites no longer delete by re-reading the text
   ([KI-003](KNOWN-ISSUES.md#ki-003); not confirmed on the reporting device).
+- Keyboard drawn at the top of the app card in recents (KI-001, resolved on the test
+  phone). The system composites the keyboard into the host app's screenshot from the top
+  of its capture area, so a window only as tall as the keys landed at the top of the
+  card. The input view is now a full-display-height transparent surface with the keys
+  anchored to the bottom; `onComputeInsets` reports the keys' top as the content/visible
+  inset and limits touches to the keys' rectangle. Found by diffing the compositor layer
+  of another keyboard (1080×2240 surface) against ours (1080×856); no app-side window
+  attribute differed.
 - Black strip under the keyboard: the navigation-bar strip matches the keys.
 - Duplicate Bangla-digit row and duplicate backspace on the extended tablet pages.
 - Duplicate engine library packed into every ABI.
 
 ### Known
-See [KNOWN-ISSUES.md](KNOWN-ISSUES.md), including the unverified touch behaviour
-and the recents-preview quirk.
+See [KNOWN-ISSUES.md](KNOWN-ISSUES.md), including the unverified touch behaviour.

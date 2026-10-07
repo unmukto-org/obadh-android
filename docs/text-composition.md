@@ -109,3 +109,17 @@ coloured to match the keys. Rotation rebuilds the layout and closes any open
 emoji panel, because that panel's height was measured against the old layout.
 Extract (fullscreen) mode is turned off: the keyboard is never laid out against
 the whole display.
+
+## Window shape
+
+The input view is a full-display-height transparent `FrameLayout` with the keys
+(`keyboardColumn`) anchored to its bottom, not a view only as tall as the keys.
+The system composites the keyboard into the host app's recents screenshot from the
+top of its capture area, so a window exactly as tall as the keys is drawn at the top
+of the app card. A display-height surface lands the keys at the bottom, which is
+what other keyboards on the test phone do.
+
+To still behave as a bottom keyboard, `onComputeInsets` reports the keys' top as the
+content and visible inset (the host app resizes above the keys) and uses
+`TOUCHABLE_INSETS_REGION` limited to the keys' rectangle (touches above fall through to the
+app). The root's minimum height is the display height and is refreshed on rotation.
