@@ -146,7 +146,7 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
             RowRule()
             PrefToggle(
                 "Hold X, C, V to Cut, Copy, Paste",
-                "Hold X to cut, C to copy and V to paste. With nothing selected, cut and copy take the whole text.",
+                "Hold X to cut, C to copy and V to paste. With nothing selected, cut and copy take the whole text. Hold X or C and slide left or right to pick words first.",
                 prefs.clipboardKeys,
             ) { prefs.clipboardKeys = it }
             RowRule()

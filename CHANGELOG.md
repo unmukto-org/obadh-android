@@ -75,6 +75,10 @@ tagged release yet.
 - The emoji key uses the same smiley icon as the tools row.
 - **Comma and full stop on the bottom row.** A comma sits left of the space and a dari (a full stop
   in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
+- **Slide to select, cut or copy.** Hold X or C, then slide left or right: words before
+  or after the caret are selected (one per 30 dp, like backspace's swipe), and lifting cuts
+  or copies them. Lifting without sliding still takes the whole field; cut and copy now
+  act on lift rather than at 420 ms.
 - **The caret stays in the field.** The space-bar trackpad and the volume keys no longer send an arrow key
   when the text has no room that way, so they cannot move focus to another view. Up on the first line goes to
   the start of the text and down on the last goes to the end (as on iOS).

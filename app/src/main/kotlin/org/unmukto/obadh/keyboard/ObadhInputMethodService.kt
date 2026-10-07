@@ -597,6 +597,67 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         refreshRibbon()
     }
 
+    // Cut/copy slide: words either side of the caret are selected, the action runs on release.
+    private var clipCaret = -1
+    private var clipBefore = ""
+    private var clipAfter = ""
+    private var clipSelStart = 0
+    private var clipSelEnd = 0
+
+    override fun onClipboardSelectStart() {
+        if (emojiSearchActive) return
+        commitActiveWord()
+        resetComposition()
+        val ic = currentInputConnection ?: return
+        clipCaret = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+            ?.takeIf { it.selectionStart == it.selectionEnd }?.selectionStart ?: -1
+        clipBefore = ic.getTextBeforeCursor(SWIPE_DELETE_CHARS, 0)?.toString().orEmpty()
+        clipAfter = ic.getTextAfterCursor(SWIPE_DELETE_CHARS, 0)?.toString().orEmpty()
+        clipSelStart = clipCaret; clipSelEnd = clipCaret
+    }
+
+    override fun onClipboardSelect(words: Int) {
+        if (emojiSearchActive || clipCaret < 0) return
+        val ic = currentInputConnection ?: return
+        var start = clipCaret
+        var end = clipCaret
+        if (words < 0) {
+            var i = clipBefore.length
+            repeat(-words) {
+                while (i > 0 && clipBefore[i - 1].isWhitespace()) i--
+                while (i > 0 && !clipBefore[i - 1].isWhitespace()) i--
+            }
+            start = clipCaret - (clipBefore.length - i)
+        } else if (words > 0) {
+            var i = 0
+            repeat(words) {
+                while (i < clipAfter.length && clipAfter[i].isWhitespace()) i++
+                while (i < clipAfter.length && !clipAfter[i].isWhitespace()) i++
+            }
+            end = clipCaret + i
+        }
+        if (start == clipSelStart && end == clipSelEnd) return
+        clipSelStart = start; clipSelEnd = end
+        haptic()
+        ic.setSelection(start, end)
+    }
+
+    override fun onClipboardSelectEnd(action: ClipboardAction, apply: Boolean) {
+        val ic = currentInputConnection
+        if (ic != null && clipCaret >= 0) {
+            val selected = apply && clipSelEnd > clipSelStart
+            if (selected) {
+                val id = if (action == ClipboardAction.CUT) android.R.id.cut else android.R.id.copy
+                if (ic.performContextMenuAction(id)) suggestionBar.flash(action)
+            }
+            // Copy and cancel leave the caret where it was; cut has already removed the text.
+            if (!(selected && action == ClipboardAction.CUT)) ic.setSelection(clipCaret, clipCaret)
+            else ic.setSelection(clipSelStart, clipSelStart)
+        }
+        clipCaret = -1; clipBefore = ""; clipAfter = ""
+        refreshRibbon()
+    }
+
     override fun onClipboard(action: ClipboardAction) {
         if (emojiSearchActive) return
         resetComposition()

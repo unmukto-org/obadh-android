@@ -37,6 +37,15 @@ interface KeyboardViewListener {
 
     /** The finger lifted ([apply]) or the gesture was cancelled. */
     fun onSwipeDeleteEnd(apply: Boolean)
+
+    /** Cut or copy was held and slid: text around the caret is being selected. */
+    fun onClipboardSelectStart()
+
+    /** The slide now covers [words] words: negative before the caret, positive after it. */
+    fun onClipboardSelect(words: Int)
+
+    /** The finger lifted: [apply] cuts or copies the selection, otherwise the caret is restored. */
+    fun onClipboardSelectEnd(action: ClipboardAction, apply: Boolean)
 }
 
 /**
@@ -151,6 +160,19 @@ class KeyboardView(context: Context) : View(context) {
         listener?.onSwipeDeleteEnd(apply)
     }
 
+    // Held X or C, then slid: select words either side of the caret, act on release.
+    private var clipHold: ClipboardAction? = null
+    private var clipSliding = false
+    private var clipWords = 0
+
+    private fun endClipHold(apply: Boolean) {
+        val action = clipHold ?: return
+        val slid = clipSliding
+        clipHold = null; clipSliding = false; clipWords = 0
+        if (slid) listener?.onClipboardSelectEnd(action, apply)
+        else if (apply) listener?.onClipboard(action)
+    }
+
     private val startTrackpad = Runnable {
         if (pressed?.key !is Key.Space) return@Runnable
         trackpad = true
@@ -229,7 +251,8 @@ class KeyboardView(context: Context) : View(context) {
             secondaryFired = true
             Haptics.play(this, long = true)
             popup?.hide()
-            listener?.onClipboard(it)
+            // Cut and copy wait for the finger: lifting acts on the whole field, sliding selects.
+            if (it == ClipboardAction.PASTE) listener?.onClipboard(it) else clipHold = it
             return@Runnable
         }
         val secondary = secondary(cell.key) ?: return@Runnable
@@ -434,6 +457,7 @@ class KeyboardView(context: Context) : View(context) {
                 trackpad = false
                 swipeDelete = false
                 swipeWords = 0
+                clipHold = null; clipSliding = false; clipWords = 0
                 invalidate()
                 previewPress(pressed)
                 val key = pressed?.key
@@ -461,6 +485,21 @@ class KeyboardView(context: Context) : View(context) {
                         if (words != swipeWords) { swipeWords = words; listener?.onSwipeDeleteSelect(words) }
                         return true
                     }
+                }
+                if (clipHold != null) {
+                    val dx = e.x - downX
+                    val start = SWIPE_DELETE_START_DP * density
+                    if (!clipSliding && abs(dx) > start) {
+                        clipSliding = true
+                        listener?.onClipboardSelectStart()
+                    }
+                    if (clipSliding) {
+                        val steps = (((abs(dx) - start) / (SWIPE_DELETE_WORD_DP * density)).toInt() + 1)
+                        val words = if (dx < 0) -steps else steps
+                        if (abs(dx) <= start) { if (clipWords != 0) { clipWords = 0; listener?.onClipboardSelect(0) } }
+                        else if (words != clipWords) { clipWords = words; listener?.onClipboardSelect(words) }
+                    }
+                    return true
                 }
                 if (trackpad) {
                     // Whole characters only; the leftover travel carries to the next event, so
@@ -511,6 +550,13 @@ class KeyboardView(context: Context) : View(context) {
                     invalidate()
                     return true
                 }
+                if (clipHold != null) {
+                    endClipHold(true)
+                    handler.removeCallbacks(secondaryLongPress)
+                    pressed = null
+                    invalidate()
+                    return true
+                }
                 if (trackpad) {
                     // The hold was a cursor gesture, not a space.
                     endTrackpad()
@@ -532,6 +578,7 @@ class KeyboardView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_CANCEL -> {
                 endSwipeDelete(false)
+                endClipHold(false)
                 disarm()
                 endTrackpad()
                 handler.removeCallbacks(repeat)
