@@ -7,6 +7,7 @@ import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -157,7 +158,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             Key.Return -> typeReturn()
             Key.Shift -> toggleShift()
             is Key.ModeSwitch -> { commitActiveWord(); keyboardView.mode = key.target }
-            Key.Globe -> { commitActiveWord(); switchToNextInputMethod(false) }
+            Key.Globe -> { commitActiveWord(); showKeyboardPicker() }
             Key.Emoji -> openEmojiPanel()
             Key.Backspace -> Unit // handled via onBackspace
         }
@@ -314,6 +315,14 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         carriedEmojis = emptyList()
         emojiRecents.record(slot.display)
         refreshRibbon()
+    }
+
+    /**
+     * The globe never cycles blindly to the next keyboard: it opens the system picker so the
+     * user chooses which one they want.
+     */
+    private fun showKeyboardPicker() {
+        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
     }
 
     // ------------------------------------------------------------ emoji panel
