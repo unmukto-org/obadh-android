@@ -90,6 +90,9 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         }
     }
 
+    /** No extract/fullscreen editing UI: a fullscreen IME window is laid out against the whole display. */
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onCreateInputView(): View {
         keyboardView = KeyboardView(this).also { it.listener = this }
         emojiPanel = EmojiPanelView(this).also { it.listener = emojiPanelListener; it.visibility = View.GONE }
@@ -97,6 +100,9 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             it.onSelect = ::onSuggestionSelected
             it.onSelectEmoji = ::onEmojiSelected
         }
+        // The system paints the navigation-bar strip under the keyboard; match it to the keys
+        // instead of leaving the default black.
+        window?.window?.navigationBarColor = keyboardView.theme.background
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(keyboardView.theme.background)
