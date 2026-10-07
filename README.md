@@ -14,6 +14,10 @@ You type roman, it composes Bangla live.
 Letter-key shortcuts: `tq` → **ৎ**, `qq` → **ঁ**. For example, `sotq` → **সৎ**
 and `baqq` → **বাঁ**.
 
+<p align="center">
+  <img src="docs/assets/typing.gif" alt="Typing Bangla with Obadh in Google Keep" width="330">
+</p>
+
 ## What it does
 
 - **Live transliteration as real text.** The word you are typing is ordinary
@@ -45,6 +49,10 @@ and `baqq` → **বাঁ**.
 - **No network.** The manifest declares no `INTERNET` permission, so nothing you
   type can leave the device.
 
+<p align="center">
+  <img src="docs/assets/keyboard.png" alt="The Obadh keyboard with suggestions and an emoji" width="330">
+</p>
+
 ## Getting started
 
 ```bash
@@ -60,6 +68,10 @@ with an NDK, [rustup](https://rustup.rs) (the toolchain is pinned in
 **Settings › System › Languages & input › On-screen keyboard**; the app walks
 you through it. Details and the engine-bump workflow:
 [docs/build-and-release.md](docs/build-and-release.md).
+
+<p align="center">
+  <img src="docs/assets/app.png" alt="The Obadh app: welcome and settings" width="560">
+</p>
 
 ## How it's built
 
