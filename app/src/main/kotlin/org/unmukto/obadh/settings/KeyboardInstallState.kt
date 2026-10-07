@@ -4,6 +4,16 @@ import android.content.Context
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 
+/** Snapshot of the two facts setup cares about: Obadh is turned on, and it is the current keyboard. */
+data class KeyboardState(val enabled: Boolean, val selected: Boolean) {
+    val ready: Boolean get() = enabled && selected
+
+    companion object {
+        fun read(context: Context) =
+            KeyboardState(KeyboardInstallState.isEnabled(context), KeyboardInstallState.isSelected(context))
+    }
+}
+
 /** Whether the IME is enabled in system settings and currently selected. */
 object KeyboardInstallState {
     fun isEnabled(context: Context): Boolean {

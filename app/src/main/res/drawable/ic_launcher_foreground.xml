@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The brand mark sits on the same charcoal as the adaptive background, so the
+     squircle's edge disappears into it. Inset keeps the glyph inside the 66% safe zone. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/brand_icon"
+    android:inset="14%" />

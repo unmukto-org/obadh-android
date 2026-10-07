@@ -26,6 +26,11 @@ class KeyboardPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_EMOJI_BN, false)
         set(v) = prefs.edit().putBoolean(KEY_EMOJI_BN, v).apply()
 
+    /** Which onboarding step the user reached; the app can be killed while they are in Settings. */
+    var onboardingStep: String?
+        get() = prefs.getString(KEY_STEP, null)
+        set(v) = prefs.edit().apply { if (v == null) remove(KEY_STEP) else putString(KEY_STEP, v) }.apply()
+
     var setupCompleted: Boolean
         get() = prefs.getBoolean(KEY_SETUP, false)
         set(v) = prefs.edit().putBoolean(KEY_SETUP, v).apply()
@@ -36,6 +41,7 @@ class KeyboardPreferences(context: Context) {
         const val KEY_AUTO_INSERT = "auto_insert"
         const val KEY_SOUND = "key_sound"
         const val KEY_SETUP = "setup_completed"
+        const val KEY_STEP = "onboarding_step"
         const val KEY_EMOJI_BN = "emoji_search_bangla"
     }
 }

@@ -10,4 +10,7 @@ if [ -z "${ANDROID_NDK_HOME:-}" ]; then
 fi
 cd "$here/rust/obadh-jni"
 cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o "$here/app/src/main/jniLibs" build --release
+# cargo-ndk also copies the engine's own cdylib (obadh_engine has crate-type cdylib). Our JNI
+# library links the engine statically, so that copy is dead weight in every ABI of the APK.
+find "$here/app/src/main/jniLibs" -name 'libobadh_engine-*.so' -delete
 echo "built into $here/app/src/main/jniLibs"

@@ -54,6 +54,15 @@ pub extern "system" fn Java_org_unmukto_obadh_engine_ObadhNative_abiVersion(
     cabi::obadh_abi_version() as jint
 }
 
+#[no_mangle]
+pub extern "system" fn Java_org_unmukto_obadh_engine_ObadhNative_engineVersion(
+    env: JNIEnv,
+    _class: JClass,
+) -> jbyteArray {
+    let bytes = read_bytes(|o, c| unsafe { cabi::obadh_engine_version(o, c) });
+    out(&env, bytes)
+}
+
 // ----------------------------------------------------------- deterministic
 
 #[no_mangle]

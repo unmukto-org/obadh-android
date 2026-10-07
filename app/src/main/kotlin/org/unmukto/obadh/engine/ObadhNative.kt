@@ -11,6 +11,7 @@ internal object ObadhNative {
     }
 
     external fun abiVersion(): Int
+    external fun engineVersion(): ByteArray
 
     external fun engineNew(): Long
     external fun engineFree(handle: Long)
