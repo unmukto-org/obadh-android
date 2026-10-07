@@ -66,6 +66,9 @@ tagged release yet.
   and double space gives `. `. The ribbon shows spelling corrections from the device's own spell
   checker (nothing bundled); with no checker enabled in system settings it stays empty.
 - The emoji key uses the same smiley icon as the tools row.
+- **Swipe to delete.** Slide left from backspace (past 24 dp): the words before the caret are
+  highlighted, one more per 30 dp, and deleted when you lift. Sliding back shrinks the selection;
+  cancelling deletes nothing.
 
 ### Changed
 - **Download size 43.0 → 19.0 MB.** The models are deflated in the APK instead of

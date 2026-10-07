@@ -380,6 +380,51 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         } finally { ic.endBatchEdit() }
     }
 
+    // Swipe-to-delete from backspace: the words are shown selected, removed when the finger lifts.
+    private var swipeCaret = -1
+    private var swipeLen = 0
+    private var swipeText = ""
+
+    override fun onSwipeDeleteStart() {
+        if (emojiSearchActive) return
+        commitActiveWord()
+        resetComposition()
+        val ic = currentInputConnection ?: return
+        swipeCaret = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+            ?.takeIf { it.selectionStart == it.selectionEnd }?.selectionStart ?: -1
+        swipeLen = 0
+        // Read once: with a selection showing, "before the cursor" would move with it.
+        swipeText = ic.getTextBeforeCursor(SWIPE_DELETE_CHARS, 0)?.toString().orEmpty()
+    }
+
+    override fun onSwipeDeleteSelect(words: Int) {
+        if (emojiSearchActive) return
+        val ic = currentInputConnection ?: return
+        val before = swipeText
+        var i = before.length
+        repeat(words) {
+            while (i > 0 && before[i - 1].isWhitespace()) i--
+            while (i > 0 && !before[i - 1].isWhitespace()) i--
+        }
+        val len = before.length - i
+        if (len == swipeLen) return
+        swipeLen = len
+        haptic()
+        if (swipeCaret >= 0) ic.setSelection(swipeCaret - len, swipeCaret)
+    }
+
+    override fun onSwipeDeleteEnd(apply: Boolean) {
+        val ic = currentInputConnection
+        if (ic != null) {
+            if (swipeCaret >= 0) ic.setSelection(swipeCaret, swipeCaret)
+            if (apply && swipeLen > 0) ic.deleteSurroundingText(swipeLen, 0)
+        }
+        swipeCaret = -1
+        swipeLen = 0
+        swipeText = ""
+        refreshRibbon()
+    }
+
     private fun arrow(ic: android.view.inputmethod.InputConnection, code: Int, times: Int) {
         repeat(times) {
             ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
@@ -936,6 +981,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         const val NEXT_WORD_CONTEXT_CHARS = 200
         const val MAX_SPELLING = 5
         const val WHOLE_FIELD_CHARS = 100_000
+        const val SWIPE_DELETE_CHARS = 2_000
         const val DOUBLE_SPACE_MS = 350L
         const val EMOJI_SEARCH_LIMIT = 40
         const val EMOJI_SEARCH_PANEL_DP = 104

@@ -27,6 +27,15 @@ interface KeyboardViewListener {
 
     /** Move the caret by [columns] characters (negative is left) and [rows] lines (negative is up). */
     fun onCursorMove(columns: Int, rows: Int)
+
+    /** Backspace was swiped left: the text before the caret is being selected for deletion. */
+    fun onSwipeDeleteStart()
+
+    /** The swipe now covers [words] words before the caret. */
+    fun onSwipeDeleteSelect(words: Int)
+
+    /** The finger lifted ([apply]) or the gesture was cancelled. */
+    fun onSwipeDeleteEnd(apply: Boolean)
 }
 
 /**
@@ -112,6 +121,17 @@ class KeyboardView(context: Context) : View(context) {
     private var trackpadRemainder = 0f
     private var trackpadRemainderY = 0f
     private var downX = 0f
+    // Backspace swipe: slide left to select words before the caret, lift to delete them.
+    private var swipeDelete = false
+    private var swipeWords = 0
+
+    private fun endSwipeDelete(apply: Boolean) {
+        if (!swipeDelete) return
+        swipeDelete = false
+        swipeWords = 0
+        listener?.onSwipeDeleteEnd(apply)
+    }
+
     private val startTrackpad = Runnable {
         if (pressed?.key !is Key.Space) return@Runnable
         trackpad = true
@@ -341,6 +361,8 @@ class KeyboardView(context: Context) : View(context) {
         const val TRACKPAD_STEP_DP = 9f
         const val TRACKPAD_LINE_DP = 22f
         const val TRACKPAD_SLOP_DP = 8f
+        const val SWIPE_DELETE_START_DP = 24f
+        const val SWIPE_DELETE_WORD_DP = 30f
         const val PHONE_LANDSCAPE_ROW_DP = 38f
         const val PHONE_LANDSCAPE_MAX_WIDTH_DP = 820f
     }
@@ -354,6 +376,8 @@ class KeyboardView(context: Context) : View(context) {
                 secondaryFired = false
                 downX = e.x
                 trackpad = false
+                swipeDelete = false
+                swipeWords = 0
                 invalidate()
                 previewPress(pressed)
                 val key = pressed?.key
@@ -369,6 +393,19 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             MotionEvent.ACTION_MOVE -> {
+                if (pressed?.key is Key.Backspace) {
+                    val dx = downX - e.x
+                    if (!swipeDelete && dx > SWIPE_DELETE_START_DP * density) {
+                        swipeDelete = true
+                        handler.removeCallbacks(repeat)
+                        listener?.onSwipeDeleteStart()
+                    }
+                    if (swipeDelete) {
+                        val words = ((dx - SWIPE_DELETE_START_DP * density) / (SWIPE_DELETE_WORD_DP * density)).toInt().coerceAtLeast(0) + 1
+                        if (words != swipeWords) { swipeWords = words; listener?.onSwipeDeleteSelect(words) }
+                        return true
+                    }
+                }
                 if (trackpad) {
                     // Whole characters only; the leftover travel carries to the next event, so
                     // slow drags never lose distance and fast ones never overshoot.
@@ -411,6 +448,13 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (swipeDelete) {
+                    handler.removeCallbacks(repeat)
+                    endSwipeDelete(true)
+                    pressed = null
+                    invalidate()
+                    return true
+                }
                 if (trackpad) {
                     // The hold was a cursor gesture, not a space.
                     endTrackpad()
@@ -431,6 +475,7 @@ class KeyboardView(context: Context) : View(context) {
                 else if (chosen != null) listener?.onKey(chosen)
             }
             MotionEvent.ACTION_CANCEL -> {
+                endSwipeDelete(false)
                 disarm()
                 endTrackpad()
                 handler.removeCallbacks(repeat)
