@@ -52,7 +52,9 @@ class EmojiPanelView(context: Context) : View(context) {
 
     private val density = resources.displayMetrics.density
     private val rows = 4
-    private val cellSide = 40f * density
+    /** One emoji cell. Shrinks with the grid's row height so four rows still fit a short landscape panel. */
+    private val cellSide: Float get() = minOf(40f * density, (rowH - 2f * density).coerceAtLeast(14f * density))
+    private val emojiTextSize: Float get() = cellSide * 0.65f
     private val colSpacing = 4f * density
     private val rowSpacing = 2f * density
     private val sectionGap = 12f * density
@@ -160,7 +162,7 @@ class EmojiPanelView(context: Context) : View(context) {
 
     private fun rebuild() {
         val s = store ?: return
-        paint.textSize = 26f * density
+        paint.textSize = emojiTextSize
         val built = ArrayList<Section>()
         val recentItems = recents.filter(::canDraw).take(pageCapacity)
             .map { Cell(it, s.item(it)) }
@@ -220,7 +222,7 @@ class EmojiPanelView(context: Context) : View(context) {
                 paint.alpha = 255
                 continue
             }
-            paint.textSize = 26f * density
+            paint.textSize = emojiTextSize
             sec.cells.forEachIndexed { i, cell ->
                 val col = i / rows
                 val row = i % rows
@@ -305,7 +307,7 @@ class EmojiPanelView(context: Context) : View(context) {
                 canvas.drawRoundRect(cx - cellSide / 2, top + 4 * density, cx + cellSide / 2, top + h - 4 * density, 10 * density, 10 * density, fill)
                 fill.alpha = 255
             }
-            paint.color = theme.label; paint.textSize = 26f * density
+            paint.color = theme.label; paint.textSize = cellSide * 0.65f
             canvas.drawText(o.emoji, cx, top + h / 2f - (paint.descent() + paint.ascent()) / 2, paint)
         }
         popupRect = RectF(left, top, left + w, top + h)

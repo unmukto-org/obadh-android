@@ -96,6 +96,30 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         }
     }
 
+    /** Height of the suggestion strip for this device and orientation. */
+    private fun applyChrome() {
+        if (!::suggestionBar.isInitialized) return
+        val landscape = keyboardView.landscape
+        suggestionBar.heightDp = when {
+            keyboardView.family != null -> 48f
+            landscape -> 36f
+            else -> 44f
+        }
+    }
+
+    /**
+     * Rotation changes the geometry, not just the width: the family stays (it is a device
+     * property) but heights, margins and the bottom row do not. Any open panel is closed first,
+     * because its height was measured against the old layout.
+     */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (!::keyboardView.isInitialized) return
+        closeEmojiPanel()
+        keyboardView.refreshForConfiguration()
+        applyChrome()
+    }
+
     /** No extract/fullscreen editing UI: a fullscreen IME window is laid out against the whole display. */
     override fun onEvaluateFullscreenMode(): Boolean = false
 
@@ -118,13 +142,14 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             addView(suggestionBar)
             addView(keyboardView)
             // On Android 15+ the IME window is edge-to-edge and the system draws its
-            // hide/switch buttons in the navigation-bar strip: keep keys clear of it.
+            // hide/switch buttons in the navigation-bar strip: keep keys clear of it. In landscape
+            // a camera cutout or a side navigation bar sits left or right instead of below.
             ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
-                val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-                v.setPadding(0, 0, 0, nav.bottom)
+                val safe = insets.getInsets(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.displayCutout())
+                v.setPadding(safe.left, 0, safe.right, safe.bottom)
                 insets
             }
-        }
+        }.also { applyChrome() }
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -419,7 +444,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         emojiSearchQuery = ""
         emojiSearchBangla = prefs.emojiSearchBangla
         // The panel shrinks to a field + one row of results; the letters sit below it.
-        emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = (EMOJI_SEARCH_PANEL_DP * resources.displayMetrics.density).toInt() }
+        val searchDp = if (keyboardView.landscape && keyboardView.family == null) EMOJI_SEARCH_PANEL_LANDSCAPE_DP else EMOJI_SEARCH_PANEL_DP
+        emojiPanel.layoutParams = emojiPanel.layoutParams.also { it.height = (searchDp * resources.displayMetrics.density).toInt() }
         emojiPanel.setSearchActive(true)
         keyboardView.mode = KeyboardMode.LETTERS
         keyboardView.shiftActive = false
@@ -599,5 +625,6 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         const val DOUBLE_SPACE_MS = 350L
         const val EMOJI_SEARCH_LIMIT = 40
         const val EMOJI_SEARCH_PANEL_DP = 104
+        const val EMOJI_SEARCH_PANEL_LANDSCAPE_DP = 84
     }
 }

@@ -5,7 +5,8 @@ import org.junit.Test
 import org.unmukto.obadh.keyboard.*
 
 class KeyboardLayoutTest {
-    private fun rows(mode: KeyboardMode, family: TabletFamily?) = KeyboardLayoutProvider.rows(mode, true, family)
+    private fun rows(mode: KeyboardMode, family: TabletFamily?, landscape: Boolean = false) =
+        KeyboardLayoutProvider.rows(mode, true, family, landscape)
 
     @Test fun familyIsChosenFromTheDevicesSmallestWidth() {
         assertNull(TabletFamily.forSmallestWidthDp(411))
@@ -110,5 +111,55 @@ class KeyboardLayoutTest {
         assertTrue(KeyboardLayoutProvider.secondaryFor(Key.Symbol("।"))!!.terminator)
         assertFalse(KeyboardLayoutProvider.secondaryFor(Key.Symbol("-"))!!.terminator)
         assertNull(KeyboardLayoutProvider.secondaryFor(Key.Space))
+    }
+
+    // ------------------------------------------------------------------ landscape
+
+    @Test fun landscapeKeepsTheRowStructureAndOnlyRetunesTheBottomRowAndHomeRow() {
+        for (family in TabletFamily.entries) for (mode in KeyboardMode.entries) {
+            val portrait = rows(mode, family, landscape = false)
+            val landscape = rows(mode, family, landscape = true)
+            assertEquals("$family $mode rows", portrait.size, landscape.size)
+            for (i in portrait.indices) assertEquals(portrait[i].keys, landscape[i].keys)
+        }
+    }
+
+    @Test fun landscapeGivesTheSpaceBarMoreAndTheSideKeysLess() {
+        fun command(family: TabletFamily, land: Boolean) = rows(KeyboardMode.LETTERS, family, land).last()
+        fun spaceShare(r: KeyboardRow) = r.weights[r.keys.indexOf(Key.Space)] / r.weights.sum()
+        // Compact: 5.835 -> 5.770 space, but the side keys fall from 1.046 to 1.021, and wide keys
+        // from 1.679 to 1.612, so the space bar's SHARE of the row rises.
+        assertTrue(spaceShare(command(TabletFamily.COMPACT, true)) > spaceShare(command(TabletFamily.COMPACT, false)))
+        assertTrue(spaceShare(command(TabletFamily.STANDARD, true)) > spaceShare(command(TabletFamily.STANDARD, false)))
+        // The 13-inch command row measures identically in both orientations.
+        assertEquals(command(TabletFamily.EXTENDED, false), command(TabletFamily.EXTENDED, true))
+    }
+
+    @Test fun compactHomeRowIsLessIndentedWithAShorterReturnInLandscape() {
+        val portrait = rows(KeyboardMode.LETTERS, TabletFamily.COMPACT, false)[1]
+        val landscape = rows(KeyboardMode.LETTERS, TabletFamily.COMPACT, true)[1]
+        assertTrue(landscape.leadingFlex < portrait.leadingFlex)
+        assertTrue(landscape.weights.last() < portrait.weights.last())
+        // The standard family's home row is unaffected by orientation.
+        assertEquals(rows(KeyboardMode.LETTERS, TabletFamily.STANDARD, false)[1], rows(KeyboardMode.LETTERS, TabletFamily.STANDARD, true)[1])
+    }
+
+    @Test fun onlyTheExtendedNumberRowIsShorter() {
+        for (landscape in listOf(false, true)) {
+            val extended = rows(KeyboardMode.LETTERS, TabletFamily.EXTENDED, landscape)
+            assertEquals(KeyboardLayoutProvider.NUMBER_ROW_HEIGHT, extended.first().heightFactor, 0.0)
+            assertTrue(extended.drop(1).all { it.heightFactor == 1.0 })
+            for (family in listOf(null, TabletFamily.COMPACT, TabletFamily.STANDARD)) {
+                assertTrue(rows(KeyboardMode.LETTERS, family, landscape).all { it.heightFactor == 1.0 })
+            }
+        }
+    }
+
+    @Test fun landscapeGeometryIsItsOwnTable() {
+        // iOS measured different margins, gaps and key heights per orientation; they are not scaled.
+        assertEquals(6f, TabletFamily.COMPACT.marginDp(false)); assertEquals(7f, TabletFamily.COMPACT.marginDp(true))
+        assertEquals(9f, TabletFamily.STANDARD.marginDp(false)); assertEquals(15f, TabletFamily.STANDARD.marginDp(true))
+        assertEquals(12f, TabletFamily.COMPACT.gapDp(false)); assertEquals(14f, TabletFamily.COMPACT.gapDp(true))
+        assertTrue(TabletFamily.entries.all { it.rowHeightDp(true) >= 50f && it.rowHeightDp(false) >= 50f })
     }
 }

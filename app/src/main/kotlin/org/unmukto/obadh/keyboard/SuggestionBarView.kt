@@ -29,8 +29,12 @@ class SuggestionBarView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val divider = Paint().apply { strokeWidth = density }
 
+    /** Shorter in a phone's landscape, where the app above needs every line. */
+    var heightDp: Float = 44f
+        set(v) { field = v; requestLayout() }
+
     override fun onMeasure(w: Int, h: Int) =
-        setMeasuredDimension(MeasureSpec.getSize(w), (44 * density).toInt())
+        setMeasuredDimension(MeasureSpec.getSize(w), (heightDp * density).toInt())
 
     private val textSlotCount: Int get() = if (emojis.isEmpty()) 3 else 2
 

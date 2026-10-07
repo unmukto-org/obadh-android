@@ -49,7 +49,14 @@ class KeyboardView(context: Context) : View(context) {
     val family: TabletFamily?
         get() = TabletFamily.forSmallestWidthDp(forcedSmallestWidthDp ?: resources.configuration.smallestScreenWidthDp)
 
-    private var rows = KeyboardLayoutProvider.rows(KeyboardMode.LETTERS, true, family)
+    /** Landscape is its own geometry, not a stretched portrait. Forced only by the debug preview. */
+    var forcedLandscape: Boolean? = null
+        set(v) { field = v; rebuildRows(); requestLayout() }
+
+    val landscape: Boolean
+        get() = forcedLandscape ?: (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+
+    private var rows = KeyboardLayoutProvider.rows(KeyboardMode.LETTERS, true, family, landscape)
 
     private class Cell(val key: Key, val rect: RectF)
     private var cells: List<List<Cell>> = emptyList()
@@ -59,10 +66,22 @@ class KeyboardView(context: Context) : View(context) {
     private var secondaryFired = false
 
     private val density = resources.displayMetrics.density
-    private val gap: Float get() = (family?.gapDp ?: 5f) * density
-    private val sidePad: Float get() = (family?.marginDp ?: 3f) * density
+    private val gap: Float get() = (family?.gapDp(landscape) ?: 5f) * density
     private val vertPad = 6f * density
-    private val rowHeight: Float get() = (family?.rowHeightDp ?: 50f) * density
+    /** One normal key row. A phone's landscape rows are shorter so the app stays visible above. */
+    private val rowHeight: Float
+        get() = (family?.rowHeightDp(landscape) ?: if (landscape) PHONE_LANDSCAPE_ROW_DP else 50f) * density
+
+    /** Edge margin; a landscape phone also centres its keys in a capped width rather than stretching to the glass. */
+    private fun sidePad(viewWidth: Int): Float {
+        val base = (family?.marginDp(landscape) ?: 3f) * density
+        if (family != null || !landscape) return base
+        val cap = PHONE_LANDSCAPE_MAX_WIDTH_DP * density
+        return maxOf(base, (viewWidth - cap) / 2f)
+    }
+
+    /** Total height of the key block, honouring rows that are shorter than the rest. */
+    private fun keyBlockHeight(): Float = rows.sumOf { it.heightFactor }.toFloat() * rowHeight
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val handler = Handler(Looper.getMainLooper())
@@ -85,29 +104,39 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private fun rebuildRows() {
-        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family)
+        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape)
         relayout()
+    }
+
+    /** Rotation or a resize: the family is a device property, but orientation and height are not. */
+    fun refreshForConfiguration() {
+        rebuildRows()
+        requestLayout()
     }
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val w = MeasureSpec.getSize(widthSpec)
-        setMeasuredDimension(w, (rowHeight * rows.size + vertPad * 2).toInt())
+        setMeasuredDimension(w, (keyBlockHeight() + vertPad * 2).toInt())
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = relayout()
 
     private fun relayout() {
         if (width == 0 || height == 0) return
-        val rowH = (height - vertPad * 2) / rows.size
-        cells = rows.mapIndexed { r, row ->
+        val side = sidePad(width)
+        val unitHeight = (height - vertPad * 2) / rows.sumOf { it.heightFactor }.toFloat()
+        var top = vertPad
+        cells = rows.map { row ->
+            val rowH = unitHeight * row.heightFactor.toFloat()
             val total = (row.weights.sum() + row.leadingFlex + row.trailingFlex).toFloat()
-            val usable = width - sidePad * 2 - gap * (row.keys.size - 1)
+            val usable = width - side * 2 - gap * (row.keys.size - 1)
             val unit = usable / total
-            var x = sidePad + row.leadingFlex.toFloat() * unit
-            val top = vertPad + r * rowH
+            var x = side + row.leadingFlex.toFloat() * unit
+            val rowTop = top
+            top += rowH
             row.keys.mapIndexed { i, key ->
                 val w = row.weights[i].toFloat() * unit
-                Cell(key, RectF(x, top, x + w, top + rowH)).also { x += w + gap }
+                Cell(key, RectF(x, rowTop, x + w, rowTop + rowH)).also { x += w + gap }
             }
         }
         invalidate()
@@ -128,14 +157,14 @@ class KeyboardView(context: Context) : View(context) {
             special -> theme.specialKey
             else -> theme.key
         }
-        val vGap = if (family != null) minOf(gap, 10f * density) else gap
+        val vGap = if (family != null) minOf(gap, 10f * density) else if (landscape) 6f * density else gap
         val r = RectF(cell.rect.left, cell.rect.top + vGap / 2, cell.rect.right, cell.rect.bottom - vGap / 2)
         canvas.drawRoundRect(r, 6 * density, 6 * density, keyPaint)
 
         val label = label(cell.key)
         textPaint.color = theme.label
         textPaint.typeface = if (cell.key is Key.Character || cell.key is Key.Symbol) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
-        textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else if (family != null) 24f else 22f) * density
+        textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else letterSp()) * density
         val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(label, r.centerX(), y, textPaint)
 
@@ -148,6 +177,13 @@ class KeyboardView(context: Context) : View(context) {
             textPaint.textAlign = Paint.Align.CENTER
             textPaint.alpha = 255
         }
+    }
+
+    /** Native tablet letter type is a per-orientation constant: it does not scale with the key. */
+    private fun letterSp(): Float = when {
+        family != null -> if (landscape) 26f else 24f
+        landscape -> 20f
+        else -> 22f
     }
 
     private fun label(key: Key): String = when (key) {
@@ -170,6 +206,11 @@ class KeyboardView(context: Context) : View(context) {
         val row = cells.firstOrNull { y < it[0].rect.bottom } ?: cells.last()
         return row.firstOrNull { x >= it.rect.left && x <= it.rect.right }
             ?: row.minByOrNull { abs(x - it.rect.centerX()) }
+    }
+
+    private companion object {
+        const val PHONE_LANDSCAPE_ROW_DP = 38f
+        const val PHONE_LANDSCAPE_MAX_WIDTH_DP = 820f
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {

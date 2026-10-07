@@ -36,6 +36,8 @@ data class KeyboardRow(
     val weights: List<Double> = keys.map { it.weight },
     val leadingFlex: Double = 0.0,
     val trailingFlex: Double = 0.0,
+    /** This row's height as a fraction of a normal key row (the extended number row is shorter). */
+    val heightFactor: Double = 1.0,
 ) {
     init { require(weights.size == keys.size) { "one weight per key" } }
 }
@@ -46,18 +48,22 @@ data class KeyboardRow(
  * row structure. That is the same rule obadh-ios applies to iPad.
  */
 enum class TabletFamily(
-    /** Edge margin and key gap, in dp. */
-    val marginDp: Float,
-    val gapDp: Float,
+    /** Edge margin and key gap, in dp, portrait then landscape (landscape is its own geometry). */
+    private val marginPortrait: Float, private val marginLandscape: Float,
+    private val gapPortrait: Float, private val gapLandscape: Float,
     /** Height of one key row, in dp. */
-    val rowHeightDp: Float,
+    private val rowPortrait: Float, private val rowLandscape: Float,
 ) {
     /** 7-8 inch. Four rows, no tab or caps lock, indented home row. */
-    COMPACT(6f, 12f, 56f),
+    COMPACT(6f, 7f, 12f, 14f, 56f, 58f),
     /** 10-11 inch. Four rows plus tab and caps lock. */
-    STANDARD(9f, 10f, 62f),
+    STANDARD(9f, 15f, 10f, 14f, 62f, 64f),
     /** 12 inch and up. Five rows: a real number row appears. */
-    EXTENDED(3.5f, 7f, 58f);
+    EXTENDED(3.5f, 5f, 7f, 10f, 58f, 56f);
+
+    fun marginDp(landscape: Boolean) = if (landscape) marginLandscape else marginPortrait
+    fun gapDp(landscape: Boolean) = if (landscape) gapLandscape else gapPortrait
+    fun rowHeightDp(landscape: Boolean) = if (landscape) rowLandscape else rowPortrait
 
     companion object {
         /** Boundaries sit in the gaps between real device widths (600, 720, 800, 960...). */
@@ -97,10 +103,15 @@ object KeyboardLayoutProvider {
         },
     )
 
-    fun rows(mode: KeyboardMode, includesGlobeKey: Boolean = true, family: TabletFamily? = null): List<KeyboardRow> =
-        if (family != null) tabletRows(mode, family, includesGlobeKey) else phoneRows(mode, includesGlobeKey)
+    fun rows(
+        mode: KeyboardMode,
+        includesGlobeKey: Boolean = true,
+        family: TabletFamily? = null,
+        landscape: Boolean = false,
+    ): List<KeyboardRow> =
+        if (family != null) tabletRows(mode, family, includesGlobeKey, landscape) else phoneRows(mode, includesGlobeKey, landscape)
 
-    private fun phoneRows(mode: KeyboardMode, includesGlobeKey: Boolean): List<KeyboardRow> = when (mode) {
+    private fun phoneRows(mode: KeyboardMode, includesGlobeKey: Boolean, landscape: Boolean): List<KeyboardRow> = when (mode) {
         KeyboardMode.LETTERS -> listOf(
             KeyboardRow(chars("qwertyuiop")),
             KeyboardRow(chars("asdfghjkl"), leadingFlex = 0.5, trailingFlex = 0.5),
@@ -146,6 +157,17 @@ object KeyboardLayoutProvider {
             const val RETURN = 2.120; const val LEFT_SHIFT = 2.179; const val RIGHT_SHIFT = 1.589
             const val COMMAND = 1.067; const val SPACE = 7.284; const val MODE_RIGHT = 1.589; const val HIDE = 1.594
         }
+        /**
+         * Landscape is not a stretched portrait: the letter-row weights hold in both orientations
+         * (they reproduce within 0.01), but the command row does not. Landscape gives the space bar
+         * more and the side keys less, and the compact home row is less indented with a shorter
+         * return key. Fitted from the iPad landscape measurements in obadh-ios.
+         */
+        object Landscape {
+            const val COMPACT_COMMAND = 1.021; const val COMPACT_SPACE = 5.770; const val COMPACT_WIDE = 1.612
+            const val STANDARD_COMMAND = 1.007; const val STANDARD_SPACE = 7.617; const val STANDARD_WIDE = 1.503
+            const val COMPACT_HOME_INDENT = 0.466; const val COMPACT_RETURN = 1.931
+        }
         object Extended {
             const val TAB = 1.601; const val BACKSPACE = 1.601; const val CAPS = 1.853
             const val RETURN = 1.853; const val SHIFT = 2.410
@@ -154,10 +176,17 @@ object KeyboardLayoutProvider {
     }
 
     /** The command row, in a tablet's order: globe, mode switch, emoji, space, mode switch, dismiss. */
-    private fun tabletCommandRow(modeLabel: String, mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean): KeyboardRow {
+    private fun tabletCommandRow(
+        modeLabel: String, mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean, landscape: Boolean,
+    ): KeyboardRow {
         val (narrow, space, modeRight, hide) = when (family) {
-            TabletFamily.COMPACT -> listOf(W.Compact.COMMAND, W.Compact.SPACE, W.Compact.WIDE, W.Compact.WIDE)
-            TabletFamily.STANDARD -> listOf(W.Standard.COMMAND, W.Standard.SPACE, W.Standard.MODE_RIGHT, W.Standard.HIDE)
+            TabletFamily.COMPACT -> if (landscape) {
+                listOf(W.Landscape.COMPACT_COMMAND, W.Landscape.COMPACT_SPACE, W.Landscape.COMPACT_WIDE, W.Landscape.COMPACT_WIDE)
+            } else listOf(W.Compact.COMMAND, W.Compact.SPACE, W.Compact.WIDE, W.Compact.WIDE)
+            TabletFamily.STANDARD -> if (landscape) {
+                listOf(W.Landscape.STANDARD_COMMAND, W.Landscape.STANDARD_SPACE, W.Landscape.STANDARD_WIDE, W.Landscape.STANDARD_WIDE)
+            } else listOf(W.Standard.COMMAND, W.Standard.SPACE, W.Standard.MODE_RIGHT, W.Standard.HIDE)
+            // The 13-inch command row measures the same in both orientations.
             TabletFamily.EXTENDED -> listOf(W.Extended.COMMAND, W.Extended.SPACE, W.Extended.MODE_RIGHT, W.Extended.HIDE)
         }
         val keys = ArrayList<Key>()
@@ -178,25 +207,29 @@ object KeyboardLayoutProvider {
     private fun numberRow(): KeyboardRow = KeyboardRow(
         listOf<Key>(Key.Symbol("`")) + bnDigits.map { Key.Symbol(it) } + Key.Symbol("-") + Key.Symbol("=") + Key.Backspace,
         weights = List(13) { 1.0 } + W.Extended.BACKSPACE,
+        heightFactor = NUMBER_ROW_HEIGHT,
     )
+
+    /** The 13-inch number row is shorter than the letter rows (45.5pt against 61 portrait, 59 against 79 landscape). */
+    const val NUMBER_ROW_HEIGHT = 0.75
 
     /** Currency and common marks: the extended symbols page's second row (₹ for Bangla readers). */
     private val currencyAndMarks = lit("€", "£", "¥", "₹", "¢", "©", "®", "™", "°", "•")
 
-    private fun tabletRows(mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> {
+    private fun tabletRows(mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean, landscape: Boolean): List<KeyboardRow> {
         // The extended family always shows the Bangla-numeral row on top, so its numbers page must
         // not repeat the digits: it moves everything up a row and uses the freed row for symbols.
         val extended = family == TabletFamily.EXTENDED
         return when (mode) {
-            KeyboardMode.LETTERS -> tabletLetterRows(family, withGlobe)
+            KeyboardMode.LETTERS -> tabletLetterRows(family, withGlobe, landscape)
             KeyboardMode.NUMBERS -> tabletSymbolRows(
-                family, withGlobe, modeLabel = "#+=", target = KeyboardMode.SYMBOLS,
+                family, withGlobe, landscape, modeLabel = "#+=", target = KeyboardMode.SYMBOLS,
                 first = if (extended) numbersRow2 else bnDigits.map { Key.Symbol(it) },
                 second = if (extended) symbolsRow1 else numbersRow2,
                 third = punctuationTail,
             )
             KeyboardMode.SYMBOLS -> tabletSymbolRows(
-                family, withGlobe, modeLabel = "123", target = KeyboardMode.NUMBERS,
+                family, withGlobe, landscape, modeLabel = "123", target = KeyboardMode.NUMBERS,
                 first = if (extended) symbolsRow2 else symbolsRow1,
                 second = if (extended) currencyAndMarks else symbolsRow2,
                 third = punctuationTail,
@@ -204,15 +237,19 @@ object KeyboardLayoutProvider {
         }
     }
 
-    private fun tabletLetterRows(family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> {
+    private fun tabletLetterRows(family: TabletFamily, withGlobe: Boolean, landscape: Boolean): List<KeyboardRow> {
         val top = chars("qwertyuiop")
         val home = chars("asdfghjkl")
         val lower = chars("zxcvbnm")
-        val command = tabletCommandRow("?123", KeyboardMode.NUMBERS, family, withGlobe)
+        val command = tabletCommandRow("?123", KeyboardMode.NUMBERS, family, withGlobe, landscape)
         return when (family) {
             TabletFamily.COMPACT -> listOf(
                 KeyboardRow(top + Key.Backspace, List(10) { 1.0 } + W.Compact.BACKSPACE),
-                KeyboardRow(home + Key.Return, List(9) { 1.0 } + W.Compact.RETURN, leadingFlex = W.Compact.HOME_INDENT),
+                KeyboardRow(
+                    home + Key.Return,
+                    List(9) { 1.0 } + (if (landscape) W.Landscape.COMPACT_RETURN else W.Compact.RETURN),
+                    leadingFlex = if (landscape) W.Landscape.COMPACT_HOME_INDENT else W.Compact.HOME_INDENT,
+                ),
                 KeyboardRow(
                     listOf<Key>(Key.Shift) + lower + rowThreeTail + Key.Shift,
                     listOf(W.Compact.LEFT_SHIFT) + List(9) { 1.0 } + W.Compact.RIGHT_SHIFT,
@@ -252,7 +289,7 @@ object KeyboardLayoutProvider {
      * row, so switching pages never resizes the keyboard.
      */
     private fun tabletSymbolRows(
-        family: TabletFamily, withGlobe: Boolean, modeLabel: String, target: KeyboardMode,
+        family: TabletFamily, withGlobe: Boolean, landscape: Boolean, modeLabel: String, target: KeyboardMode,
         first: List<Key>, second: List<Key>, third: List<Key>,
     ): List<KeyboardRow> {
         val compact = family == TabletFamily.COMPACT
@@ -279,7 +316,7 @@ object KeyboardLayoutProvider {
             listOf<Key>(Key.ModeSwitch(modeLabel, target)) + third + Key.ModeSwitch(modeLabel, target),
             listOf(shiftL) + List(third.size) { 1.0 } + shiftR,
         )
-        rows += tabletCommandRow("ABC", KeyboardMode.LETTERS, family, withGlobe)
+        rows += tabletCommandRow("ABC", KeyboardMode.LETTERS, family, withGlobe, landscape)
         return rows
     }
 

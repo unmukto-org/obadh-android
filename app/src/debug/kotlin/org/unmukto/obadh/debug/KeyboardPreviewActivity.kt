@@ -21,6 +21,9 @@ class KeyboardPreviewActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sw = intent.getIntExtra("sw", 800)
+        val landscape = intent.getBooleanExtra("land", false)
+        // Landscape shows the device's longer side. 16:10 is the common tablet ratio, ~19.5:9 a phone.
+        val widthDp = intent.getIntExtra("w", if (landscape) (sw * (if (sw >= 600) 1.6 else 2.1)).toInt() else sw)
         val mode = KeyboardMode.entries.firstOrNull { it.name.equals(intent.getStringExtra("mode"), true) }
             ?: KeyboardMode.LETTERS
         val density = resources.displayMetrics.density
@@ -28,9 +31,10 @@ class KeyboardPreviewActivity : Activity() {
 
         val keyboard = KeyboardView(this).also {
             it.forcedSmallestWidthDp = sw
+            it.forcedLandscape = landscape
             it.mode = mode
         }
-        val logicalWidth = (sw * density).toInt()
+        val logicalWidth = (widthDp * density).toInt()
         val scale = resources.displayMetrics.widthPixels.toFloat() / logicalWidth
 
         val stage = FrameLayout(this)
@@ -41,7 +45,7 @@ class KeyboardPreviewActivity : Activity() {
         keyboard.post { stage.layoutParams = stage.layoutParams.also { p -> p.height = (keyboard.height * scale).toInt() } }
 
         val label = TextView(this).apply {
-            text = "sw ${sw}dp  ·  ${keyboard.family ?: "phone"}  ·  $mode  ·  shown at 1:${"%.2f".format(1 / scale)}"
+            text = "sw ${sw}dp  ·  ${keyboard.family ?: "phone"}  ·  $mode  ·  ${if (landscape) "landscape ${widthDp}dp" else "portrait"}  ·  1:${"%.2f".format(1 / scale)}"
             setTextColor(Color.WHITE); textSize = 12f; gravity = Gravity.CENTER
             setPadding(0, (40 * density).toInt(), 0, (12 * density).toInt())
         }
