@@ -124,19 +124,18 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             type and android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE == 0
     }
 
-    /** The return key's face from the field's action: Search, Go, Send, Next, Done. */
-    private fun returnLabelFor(info: EditorInfo?): String? {
-        info ?: return null
-        info.actionLabel?.toString()?.takeIf { it.isNotBlank() }?.let { return it.take(8) }
-        if (info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return null
+    /** The return key's icon from the field's action. An app-named action shows its own text. */
+    private fun returnIconFor(info: EditorInfo?): ReturnIcon {
+        info ?: return ReturnIcon.ENTER
+        if (info.imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) return ReturnIcon.ENTER
         return when (info.imeOptions and EditorInfo.IME_MASK_ACTION) {
-            EditorInfo.IME_ACTION_SEARCH -> "Search"
-            EditorInfo.IME_ACTION_GO -> "Go"
-            EditorInfo.IME_ACTION_SEND -> "Send"
-            EditorInfo.IME_ACTION_NEXT -> "Next"
-            EditorInfo.IME_ACTION_PREVIOUS -> "Prev"
-            EditorInfo.IME_ACTION_DONE -> "Done"
-            else -> if (singleLineText(info)) "Done" else null
+            EditorInfo.IME_ACTION_SEARCH -> ReturnIcon.SEARCH
+            EditorInfo.IME_ACTION_GO -> ReturnIcon.GO
+            EditorInfo.IME_ACTION_SEND -> ReturnIcon.SEND
+            EditorInfo.IME_ACTION_NEXT -> ReturnIcon.NEXT
+            EditorInfo.IME_ACTION_PREVIOUS -> ReturnIcon.PREVIOUS
+            EditorInfo.IME_ACTION_DONE -> ReturnIcon.DONE
+            else -> if (singleLineText(info)) ReturnIcon.DONE else ReturnIcon.ENTER
         }
     }
 
@@ -247,7 +246,8 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             else -> KeyboardMode.LETTERS
         }
         keyboardView.fieldKind = fieldKind
-        keyboardView.returnLabel = returnLabelFor(info)
+        keyboardView.returnIcon = returnIconFor(info)
+        keyboardView.returnLabel = info?.actionLabel?.toString()?.takeIf { it.isNotBlank() }?.take(8)
         updateChrome()
         // No globe key: language is Bangla/English from the tools row, and the system's own
         // switcher (navigation bar) reaches other keyboards.
@@ -431,7 +431,11 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         if (close != null) {
             if (next.isNotEmpty() && !next[0].isWhitespace() && next[0].toString() !in PAIR_CLOSERS) return false
             ic.beginBatchEdit()
-            try { ic.commitText(text, 1); ic.commitText(close, 0) } finally { ic.endBatchEdit() }
+            try {
+                // Some hosts ignore a cursor position of 0, so step back explicitly.
+                ic.commitText(text + close, 1)
+                arrow(ic, KeyEvent.KEYCODE_DPAD_LEFT, 1)
+            } finally { ic.endBatchEdit() }
             return true
         }
         if (text in PAIR_CLOSERS && next == text) {

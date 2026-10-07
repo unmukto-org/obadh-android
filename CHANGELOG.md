@@ -83,7 +83,7 @@ tagged release yet.
   Bangla from the language tool for that field (it resets on the next field and never changes your saved
   language). They also type punctuation literally (no curly quotes, dashes or dari on double space) and
   do not learn words. English mode capitalises sentences, words or characters as the field asks.
-- **More field smarts.** The return key shows the field's action (Search, Go, Send, Next, Done), and on
+- **More field smarts.** The return key shows the field's action as an icon (magnifier, arrow, paper plane, arrow to bar, tick; the app's own label stays text), and on
   a single-line field with no action it finishes the field instead of adding a line. E-mail and web
   fields get a `.com` key. Name and address fields always capitalise words (e-mail, web and password
   fields never do). Brackets and opening quotes type as a pair with the caret inside, a typed closer

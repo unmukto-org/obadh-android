@@ -60,7 +60,9 @@ class KeyboardView(context: Context) : View(context) {
     /** The bottom row's comma becomes @ in e-mail fields and / in web-address fields. */
     var fieldKind = FieldKind.TEXT
         set(v) { field = v; rebuildRows() }
-    /** What the return key does in this field ("Search", "Next"...); null is a plain return. */
+    /** The return key's icon for this field's action, or its [returnLabel] when the app named one. */
+    var returnIcon = ReturnIcon.ENTER
+        set(v) { field = v; invalidate() }
     var returnLabel: String? = null
         set(v) { field = v; invalidate() }
     var shiftActive = false
@@ -325,6 +327,11 @@ class KeyboardView(context: Context) : View(context) {
         if (cell.key == Key.Emoji) {
             iconPaint.color = theme.label
             KeyIcons.smiley(canvas, iconPaint, r.centerX(), r.centerY(), 25f * density)
+            return
+        }
+        if (cell.key == Key.Return && returnLabel == null) {
+            iconPaint.color = theme.label
+            KeyIcons.returnKey(canvas, iconPaint, returnIcon, r.centerX(), r.centerY(), 22f * density)
             return
         }
         val label = label(cell.key)
