@@ -17,7 +17,6 @@ was reviewed as a rendering or a unit test, not driven on a device.
 | [KI-005](#ki-005) | No engine fingerprint pins or real-data calibration tests | Gap |
 | [KI-006](#ki-006) | Live keyboard-state update not confirmed | Built, not verified |
 | [KI-007](#ki-007) | Release build never run; app light mode never viewed | Unverified |
-| [KI-008](#ki-008) | No typing sounds | Not implemented |
 
 <a id="ki-002"></a>
 
@@ -97,11 +96,3 @@ and, in setup, the flow advances without leaving the app.
 unsigned) but the result has not been installed, and R8 can strip JNI-reachable code, so a release build must be run
 before shipping. The app's UI was reviewed in dark mode only; light mode uses the
 same palette as iOS but was not looked at.
-
-<a id="ki-008"></a>
-
-## KI-008: No typing sounds
-
-iOS has a Typing Sounds setting. Android has none and the settings screen does not
-offer a toggle for it, deliberately: a switch that does nothing would be worse than
-none.

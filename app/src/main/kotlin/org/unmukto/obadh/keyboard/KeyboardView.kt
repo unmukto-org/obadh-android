@@ -21,6 +21,12 @@ interface KeyboardViewListener {
     fun onKey(key: Key)
     fun onBackspace(unit: BackspaceDeletionUnit)
     fun onClipboard(action: ClipboardAction)
+
+    /** Holding space turned the keys into a trackpad. */
+    fun onCursorDragStart()
+
+    /** Move the caret by [columns] characters (negative is left) and [rows] lines (negative is up). */
+    fun onCursorMove(columns: Int, rows: Int)
 }
 
 /**
@@ -68,6 +74,30 @@ class KeyboardView(context: Context) : View(context) {
     private var downAt = 0L
     private var downY = 0f
     private var secondaryFired = false
+
+    // Space-bar trackpad: hold space, then slide to move the caret.
+    private var trackpad = false
+    private var trackpadX = 0f
+    private var trackpadY = 0f
+    private var trackpadRemainder = 0f
+    private var trackpadRemainderY = 0f
+    private var downX = 0f
+    private val startTrackpad = Runnable {
+        if (pressed?.key !is Key.Space) return@Runnable
+        trackpad = true
+        trackpadX = downX
+        trackpadY = downY
+        trackpadRemainder = 0f
+        trackpadRemainderY = 0f
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        listener?.onCursorDragStart()
+        invalidate()
+    }
+
+    private fun endTrackpad() {
+        handler.removeCallbacks(startTrackpad)
+        if (trackpad) { trackpad = false; invalidate() }
+    }
 
     private val density = resources.displayMetrics.density
     private val gap: Float get() = (family?.gapDp(landscape) ?: 5f) * density
@@ -178,6 +208,7 @@ class KeyboardView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(theme.background)
         for (row in cells) for (cell in row) drawKey(canvas, cell)
+        if (trackpad) drawTrackpadHint(canvas)
     }
 
     private fun drawKey(canvas: Canvas, cell: Cell) {
@@ -212,6 +243,18 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
+    /** Letters fade out while the keys are a trackpad, as on Gboard and iOS. */
+    private fun drawTrackpadHint(canvas: Canvas) {
+        keyPaint.color = (theme.background and 0x00FFFFFF) or (0xB8 shl 24)
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), keyPaint)
+        textPaint.color = theme.label
+        textPaint.alpha = 160
+        textPaint.typeface = Typeface.DEFAULT
+        textPaint.textSize = 16f * density
+        canvas.drawText("◂ ▴ ▾ ▸", width / 2f, height / 2f, textPaint)
+        textPaint.alpha = 255
+    }
+
     /** Native tablet letter type is a per-orientation constant: it does not scale with the key. */
     private fun letterSp(): Float = when {
         family != null -> if (landscape) 26f else 24f
@@ -242,6 +285,10 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private companion object {
+        const val TRACKPAD_HOLD_MS = 350L
+        const val TRACKPAD_STEP_DP = 9f
+        const val TRACKPAD_LINE_DP = 22f
+        const val TRACKPAD_SLOP_DP = 8f
         const val PHONE_LANDSCAPE_ROW_DP = 38f
         const val PHONE_LANDSCAPE_MAX_WIDTH_DP = 820f
     }
@@ -253,9 +300,13 @@ class KeyboardView(context: Context) : View(context) {
                 downAt = SystemClock.uptimeMillis()
                 downY = e.y
                 secondaryFired = false
+                downX = e.x
+                trackpad = false
                 invalidate()
                 val key = pressed?.key
-                if (key is Key.Backspace) {
+                if (key is Key.Space) {
+                    handler.postDelayed(startTrackpad, TRACKPAD_HOLD_MS)
+                } else if (key is Key.Backspace) {
                     listener?.onBackspace(BackspaceDeletionUnit.CHARACTER)
                     handler.postDelayed(repeat, 380L)
                 } else if (clipboardFor(key) != null ||
@@ -265,6 +316,25 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             MotionEvent.ACTION_MOVE -> {
+                if (trackpad) {
+                    // Whole characters only; the leftover travel carries to the next event, so
+                    // slow drags never lose distance and fast ones never overshoot.
+                    trackpadRemainder += e.x - trackpadX
+                    trackpadX = e.x
+                    trackpadRemainderY += e.y - trackpadY
+                    trackpadY = e.y
+                    val step = TRACKPAD_STEP_DP * density
+                    val lineStep = TRACKPAD_LINE_DP * density
+                    val columns = (trackpadRemainder / step).toInt()
+                    val rows = (trackpadRemainderY / lineStep).toInt()
+                    if (columns != 0) trackpadRemainder -= columns * step
+                    if (rows != 0) trackpadRemainderY -= rows * lineStep
+                    if (columns != 0 || rows != 0) listener?.onCursorMove(columns, rows)
+                    return true
+                }
+                if (pressed?.key is Key.Space && abs(e.x - downX) > TRACKPAD_SLOP_DP * density) {
+                    handler.removeCallbacks(startTrackpad)
+                }
                 val now = resolve(e.x, e.y)
                 if (pressed?.key !is Key.Backspace && !secondaryFired) {
                     // A downward flick on a key with a secondary emits it, like iPadOS.
@@ -281,6 +351,14 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             MotionEvent.ACTION_UP -> {
+                if (trackpad) {
+                    // The hold was a cursor gesture, not a space.
+                    endTrackpad()
+                    pressed = null
+                    invalidate()
+                    return true
+                }
+                handler.removeCallbacks(startTrackpad)
                 handler.removeCallbacks(repeat)
                 handler.removeCallbacks(secondaryLongPress)
                 val wasBackspace = pressed?.key is Key.Backspace
@@ -290,6 +368,7 @@ class KeyboardView(context: Context) : View(context) {
                 if (cell != null) listener?.onKey(cell.key)
             }
             MotionEvent.ACTION_CANCEL -> {
+                endTrackpad()
                 handler.removeCallbacks(repeat)
                 handler.removeCallbacks(secondaryLongPress)
                 pressed = null

@@ -35,6 +35,12 @@ tagged release yet.
   factors; on tablets the key's symbol stays on the downward flick). With nothing
   selected, cut and copy take the whole field; copy restores the cursor. A small icon
   badge pops at the right of the suggestion bar to confirm, only when the action ran.
+- **Typing sound.** Settings → Keyboard → Typing Sound (off by default) plays the system
+  key click, with distinct space, return and delete clicks. It follows the phone's volume
+  and "Touch sounds" setting.
+- **Space-bar trackpad.** Hold space (350 ms), then slide to move the caret one character
+  per 9 dp sideways and one line per 22 dp up or down, by grapheme cluster through the host's own arrow handling. Letters dim while
+  it is active; releasing does not type a space.
 
 ### Changed
 - **Download size 43.0 → 19.0 MB.** The models are deflated in the APK instead of

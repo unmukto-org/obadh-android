@@ -4,6 +4,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.media.AudioManager
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
@@ -30,6 +31,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     private lateinit var engine: ObadhBridgeClient
     private lateinit var prefs: KeyboardPreferences
+    private val audio by lazy { getSystemService(AudioManager::class.java) }
     private lateinit var learned: LearnedWordStore
     private lateinit var personal: PersonalAutosuggestStore
     private lateinit var composer: KeyboardComposer
@@ -222,6 +224,13 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onKey(key: Key) {
         haptic()
+        keySound(
+            when (key) {
+                Key.Space -> AudioManager.FX_KEYPRESS_SPACEBAR
+                Key.Return -> AudioManager.FX_KEYPRESS_RETURN
+                else -> AudioManager.FX_KEYPRESS_STANDARD
+            },
+        )
         if (emojiSearchActive) { onSearchKey(key); return }
         when (key) {
             is Key.Character -> typeLetter(key.value)
@@ -323,6 +332,31 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
      * paste (or a cut of the word's own selection) never leaves a stale composed string tracked.
      * With nothing selected, cut and copy take the whole field (copy puts the cursor back).
      */
+    override fun onCursorDragStart() {
+        if (emojiSearchActive) return
+        // The word is real text already; committing just teaches the engine and clears state.
+        commitActiveWord()
+    }
+
+    override fun onCursorMove(columns: Int, rows: Int) {
+        if (emojiSearchActive || (columns == 0 && rows == 0)) return
+        val ic = currentInputConnection ?: return
+        // The host's own arrow handling moves by grapheme cluster and visual line, and
+        // collapses a selection, so a conjunct is never split and no offsets are needed.
+        ic.beginBatchEdit()
+        try {
+            arrow(ic, if (rows < 0) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN, kotlin.math.abs(rows))
+            arrow(ic, if (columns < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT, kotlin.math.abs(columns))
+        } finally { ic.endBatchEdit() }
+    }
+
+    private fun arrow(ic: android.view.inputmethod.InputConnection, code: Int, times: Int) {
+        repeat(times) {
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        }
+    }
+
     override fun onClipboard(action: ClipboardAction) {
         if (emojiSearchActive) return
         resetComposition()
@@ -353,7 +387,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     override fun onBackspace(unit: BackspaceDeletionUnit) {
         if (emojiSearchActive) { searchBackspace(); return }
-        if (unit == BackspaceDeletionUnit.CHARACTER) haptic()
+        if (unit == BackspaceDeletionUnit.CHARACTER) {
+            haptic()
+            keySound(AudioManager.FX_KEYPRESS_DELETE)
+        }
         if (composer.hasActiveInput && unit == BackspaceDeletionUnit.CHARACTER) {
             composer.deleteBackward()
             render()
@@ -680,6 +717,12 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private fun haptic() {
         if (!prefs.hapticsEnabled) return
         keyboardView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    /** The system's own key click, so volume and the "touch sounds" setting still apply. */
+    private fun keySound(effect: Int) {
+        if (!prefs.keySoundEnabled) return
+        audio.playSoundEffect(effect, -1f)
     }
 
     override fun onDestroy() {
