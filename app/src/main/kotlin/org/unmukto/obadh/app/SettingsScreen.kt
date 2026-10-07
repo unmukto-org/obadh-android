@@ -127,6 +127,12 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
             ) { prefs.spaceTrackpad = it }
             RowRule()
             PrefToggle(
+                "Swipe Space to Switch Language",
+                "Swipe left or right on the space bar to switch between Bangla and English. Holding first still moves the cursor.",
+                prefs.spaceSwipeLanguage,
+            ) { prefs.spaceSwipeLanguage = it }
+            RowRule()
+            PrefToggle(
                 "Volume Keys Move Cursor",
                 "While the keyboard is open, volume up moves the cursor right and volume down moves it left, one character at a time. Off by default because it replaces the volume control while typing.",
                 prefs.volumeKeyCursor,

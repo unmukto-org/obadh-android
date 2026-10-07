@@ -29,6 +29,9 @@ interface KeyboardViewListener {
     /** Move the caret by [columns] characters (negative is left) and [rows] lines (negative is up). */
     fun onCursorMove(columns: Int, rows: Int)
 
+    /** The space bar was swiped left or right before the trackpad hold: switch language. */
+    fun onLanguageSwipe()
+
     /** Backspace was swiped left: the text before the caret is being selected for deletion. */
     fun onSwipeDeleteStart()
 
@@ -121,6 +124,7 @@ class KeyboardView(context: Context) : View(context) {
     // Feature switches, mirrored from the app's settings when a field starts.
     var trackpadEnabled = true
     var swipeDeleteEnabled = true
+    var spaceSwipeLanguageEnabled = true
     var longPressSymbolsEnabled = true
         set(v) { field = v; invalidate() }
     var clipboardKeysEnabled = true
@@ -440,6 +444,7 @@ class KeyboardView(context: Context) : View(context) {
         const val TRACKPAD_STEP_DP = 9f
         const val TRACKPAD_LINE_DP = 22f
         const val TRACKPAD_SLOP_DP = 8f
+        const val LANGUAGE_SWIPE_DP = 40f
         const val SWIPE_DELETE_START_DP = 24f
         const val SWIPE_DELETE_WORD_DP = 30f
         const val PHONE_LANDSCAPE_ROW_DP = 38f
@@ -525,6 +530,11 @@ class KeyboardView(context: Context) : View(context) {
                 }
                 if (pressed?.key is Key.Space && abs(e.x - downX) > TRACKPAD_SLOP_DP * density) {
                     handler.removeCallbacks(startTrackpad)
+                    // A quick slide, before the trackpad hold, flips the language.
+                    if (spaceSwipeLanguageEnabled && !secondaryFired && abs(e.x - downX) > LANGUAGE_SWIPE_DP * density) {
+                        secondaryFired = true
+                        listener?.onLanguageSwipe()
+                    }
                 }
                 val now = resolve(e.x, e.y)
                 if (pressed?.key !is Key.Backspace && !secondaryFired) {

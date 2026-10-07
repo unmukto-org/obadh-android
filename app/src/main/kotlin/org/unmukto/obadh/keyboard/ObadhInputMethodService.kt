@@ -261,6 +261,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         Haptics.level = prefs.hapticStrength
         keyboardView.trackpadEnabled = prefs.spaceTrackpad
         keyboardView.swipeDeleteEnabled = prefs.swipeToDelete
+        keyboardView.spaceSwipeLanguageEnabled = prefs.spaceSwipeLanguage
         keyboardView.longPressSymbolsEnabled = prefs.longPressSymbols
         keyboardView.clipboardKeysEnabled = prefs.clipboardKeys
         keyboardView.calloutEnabled = prefs.keyCallout
@@ -818,6 +819,11 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val english = englishMode
         keyboardView.english = english
         suggestionBar.english = english
+    }
+
+    override fun onLanguageSwipe() {
+        if (emojiSearchActive) return
+        onTool(SuggestionBarView.Tool.LANGUAGE)
     }
 
     private fun onTool(tool: SuggestionBarView.Tool) {
