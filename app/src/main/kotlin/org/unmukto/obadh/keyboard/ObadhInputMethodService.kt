@@ -46,6 +46,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private var emojiPanelOpen = false
     private lateinit var clipboardPanel: ClipboardPanelView
     private lateinit var clipboardHistory: ClipboardHistory
+    private lateinit var shortcuts: TextShortcuts
     private var clipboardPanelOpen = false
     private val clipListener = android.content.ClipboardManager.OnPrimaryClipChangedListener { captureClipboard() }
     private var emojiSearchActive = false
@@ -89,6 +90,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         engine = ObadhBridgeClient()
         prefs = KeyboardPreferences(this)
         clipboardHistory = ClipboardHistory(this)
+        shortcuts = TextShortcuts(this)
         getSystemService(android.content.ClipboardManager::class.java)?.addPrimaryClipChangedListener(clipListener)
         learned = LearnedWordStore(this)
         personal = PersonalAutosuggestStore(this)
@@ -206,7 +208,13 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         closeEmojiPanel()
         closeClipboardPanel()
         resetComposition()
-        keyboardView.mode = KeyboardMode.LETTERS
+        fieldKind = FieldKind.of(info)
+        keyboardView.mode = when (fieldKind) {
+            // Numeric and phone fields want digits first; the pad has its own way back to letters.
+            FieldKind.NUMBER, FieldKind.PHONE -> KeyboardMode.NUMPAD_EN
+            else -> KeyboardMode.LETTERS
+        }
+        keyboardView.fieldKind = fieldKind
         // No globe key: language is Bangla/English from the tools row, and the system's own
         // switcher (navigation bar) reaches other keyboards.
         keyboardView.includesGlobeKey = false
@@ -272,7 +280,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     private fun typeLetter(letter: String) {
-        if (prefs.englishMode) {
+        if (englishMode) {
             val cased = if (keyboardView.shiftActive || keyboardView.capsLock) letter.uppercase() else letter
             document.insertText(cased)
             if (keyboardView.shiftActive && !keyboardView.capsLock) keyboardView.shiftActive = false
@@ -295,8 +303,35 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         refreshRibbon()
     }
 
+    /**
+     * If the word before the caret is one of the user's shortcut triggers, replace it with the
+     * expansion plus [trailing] and return true. In Bangla mode the trigger is the raw Roman
+     * keys being composed; otherwise (English, symbols such as `@@`) it is the text since the
+     * last whitespace.
+     */
+    private fun expandShortcut(trailing: String): Boolean {
+        if (emojiSearchActive || shortcuts.all().isEmpty()) return false
+        if (composer.hasActiveInput) {
+            val expansion = shortcuts.lookup(composer.romanBuffer) ?: return false
+            composition.clearComposition(document)
+            composer.clear()
+            document.insertText(expansion + trailing)
+        } else {
+            val context = document.contextBeforeInput ?: return false
+            val trigger = context.takeLastWhile { !it.isWhitespace() }
+            if (trigger.isEmpty() || trigger.length > TextShortcuts.MAX_TRIGGER || !atEndOfText()) return false
+            val expansion = shortcuts.lookup(trigger) ?: return false
+            document.deleteBeforeCursor(trigger.length)
+            document.insertText(expansion + trailing)
+        }
+        engine.clearAutosuggestSession()
+        refreshRibbon()
+        return true
+    }
+
     private fun typeSpace() {
         val now = System.currentTimeMillis()
+        if (expandShortcut(" ")) { lastSpaceAt = now; return }
         if (composer.hasActiveInput) {
             commitActiveWord(trailing = " ")
             lastSpaceAt = now
@@ -306,7 +341,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val before = document.contextBeforeInput ?: ""
         if (now - lastSpaceAt <= DOUBLE_SPACE_MS && atEndOfText()) {
             SmartPunctuation.doubleSpaceSubstitution(before)?.let {
-                replaceBeforeCaret(if (prefs.englishMode) it.copy(insertion = ". ") else it)
+                replaceBeforeCaret(if (englishMode) it.copy(insertion = ". ") else it)
                 lastSpaceAt = 0
                 refreshRibbon()
                 return
@@ -318,6 +353,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     }
 
     private fun typeReturn() {
+        expandShortcut("")
         commitActiveWord()
         val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
         val noEnterAction = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0
@@ -512,7 +548,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
 
     private fun onSuggestionSelected(item: SuggestionBarView.Item) {
         haptic()
-        if (prefs.englishMode) { applyEnglishSuggestion(item.text); return }
+        if (englishMode) { applyEnglishSuggestion(item.text); return }
         if (composer.hasActiveInput) {
             // The quoted literal is the user's own spelling: protect it forever.
             if (item.quoted) learned.protect(item.text)
@@ -556,8 +592,12 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     // ------------------------------------------------------------ tools and clipboard
 
     /** Pushes the saved language to the views. */
+    /** What the focused field wants; e-mail, web and password fields are typed in English. */
+    private var fieldKind = FieldKind.TEXT
+    private val englishMode get() = prefs.englishMode || fieldKind.forcesEnglish
+
     private fun applyLanguage() {
-        val english = prefs.englishMode
+        val english = englishMode
         keyboardView.english = english
         suggestionBar.english = english
     }
@@ -571,12 +611,12 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 commitActiveWord()
                 resetComposition()
                 prefs.englishMode = !prefs.englishMode
-                if (!prefs.englishMode) closeSpellSession()
+                if (!englishMode) closeSpellSession()
                 applyLanguage()
                 refreshRibbon()
             }
             SuggestionBarView.Tool.CLIPBOARD -> openClipboardPanel()
-            SuggestionBarView.Tool.NUMBERS -> { commitActiveWord(); keyboardView.mode = if (prefs.englishMode) KeyboardMode.NUMPAD_EN else KeyboardMode.NUMPAD_BN }
+            SuggestionBarView.Tool.NUMBERS -> { commitActiveWord(); keyboardView.mode = if (englishMode) KeyboardMode.NUMPAD_EN else KeyboardMode.NUMPAD_BN }
             SuggestionBarView.Tool.EMOJI -> openEmojiPanel()
             SuggestionBarView.Tool.SETTINGS -> {
                 startActivity(
@@ -628,9 +668,15 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             clipboardPanel.items = clipboardHistory.all()
         }
 
+        override fun onTogglePin(text: String) {
+            haptic()
+            clipboardHistory.togglePin(text)
+            clipboardPanel.items = clipboardHistory.all()
+        }
+
         override fun onClear() {
-            clipboardHistory.clear()
-            clipboardPanel.items = emptyList()
+            clipboardHistory.clearUnpinned()
+            clipboardPanel.items = clipboardHistory.all()
         }
 
         override fun onClose() = closeClipboardPanel()
@@ -873,7 +919,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             val found = (0 until info.suggestionsCount).map { info.getSuggestionAt(it) }.filter { it.isNotBlank() }.take(3)
             main.post {
                 // Stale answers (the word moved on) and a language flip are dropped.
-                if (prefs.englishMode && spellWord == currentEnglishWord()) {
+                if (englishMode && spellWord == currentEnglishWord()) {
                     suggestionBar.items = found.map { SuggestionBarView.Item(it) }
                 }
             }
@@ -893,7 +939,7 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         val word = currentEnglishWord()
         spellWord = word
         suggestionBar.items = emptyList()
-        if (word.length < 2) return
+        if (word.length < 2 || fieldKind != FieldKind.TEXT) return
         if (spellSession == null) {
             val tsm = getSystemService(android.view.textservice.TextServicesManager::class.java)
             spellSession = tsm?.newSpellCheckerSession(null, java.util.Locale.US, spellListener, false)

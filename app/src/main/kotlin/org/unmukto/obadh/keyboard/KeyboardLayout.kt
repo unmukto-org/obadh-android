@@ -94,15 +94,34 @@ object KeyboardLayoutProvider {
 
     // ------------------------------------------------------------------ phone
 
-    private fun commandRow(mode: Key, withGlobe: Boolean, withEmoji: Boolean = false) = KeyboardRow(
-        buildList {
+    /**
+     * The phone's bottom row. With [withPunctuation] a comma sits left of the space and a dari
+     * right of it (a full stop in English; the view swaps it), and the return key is as narrow
+     * as backspace, with the space taking the rest.
+     */
+    private fun commandRow(
+        mode: Key, withGlobe: Boolean, withEmoji: Boolean = false, withPunctuation: Boolean = false,
+    ): KeyboardRow {
+        val keys = buildList {
             add(mode)
             if (withEmoji) add(Key.Emoji)
             if (withGlobe) add(Key.Globe)
+            if (withPunctuation) add(Key.Symbol(","))
             add(Key.Space)
+            if (withPunctuation) add(dari)
             add(Key.Return)
-        },
-    )
+        }
+        if (!withPunctuation) return KeyboardRow(keys)
+        val weights = keys.map {
+            when (it) {
+                Key.Space -> if (withGlobe) 2.9 else 3.9
+                Key.Return -> Key.Backspace.weight
+                is Key.Symbol -> 1.0
+                else -> it.weight
+            }
+        }
+        return KeyboardRow(keys, weights)
+    }
 
     fun rows(
         mode: KeyboardMode,
@@ -145,7 +164,7 @@ object KeyboardLayoutProvider {
                 listOf(Key.Shift) + chars("zxcvbnm") + Key.Backspace,
                 weights = listOf(1.5) + List(7) { 1.0 } + 1.5,
             ),
-            commandRow(Key.ModeSwitch("123", KeyboardMode.NUMBERS), includesGlobeKey, withEmoji = true),
+            commandRow(Key.ModeSwitch("123", KeyboardMode.NUMBERS), includesGlobeKey, withEmoji = true, withPunctuation = true),
         )
         KeyboardMode.NUMBERS -> listOf(
             KeyboardRow(bnDigits.map { Key.Symbol(it) }),

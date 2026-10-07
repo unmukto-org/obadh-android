@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Route { Settings, Privacy, About }
+private enum class Route { Settings, Privacy, About, Shortcuts }
 
 @Composable
 fun RootScreen(startScreen: String?, startStep: String?) {
@@ -59,9 +59,10 @@ fun RootScreen(startScreen: String?, startStep: String?) {
         label = "route",
     ) { current ->
         when (current) {
-            Route.Settings -> SettingsScreen(keyboard, prefs, { route = Route.Privacy }, { route = Route.About })
+            Route.Settings -> SettingsScreen(keyboard, prefs, { route = Route.Privacy }, { route = Route.About }, { route = Route.Shortcuts })
             Route.Privacy -> PrivacyScreen { route = Route.Settings }
             Route.About -> AboutScreen { route = Route.Settings }
+            Route.Shortcuts -> ShortcutsScreen { route = Route.Settings }
         }
     }
 }

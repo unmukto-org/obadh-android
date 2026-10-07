@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.unmukto.obadh.settings.KeyboardPreferences
+import org.unmukto.obadh.settings.TextShortcuts
 import org.unmukto.obadh.settings.KeyboardState
 
 /**
@@ -35,7 +36,7 @@ import org.unmukto.obadh.settings.KeyboardState
  * the keyboard is actually missing, and it tracks the live state.
  */
 @Composable
-fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPrivacy: () -> Unit, onOpenAbout: () -> Unit) {
+fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPrivacy: () -> Unit, onOpenAbout: () -> Unit, onOpenShortcuts: () -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
     val dark = isSystemInDarkTheme()
@@ -43,6 +44,7 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
     var keySound by remember { mutableStateOf(prefs.keySoundEnabled) }
     var clipboard by remember { mutableStateOf(prefs.clipboardHistoryEnabled) }
     var autoInsert by remember { mutableStateOf(prefs.autoInsertCorrections) }
+    val shortcutCount = remember { TextShortcuts(context).all().size }
     var emojiBangla by remember { mutableStateOf(prefs.emojiSearchBangla) }
 
     Column(
@@ -109,6 +111,13 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
                 prefs.keySoundEnabled = it
                 if (it) view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
             }
+        }
+
+        Section(
+            header = "Text Shortcuts",
+            footer = "Type a shortcut, then space or return, and it becomes the full text. For example @@ can become your email address.",
+        ) {
+            NavRow("Shortcuts", value = shortcutCount.toString(), onClick = onOpenShortcuts)
         }
 
         Section(

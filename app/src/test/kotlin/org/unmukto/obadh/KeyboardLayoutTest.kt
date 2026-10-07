@@ -110,7 +110,12 @@ class KeyboardLayoutTest {
         assertEquals(10, letters[0].keys.size)
         assertEquals(9, letters[1].keys.size)
         assertEquals(0.5, letters[1].leadingFlex, 0.0)
-        assertEquals(listOf(Key.ModeSwitch("123", KeyboardMode.NUMBERS), Key.Emoji, Key.Globe, Key.Space, Key.Return), letters[3].keys)
+        // Comma left of the space, dari right of it, and a return as narrow as backspace.
+        assertEquals(
+            listOf(Key.ModeSwitch("123", KeyboardMode.NUMBERS), Key.Emoji, Key.Globe, Key.Symbol(","), Key.Space, Key.Symbol("।", terminator = true), Key.Return),
+            letters[3].keys,
+        )
+        assertEquals(Key.Backspace.weight, letters[3].weights.last(), 0.0)
     }
 
     @Test fun secondaryGlyphsPutBanglaDigitsOnTheTopRowAndTakaOnD() {

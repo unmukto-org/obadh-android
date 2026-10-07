@@ -58,6 +58,13 @@ tagged release yet.
   tappable cards: tap pastes, the cross removes one, Clear removes all. Stored only in private
   app storage; passwords and clips marked sensitive are skipped. Turn it off under Settings →
   Keyboard → Clipboard History; Privacy has Clear Clipboard History.
+- **Clipboard pins.** The pin on each card keeps it at the top (outlined in the accent colour). Pins
+  never age out of the 30-item history (up to 20), survive the panel's Clear, and are removed only
+  by their cross or Privacy → Clear Clipboard History.
+- **Text shortcuts.** Settings → Text Shortcuts lets you preset a trigger and a phrase (`@@` → your
+  email, `eml`, a phone number, a sign-off). Typing the trigger then space or return replaces it
+  with the phrase, in Bangla and English mode and for symbols. Case-sensitive, up to 100, stored
+  only on the device.
 - **Number pad.** A dialler-style pad in Bangla or Latin digits (EN / বাং switch) with
   `+ - . ,`, space, return and backspace.
 - **English / Bangla.** A language tool in the ribbon's tools row (shows বাং or EN) flips between
@@ -66,6 +73,11 @@ tagged release yet.
   and double space gives `. `. The ribbon shows spelling corrections from the device's own spell
   checker (nothing bundled); with no checker enabled in system settings it stays empty.
 - The emoji key uses the same smiley icon as the tools row.
+- **Comma and full stop on the bottom row.** A comma sits left of the space and a dari (a full stop
+  in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
+- **Field-aware keys.** Number, phone and date fields open on the number pad. E-mail, web-address and
+  password fields type in English (your saved language is untouched) with no spelling suggestions;
+  the comma key becomes `@` in e-mail fields and `/` in web-address fields.
 - **Swipe to delete.** Slide left from backspace (past 24 dp): the words before the caret are
   highlighted, one more per 30 dp, and deleted when you lift. Sliding back shrinks the selection;
   cancelling deletes nothing.

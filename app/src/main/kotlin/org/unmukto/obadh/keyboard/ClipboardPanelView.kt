@@ -13,19 +13,21 @@ import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.OverScroller
+import org.unmukto.obadh.settings.ClipEntry
 import kotlin.math.abs
 import kotlin.math.max
 
 interface ClipboardPanelListener {
     fun onPaste(text: String)
     fun onDelete(text: String)
+    fun onTogglePin(text: String)
     fun onClear()
     fun onClose()
 }
 
 /**
- * The clipboard panel: what was copied, newest first, as tappable cards. Tap pastes, the cross
- * removes one, Clear removes all. Canvas-drawn like the emoji panel, with its own scroll.
+ * The clipboard panel: what was copied, newest first, as tappable cards. Tap pastes, the pin keeps
+ * one at the top, the cross removes one, Clear removes all but the pins. Canvas-drawn like the emoji panel, with its own scroll.
  */
 class ClipboardPanelView(context: Context) : View(context) {
     var listener: ClipboardPanelListener? = null
@@ -35,7 +37,7 @@ class ClipboardPanelView(context: Context) : View(context) {
     var collecting = true
         set(v) { field = v; invalidate() }
 
-    var items: List<String> = emptyList()
+    var items: List<ClipEntry> = emptyList()
         set(v) { field = v; layouts = emptyList(); scrollY0 = 0f.coerceAtLeast(0f); clampScroll(); invalidate() }
 
     private val d = resources.displayMetrics.density
@@ -50,6 +52,7 @@ class ClipboardPanelView(context: Context) : View(context) {
     private val gap get() = 8 * d
     private val cardPad get() = 12 * d
     private val crossW get() = 40 * d
+    private val pinW get() = 36 * d
     private val cardH get() = 62 * d
 
     private var scrollY0 = 0f
@@ -69,12 +72,12 @@ class ClipboardPanelView(context: Context) : View(context) {
     }
 
     private fun ensureLayouts() {
-        val w = (width - 2 * margin - 2 * cardPad - crossW).toInt()
+        val w = (width - 2 * margin - 2 * cardPad - crossW - pinW).toInt()
         if (w <= 0 || (layouts.size == items.size && layoutWidth == w)) return
         layoutWidth = w
         textPaint.textSize = 15f * d
         layouts = items.map {
-            StaticLayout.Builder.obtain(it.replace('\n', ' '), 0, it.length, textPaint, w)
+            StaticLayout.Builder.obtain(it.text.replace('\n', ' '), 0, it.text.length, textPaint, w)
                 .setMaxLines(2).setEllipsize(TextUtils.TruncateAt.END).setAlignment(Layout.Alignment.ALIGN_NORMAL).build()
         }
     }
@@ -101,15 +104,39 @@ class ClipboardPanelView(context: Context) : View(context) {
             rect.set(margin, top, width - margin, top + cardH)
             paint.color = theme.key
             canvas.drawRoundRect(rect, 10 * d, 10 * d, paint)
+            if (items[i].pinned) {
+                paint.color = theme.accent; paint.alpha = 90
+                paint.style = Paint.Style.STROKE; paint.strokeWidth = 1.5f * d
+                canvas.drawRoundRect(rect, 10 * d, 10 * d, paint)
+                paint.style = Paint.Style.FILL; paint.alpha = 255
+            }
             val layout = layouts.getOrNull(i) ?: continue
             canvas.save()
             canvas.translate(margin + cardPad, top + (cardH - layout.height) / 2f)
             layout.draw(canvas)
             canvas.restore()
+            drawPin(canvas, width - margin - crossW - pinW / 2, top + cardH / 2, items[i].pinned)
             drawCross(canvas, width - margin - crossW / 2, top + cardH / 2)
         }
         canvas.restore()
         drawHeader(canvas)
+    }
+
+    /** A push-pin: filled and accent-coloured when pinned, an outline otherwise. */
+    private fun drawPin(canvas: Canvas, cx: Float, cy: Float, pinned: Boolean) {
+        paint.color = if (pinned) theme.accent else theme.label
+        paint.alpha = if (pinned) 255 else 130
+        paint.strokeWidth = 1.6f * d; paint.strokeCap = Paint.Cap.ROUND
+        paint.style = if (pinned) Paint.Style.FILL_AND_STROKE else Paint.Style.STROKE
+        val u = d
+        canvas.save()
+        canvas.rotate(35f, cx, cy)
+        canvas.drawRoundRect(cx - 3 * u, cy - 8 * u, cx + 3 * u, cy + 1 * u, 1.5f * u, 1.5f * u, paint)
+        canvas.drawLine(cx - 5 * u, cy + 1 * u, cx + 5 * u, cy + 1 * u, paint)
+        paint.style = Paint.Style.STROKE
+        canvas.drawLine(cx, cy + 1 * u, cx, cy + 8 * u, paint)
+        canvas.restore()
+        paint.style = Paint.Style.FILL; paint.alpha = 255
     }
 
     private fun drawCross(canvas: Canvas, cx: Float, cy: Float) {
@@ -189,6 +216,11 @@ class ClipboardPanelView(context: Context) : View(context) {
         val i = ((y - headerH + scrollY0 - gap) / (cardH + gap)).toInt()
         val top = headerH + gap + i * (cardH + gap) - scrollY0
         if (i !in items.indices || y > top + cardH) return
-        if (x > width - margin - crossW) listener?.onDelete(items[i]) else listener?.onPaste(items[i])
+        val text = items[i].text
+        when {
+            x > width - margin - crossW -> listener?.onDelete(text)
+            x > width - margin - crossW - pinW -> listener?.onTogglePin(text)
+            else -> listener?.onPaste(text)
+        }
     }
 }

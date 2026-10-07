@@ -56,6 +56,9 @@ class KeyboardView(context: Context) : View(context) {
     /** English typing: Latin digits replace the Bangla numerals on every page. */
     var english = false
         set(v) { field = v; rebuildRows() }
+    /** The bottom row's comma becomes @ in e-mail fields and / in web-address fields. */
+    var fieldKind = FieldKind.TEXT
+        set(v) { field = v; rebuildRows() }
     var shiftActive = false
         set(v) { field = v; invalidate() }
     var capsLock = false
@@ -225,11 +228,25 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun latinDigits(row: KeyboardRow) = row.copy(keys = row.keys.map(::latinDigit))
 
+    /** The letters page's bottom-row dari becomes a full stop when typing English. */
+    private fun fieldComma(row: KeyboardRow): KeyboardRow {
+        val glyph = when (fieldKind) { FieldKind.EMAIL -> "@"; FieldKind.URL -> "/"; else -> return row }
+        return row.copy(keys = row.keys.map { if (it is Key.Symbol && it.output == ",") Key.Symbol(glyph) else it })
+    }
+
+    private fun fullStop(row: KeyboardRow) =
+        row.copy(keys = row.keys.map { if (it is Key.Symbol && it.output == "।") Key.Symbol(".", terminator = true) else it })
+
     /** A held key's second glyph, with Latin digits when typing English. */
     private fun secondary(key: Key): Key.Symbol? = KeyboardLayoutProvider.secondaryFor(key)?.let { if (english) latinDigit(it) as Key.Symbol else it }
 
     private fun rebuildRows() {
-        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape).let { if (english) it.map(::latinDigits) else it }
+        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family, landscape).let { built ->
+            val bottom = mode == KeyboardMode.LETTERS && family == null
+            val r = if (english) built.map(::latinDigits) else built
+            if (!bottom) r
+            else r.dropLast(1) + fieldComma(if (english) fullStop(r.last()) else r.last())
+        }
         relayout()
     }
 
