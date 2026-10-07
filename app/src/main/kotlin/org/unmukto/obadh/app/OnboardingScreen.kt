@@ -172,7 +172,7 @@ private fun Done(state: KeyboardState) {
     if (state.ready) {
         Halo(tint = Brand.Success) { Icon(Icons.Default.Check, null, Modifier.size(46.dp), tint = Brand.Success) }
         Title("You're all set", Modifier.padding(top = 28.dp))
-        Message("Tap the 🌐 key on the keyboard to pick another keyboard any time.")
+        Message("Swipe the space bar to switch between Bangla and English. The keyboard icon in the navigation bar picks another keyboard.")
     } else {
         Halo(tint = Brand.Teal) { Text("⌨", fontSize = 44.sp, color = Brand.Teal) }
         Title("Ready when you are", Modifier.padding(top = 28.dp))

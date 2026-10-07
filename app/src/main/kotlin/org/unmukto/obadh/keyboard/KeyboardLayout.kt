@@ -137,20 +137,19 @@ object KeyboardLayoutProvider {
 
     /**
      * A dialler-style pad: digits in the middle, operators and punctuation down the left,
-     * backspace and return on the right. The switch key flips between Bangla and Latin digits.
+     * backspace and return on the right. Swiping the space bar flips between Bangla and Latin digits.
      */
     private fun numpadRows(mode: KeyboardMode): List<KeyboardRow> {
         val bangla = mode == KeyboardMode.NUMPAD_BN
         val d = if (bangla) listOf("০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯") else ('0'..'9').map { it.toString() }
         fun n(i: Int) = Key.Symbol(d[i])
-        val other = if (bangla) Key.ModeSwitch("EN", KeyboardMode.NUMPAD_EN) else Key.ModeSwitch("বাং", KeyboardMode.NUMPAD_BN)
         return listOf(
             KeyboardRow(listOf(Key.Symbol("+"), n(1), n(2), n(3), Key.Backspace), weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0)),
             KeyboardRow(listOf(Key.Symbol("-"), n(4), n(5), n(6), Key.Symbol(",")), weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0)),
             KeyboardRow(listOf(Key.Symbol("."), n(7), n(8), n(9), Key.Return), weights = listOf(1.0, 1.0, 1.0, 1.0, 1.0)),
             KeyboardRow(
-                listOf(Key.ModeSwitch("ABC", KeyboardMode.LETTERS), other, n(0), Key.Space),
-                weights = listOf(1.0, 1.0, 1.0, 2.0),
+                listOf(Key.ModeSwitch("ABC", KeyboardMode.LETTERS), n(0), Key.Space),
+                weights = listOf(1.0, 1.0, 3.0),
             ),
         )
     }

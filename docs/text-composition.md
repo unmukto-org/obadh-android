@@ -96,8 +96,9 @@ re-renders; a word-unit backspace drops the word being typed.
 
 There is no globe key. Swiping the space bar left or right flips between Bangla
 (transliteration) and English (letters typed as they are, spelling corrections from the
-device's spell checker via `SpellCheckerSession`, a quick double space gives `. `); the
-ribbon's language tool does the same. The space bar shows the current language between two
+device's spell checker via `SpellCheckerSession`, a quick double space gives `. `). This is the
+only language switch: the ribbon has no language tool and the number pad has no EN/বাং key; the
+pad's digits follow the language. The space bar shows the current language between two
 arrows and animates the swap. Holding the space bar first (350 ms) starts the cursor
 trackpad instead, so the two gestures do not collide. The choice is saved, and the swipe
 has a switch in Settings. English also swaps the Bangla numerals for Latin digits on every

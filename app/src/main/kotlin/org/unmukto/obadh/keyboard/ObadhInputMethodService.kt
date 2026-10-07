@@ -818,31 +818,34 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
     private fun applyLanguage() {
         val english = englishMode
         keyboardView.english = english
-        suggestionBar.english = english
     }
 
+    /** The space bar's swipe is the only language switch: Bangla transliteration or plain English. */
     override fun onLanguageSwipe() {
         if (emojiSearchActive) return
-        onTool(SuggestionBarView.Tool.LANGUAGE)
+        haptic()
+        commitActiveWord()
+        resetComposition()
+        // The saved language applies to every field. Addresses and passwords default to
+        // English whatever it is; switching inside one is for that field only.
+        keyboardView.animateLanguageChange()
+        if (fieldKind.forcesEnglish) fieldLanguageEnglish = !englishMode
+        else prefs.englishMode = !prefs.englishMode
+        if (!englishMode) closeSpellSession()
+        applyLanguage()
+        // The number pad follows: Bangla digits in Bangla, Latin digits in English.
+        when (keyboardView.mode) {
+            KeyboardMode.NUMPAD_BN, KeyboardMode.NUMPAD_EN ->
+                keyboardView.mode = if (englishMode) KeyboardMode.NUMPAD_EN else KeyboardMode.NUMPAD_BN
+            else -> Unit
+        }
+        refreshRibbon()
     }
 
     private fun onTool(tool: SuggestionBarView.Tool) {
         haptic()
-        // Language flips in place so its icon shows the result; everything else leaves the row.
-        if (tool != SuggestionBarView.Tool.LANGUAGE) suggestionBar.toolsOpen = false
+        suggestionBar.toolsOpen = false
         when (tool) {
-            SuggestionBarView.Tool.LANGUAGE -> {
-                commitActiveWord()
-                resetComposition()
-                // The saved language applies to every field. Addresses and passwords default to
-                // English whatever it is; switching inside one is for that field only.
-                keyboardView.animateLanguageChange()
-                if (fieldKind.forcesEnglish) fieldLanguageEnglish = !englishMode
-                else prefs.englishMode = !prefs.englishMode
-                if (!englishMode) closeSpellSession()
-                applyLanguage()
-                refreshRibbon()
-            }
             SuggestionBarView.Tool.CLIPBOARD -> openClipboardPanel()
             SuggestionBarView.Tool.NUMBERS -> { commitActiveWord(); keyboardView.mode = if (englishMode) KeyboardMode.NUMPAD_EN else KeyboardMode.NUMPAD_BN }
             SuggestionBarView.Tool.EMOJI -> openEmojiPanel()

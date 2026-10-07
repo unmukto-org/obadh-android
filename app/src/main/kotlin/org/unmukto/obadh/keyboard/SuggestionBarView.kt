@@ -23,12 +23,8 @@ class SuggestionBarView(context: Context) : View(context) {
 
     /** What the left switch reveals in place of the suggestions. */
     enum class Tool(val label: String) {
-        LANGUAGE("Language"), CLIPBOARD("Clipboard"), NUMBERS("Numbers"), EMOJI("Emoji"), SETTINGS("Settings"),
+        CLIPBOARD("Clipboard"), NUMBERS("Numbers"), EMOJI("Emoji"), SETTINGS("Settings"),
     }
-
-    /** English typing instead of Bangla transliteration; drawn on the language tool. */
-    var english = false
-        set(v) { field = v; invalidate() }
 
     var onToggleTools: (() -> Unit)? = null
     var onTool: ((Tool) -> Unit)? = null
@@ -198,17 +194,6 @@ class SuggestionBarView(context: Context) : View(context) {
                 for (ix in 0..2) for (iy in 0..2) canvas.drawCircle(6f + ix * 6f, 6f + iy * 6f, 1.6f, iconPaint)
             }
             Tool.EMOJI -> KeyIcons.smiley(canvas, iconPaint, 12f, 12f, 24f)
-            Tool.LANGUAGE -> {
-                // The current language, in a rounded box: tap to flip.
-                iconRect.set(2.5f, 4.5f, 21.5f, 19.5f)
-                canvas.drawRoundRect(iconRect, 4f, 4f, iconPaint)
-                iconPaint.style = Paint.Style.FILL
-                paint.color = theme.label; paint.alpha = 230
-                paint.textSize = 8.5f
-                canvas.drawText(if (english) "EN" else "বাং", 12f, 12f - (paint.descent() + paint.ascent()) / 2, paint)
-                paint.alpha = 255
-                iconPaint.style = Paint.Style.STROKE
-            }
             Tool.SETTINGS -> {
                 // Sliders: two rails with a knob each.
                 canvas.drawLine(4f, 8f, 20f, 8f, iconPaint); canvas.drawLine(4f, 16f, 20f, 16f, iconPaint)

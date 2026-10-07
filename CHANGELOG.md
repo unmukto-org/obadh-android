@@ -35,6 +35,7 @@ tagged release yet.
   factors; on tablets the key's symbol stays on the downward flick). With nothing
   selected, cut and copy take the whole field; copy restores the cursor. A small icon
   badge pops at the right of the suggestion bar to confirm, only when the action ran.
+- **One language switch.** The ribbon's language tool and the number pad's EN/বাং key are gone; swiping the space bar (letters or number pad) is the only way, and the pad's digits follow the language.
 - **Gboard-style icons and ribbon animation.** Shift is an outlined arrow, filled when
   on and barred when locked; backspace is the tag-with-x glyph. The ribbon's tools
   switch turns tiles into a chevron while suggestions and tools cross-slide.
