@@ -20,10 +20,12 @@ interface KeyboardViewListener {
 }
 
 /**
- * One custom view draws every key and receives every touch: keys are not child
- * views, so gaps between and around keys are live, and a touch resolves to the
- * nearest key (row band by y, nearest centre by x). Same idea as iOS's single
- * touch surface, without iOS's transparent-region constraint.
+ * One custom view draws every key and receives every touch: keys are not child views, so gaps
+ * between and around keys are live, and a touch resolves to the nearest key (row band by y,
+ * nearest centre by x). The same single touch surface obadh-ios uses.
+ *
+ * On a tablet the layout family is chosen from the device's smallest width, with taller keys,
+ * extra keys, and a secondary glyph per key that a downward flick or a long press emits.
  */
 class KeyboardView(context: Context) : View(context) {
     var listener: KeyboardViewListener? = null
@@ -37,17 +39,30 @@ class KeyboardView(context: Context) : View(context) {
     var capsLock = false
         set(v) { field = v; invalidate() }
 
-    private var rows = KeyboardLayoutProvider.rows(KeyboardMode.LETTERS, true)
-    private fun rebuildRows() { rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey); relayout() }
+    /**
+     * The tablet family, from the device's PORTRAIT width. [forcedSmallestWidthDp] exists so the
+     * debug preview can show every family on one phone; it is null in normal use.
+     */
+    var forcedSmallestWidthDp: Int? = null
+        set(v) { field = v; rebuildRows(); requestLayout() }
+
+    val family: TabletFamily?
+        get() = TabletFamily.forSmallestWidthDp(forcedSmallestWidthDp ?: resources.configuration.smallestScreenWidthDp)
+
+    private var rows = KeyboardLayoutProvider.rows(KeyboardMode.LETTERS, true, family)
+
     private class Cell(val key: Key, val rect: RectF)
     private var cells: List<List<Cell>> = emptyList()
     private var pressed: Cell? = null
     private var downAt = 0L
+    private var downY = 0f
+    private var secondaryFired = false
 
     private val density = resources.displayMetrics.density
-    private val gap = 5f * density
-    private val sidePad = 3f * density
+    private val gap: Float get() = (family?.gapDp ?: 5f) * density
+    private val sidePad: Float get() = (family?.marginDp ?: 3f) * density
     private val vertPad = 6f * density
+    private val rowHeight: Float get() = (family?.rowHeightDp ?: 50f) * density
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val handler = Handler(Looper.getMainLooper())
@@ -60,9 +75,23 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
+    /** Holding a key that has a secondary glyph emits it, like a flick (tablet layouts). */
+    private val secondaryLongPress = Runnable {
+        val cell = pressed ?: return@Runnable
+        val secondary = KeyboardLayoutProvider.secondaryFor(cell.key) ?: return@Runnable
+        secondaryFired = true
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        listener?.onKey(secondary)
+    }
+
+    private fun rebuildRows() {
+        rows = KeyboardLayoutProvider.rows(mode, includesGlobeKey, family)
+        relayout()
+    }
+
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val w = MeasureSpec.getSize(widthSpec)
-        setMeasuredDimension(w, (ROW_DP * 4 * density).toInt() + (vertPad * 2).toInt())
+        setMeasuredDimension(w, (rowHeight * rows.size + vertPad * 2).toInt())
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = relayout()
@@ -71,14 +100,13 @@ class KeyboardView(context: Context) : View(context) {
         if (width == 0 || height == 0) return
         val rowH = (height - vertPad * 2) / rows.size
         cells = rows.mapIndexed { r, row ->
-            val total = (row.weights.sum() + row.sideFlex * 2).toFloat()
+            val total = (row.weights.sum() + row.leadingFlex + row.trailingFlex).toFloat()
             val usable = width - sidePad * 2 - gap * (row.keys.size - 1)
             val unit = usable / total
-            var x = sidePad + row.sideFlex.toFloat() * unit
+            var x = sidePad + row.leadingFlex.toFloat() * unit
             val top = vertPad + r * rowH
             row.keys.mapIndexed { i, key ->
                 val w = row.weights[i].toFloat() * unit
-                // Rects include the gap so the whole surface is hittable; drawing insets it.
                 Cell(key, RectF(x, top, x + w, top + rowH)).also { x += w + gap }
             }
         }
@@ -92,21 +120,34 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun drawKey(canvas: Canvas, cell: Cell) {
         val special = cell.key !is Key.Character && cell.key !is Key.Symbol && cell.key !is Key.Space
+        val locked = cell.key is Key.CapsLock && capsLock
         keyPaint.color = when {
             cell === pressed -> theme.keyPressed
             cell.key is Key.Shift && (shiftActive || capsLock) -> theme.key
+            locked -> theme.key
             special -> theme.specialKey
             else -> theme.key
         }
-        val r = RectF(cell.rect.left, cell.rect.top + gap / 2, cell.rect.right, cell.rect.bottom - gap / 2)
+        val vGap = if (family != null) minOf(gap, 10f * density) else gap
+        val r = RectF(cell.rect.left, cell.rect.top + vGap / 2, cell.rect.right, cell.rect.bottom - vGap / 2)
         canvas.drawRoundRect(r, 6 * density, 6 * density, keyPaint)
 
         val label = label(cell.key)
         textPaint.color = theme.label
         textPaint.typeface = if (cell.key is Key.Character || cell.key is Key.Symbol) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
-        textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else 22f) * density
+        textPaint.textSize = (if (label.length > 1 && cell.key !is Key.Symbol) 15f else if (family != null) 24f else 22f) * density
         val y = r.centerY() - (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(label, r.centerX(), y, textPaint)
+
+        // The secondary glyph, in the key's top-left, quieter than the primary.
+        if (family != null) KeyboardLayoutProvider.secondaryFor(cell.key)?.let {
+            textPaint.textSize = 11f * density
+            textPaint.alpha = 140
+            textPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText(it.label, r.left + 6 * density, r.top + 15 * density, textPaint)
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.alpha = 255
+        }
     }
 
     private fun label(key: Key): String = when (key) {
@@ -119,6 +160,9 @@ class KeyboardView(context: Context) : View(context) {
         Key.Emoji -> "🙂"
         Key.Space -> ""
         Key.Return -> "⏎"
+        Key.Tab -> "⇥"
+        Key.CapsLock -> "⇪"
+        Key.HideKeyboard -> "⌄"
     }
 
     private fun resolve(x: Float, y: Float): Cell? {
@@ -133,28 +177,49 @@ class KeyboardView(context: Context) : View(context) {
             MotionEvent.ACTION_DOWN -> {
                 pressed = resolve(e.x, e.y)
                 downAt = SystemClock.uptimeMillis()
+                downY = e.y
+                secondaryFired = false
                 invalidate()
-                if (pressed?.key is Key.Backspace) {
+                val key = pressed?.key
+                if (key is Key.Backspace) {
                     listener?.onBackspace(BackspaceDeletionUnit.CHARACTER)
                     handler.postDelayed(repeat, 380L)
+                } else if (family != null && key != null && KeyboardLayoutProvider.secondaryFor(key) != null) {
+                    handler.postDelayed(secondaryLongPress, 420L)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
                 val now = resolve(e.x, e.y)
-                if (now !== pressed && pressed?.key !is Key.Backspace) { pressed = now; invalidate() }
+                if (pressed?.key !is Key.Backspace && !secondaryFired) {
+                    // A downward flick on a key with a secondary emits it, like iPadOS.
+                    val key = pressed?.key
+                    if (family != null && key != null && e.y - downY > 22 * density) {
+                        KeyboardLayoutProvider.secondaryFor(key)?.let {
+                            secondaryFired = true
+                            handler.removeCallbacks(secondaryLongPress)
+                            performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                            listener?.onKey(it)
+                        }
+                    }
+                    if (!secondaryFired && now !== pressed) { pressed = now; invalidate() }
+                }
             }
             MotionEvent.ACTION_UP -> {
                 handler.removeCallbacks(repeat)
-                val cell = resolve(e.x, e.y).takeIf { pressed?.key !is Key.Backspace }
+                handler.removeCallbacks(secondaryLongPress)
                 val wasBackspace = pressed?.key is Key.Backspace
+                val cell = if (wasBackspace || secondaryFired) null else resolve(e.x, e.y)
                 pressed = null
                 invalidate()
-                if (!wasBackspace && cell != null) listener?.onKey(cell.key)
+                if (cell != null) listener?.onKey(cell.key)
             }
-            MotionEvent.ACTION_CANCEL -> { handler.removeCallbacks(repeat); pressed = null; invalidate() }
+            MotionEvent.ACTION_CANCEL -> {
+                handler.removeCallbacks(repeat)
+                handler.removeCallbacks(secondaryLongPress)
+                pressed = null
+                invalidate()
+            }
         }
         return true
     }
-
-    private companion object { const val ROW_DP = 50 }
 }

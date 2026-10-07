@@ -19,24 +19,73 @@ sealed interface Key {
     data object Emoji : Key { override val weight = 1.25 }
     data object Space : Key { override val weight = 5.0 }
     data object Return : Key { override val weight = 2.25 }
+
+    /** Tablet-only keys. */
+    data object Tab : Key { override val weight = 1.3 }
+    data object CapsLock : Key { override val weight = 1.6 }
+    data object HideKeyboard : Key { override val weight = 1.6 }
 }
 
+/**
+ * One row. [weights] are in units of the letter-key width, so a tablet layout is a set of
+ * ratios that stretch to any width. [leadingFlex]/[trailingFlex] are empty space, in the same
+ * units, for the indented home row.
+ */
 data class KeyboardRow(
     val keys: List<Key>,
     val weights: List<Double> = keys.map { it.weight },
-    /** Fraction of a unit key left empty on each side (the indented home row). */
-    val sideFlex: Double = 0.0,
-)
+    val leadingFlex: Double = 0.0,
+    val trailingFlex: Double = 0.0,
+) {
+    init { require(weights.size == keys.size) { "one weight per key" } }
+}
 
 /**
- * Letters follow QWERTY (Roman typing); numbers are Bangla numerals only, with ৳
- * and দাঁড়ি on the punctuation pages. There is no English mode: the globe leaves.
+ * The tablet layout family. Chosen from the DEVICE's smallest width (its portrait width), never
+ * the live width: rotating a tablet stretches the layout it has, it does not hand it another
+ * row structure. That is the same rule obadh-ios applies to iPad.
+ */
+enum class TabletFamily(
+    /** Edge margin and key gap, in dp. */
+    val marginDp: Float,
+    val gapDp: Float,
+    /** Height of one key row, in dp. */
+    val rowHeightDp: Float,
+) {
+    /** 7-8 inch. Four rows, no tab or caps lock, indented home row. */
+    COMPACT(6f, 12f, 56f),
+    /** 10-11 inch. Four rows plus tab and caps lock. */
+    STANDARD(9f, 10f, 62f),
+    /** 12 inch and up. Five rows: a real number row appears. */
+    EXTENDED(3.5f, 7f, 58f);
+
+    companion object {
+        /** Boundaries sit in the gaps between real device widths (600, 720, 800, 960...). */
+        fun forSmallestWidthDp(dp: Int): TabletFamily? = when {
+            dp < 600 -> null
+            dp < 720 -> COMPACT
+            dp < 900 -> STANDARD
+            else -> EXTENDED
+        }
+    }
+}
+
+/**
+ * Letters follow QWERTY (Roman typing); numbers are Bangla numerals only, with ৳ and দাঁড়ি on
+ * the punctuation pages. Bangla is the only language: the globe opens the system picker.
  */
 object KeyboardLayoutProvider {
     private val bnDigits = listOf("১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯", "০")
     private fun lit(vararg v: String) = v.map { Key.Symbol(it) }
     private val dari = Key.Symbol("।", terminator = true)
     private val punctuationTail = listOf(dari, Key.Symbol("."), Key.Symbol(","), Key.Symbol("?", terminator = true), Key.Symbol("!", terminator = true))
+    private fun chars(s: String) = s.map { Key.Character(it.toString()) }
+
+    private val numbersRow2 = lit("-", "/", ":", ";", "(", ")", "৳", "'", "@", "\"")
+    private val symbolsRow1 = lit("[", "]", "{", "}", "#", "%", "^", "*", "+", "=")
+    private val symbolsRow2 = lit("_", "\\", "|", "~", "<", ">", "&", "$", "€", "£")
+
+    // ------------------------------------------------------------------ phone
 
     private fun commandRow(mode: Key, withGlobe: Boolean, withEmoji: Boolean = false) = KeyboardRow(
         buildList {
@@ -48,19 +97,22 @@ object KeyboardLayoutProvider {
         },
     )
 
-    fun rows(mode: KeyboardMode, includesGlobeKey: Boolean = true): List<KeyboardRow> = when (mode) {
+    fun rows(mode: KeyboardMode, includesGlobeKey: Boolean = true, family: TabletFamily? = null): List<KeyboardRow> =
+        if (family != null) tabletRows(mode, family, includesGlobeKey) else phoneRows(mode, includesGlobeKey)
+
+    private fun phoneRows(mode: KeyboardMode, includesGlobeKey: Boolean): List<KeyboardRow> = when (mode) {
         KeyboardMode.LETTERS -> listOf(
-            KeyboardRow("qwertyuiop".map { Key.Character(it.toString()) }),
-            KeyboardRow("asdfghjkl".map { Key.Character(it.toString()) }, sideFlex = 0.5),
+            KeyboardRow(chars("qwertyuiop")),
+            KeyboardRow(chars("asdfghjkl"), leadingFlex = 0.5, trailingFlex = 0.5),
             KeyboardRow(
-                listOf(Key.Shift) + "zxcvbnm".map { Key.Character(it.toString()) } + Key.Backspace,
+                listOf(Key.Shift) + chars("zxcvbnm") + Key.Backspace,
                 weights = listOf(1.5) + List(7) { 1.0 } + 1.5,
             ),
             commandRow(Key.ModeSwitch("123", KeyboardMode.NUMBERS), includesGlobeKey, withEmoji = true),
         )
         KeyboardMode.NUMBERS -> listOf(
             KeyboardRow(bnDigits.map { Key.Symbol(it) }),
-            KeyboardRow(lit("-", "/", ":", ";", "(", ")", "৳", "'", "@", "\"")),
+            KeyboardRow(numbersRow2),
             KeyboardRow(
                 listOf<Key>(Key.ModeSwitch("#+=", KeyboardMode.SYMBOLS)) + punctuationTail + Key.Backspace,
                 weights = listOf(1.5) + List(5) { 1.2 } + 1.5,
@@ -68,13 +120,184 @@ object KeyboardLayoutProvider {
             commandRow(Key.ModeSwitch("ABC", KeyboardMode.LETTERS), includesGlobeKey),
         )
         KeyboardMode.SYMBOLS -> listOf(
-            KeyboardRow(lit("[", "]", "{", "}", "#", "%", "^", "*", "+", "=")),
-            KeyboardRow(lit("_", "\\", "|", "~", "<", ">", "&", "$", "€", "£")),
+            KeyboardRow(symbolsRow1),
+            KeyboardRow(symbolsRow2),
             KeyboardRow(
                 listOf<Key>(Key.ModeSwitch("123", KeyboardMode.NUMBERS)) + punctuationTail + Key.Backspace,
                 weights = listOf(1.5) + List(5) { 1.2 } + 1.5,
             ),
             commandRow(Key.ModeSwitch("ABC", KeyboardMode.LETTERS), includesGlobeKey),
         )
+    }
+
+    // ----------------------------------------------------------------- tablet
+    //
+    // Weights are fitted ratios in units of the letter-key width (from the iPad measurements in
+    // obadh-ios, which the structure shares). They stretch to any width, in either orientation.
+
+    private object W {
+        object Compact {
+            const val BACKSPACE = 1.239; const val RETURN = 1.972; const val LEFT_SHIFT = 1.0
+            const val RIGHT_SHIFT = 1.239; const val HOME_INDENT = 0.486
+            const val COMMAND = 1.046; const val SPACE = 5.835; const val WIDE = 1.679
+        }
+        object Standard {
+            const val TAB = 1.292; const val BACKSPACE = 1.292; const val CAPS = 1.648
+            const val RETURN = 2.120; const val LEFT_SHIFT = 2.179; const val RIGHT_SHIFT = 1.589
+            const val COMMAND = 1.067; const val SPACE = 7.284; const val MODE_RIGHT = 1.589; const val HIDE = 1.594
+        }
+        object Extended {
+            const val TAB = 1.601; const val BACKSPACE = 1.601; const val CAPS = 1.853
+            const val RETURN = 1.853; const val SHIFT = 2.410
+            const val COMMAND = 1.474; const val SPACE = 6.523; const val MODE_RIGHT = 2.276; const val HIDE = 2.272
+        }
+    }
+
+    /** The command row, in a tablet's order: globe, mode switch, emoji, space, mode switch, dismiss. */
+    private fun tabletCommandRow(modeLabel: String, mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean): KeyboardRow {
+        val (narrow, space, modeRight, hide) = when (family) {
+            TabletFamily.COMPACT -> listOf(W.Compact.COMMAND, W.Compact.SPACE, W.Compact.WIDE, W.Compact.WIDE)
+            TabletFamily.STANDARD -> listOf(W.Standard.COMMAND, W.Standard.SPACE, W.Standard.MODE_RIGHT, W.Standard.HIDE)
+            TabletFamily.EXTENDED -> listOf(W.Extended.COMMAND, W.Extended.SPACE, W.Extended.MODE_RIGHT, W.Extended.HIDE)
+        }
+        val keys = ArrayList<Key>()
+        val weights = ArrayList<Double>()
+        if (withGlobe) { keys += Key.Globe; weights += narrow }
+        keys += Key.ModeSwitch(modeLabel, mode); weights += narrow
+        keys += Key.Emoji; weights += narrow
+        keys += Key.Space; weights += space
+        keys += Key.ModeSwitch(modeLabel, mode); weights += modeRight
+        keys += Key.HideKeyboard; weights += hide
+        return KeyboardRow(keys, weights)
+    }
+
+    /** The two punctuation keys at the end of the bottom letter row; দাঁড়ি takes the period's place. */
+    private val rowThreeTail: List<Key> = listOf(Key.Symbol(","), dari)
+
+    /** The extended number row: Bangla numerals, since Obadh has no Latin digits. */
+    private fun numberRow(): KeyboardRow = KeyboardRow(
+        listOf<Key>(Key.Symbol("`")) + bnDigits.map { Key.Symbol(it) } + Key.Symbol("-") + Key.Symbol("=") + Key.Backspace,
+        weights = List(13) { 1.0 } + W.Extended.BACKSPACE,
+    )
+
+    private fun tabletRows(mode: KeyboardMode, family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> = when (mode) {
+        KeyboardMode.LETTERS -> tabletLetterRows(family, withGlobe)
+        KeyboardMode.NUMBERS -> tabletSymbolRows(
+            family, withGlobe, modeLabel = "#+=", target = KeyboardMode.SYMBOLS,
+            first = bnDigits.map { Key.Symbol(it) }, second = numbersRow2, third = punctuationTail,
+        )
+        KeyboardMode.SYMBOLS -> tabletSymbolRows(
+            family, withGlobe, modeLabel = "123", target = KeyboardMode.NUMBERS,
+            first = symbolsRow1, second = symbolsRow2, third = punctuationTail,
+        )
+    }
+
+    private fun tabletLetterRows(family: TabletFamily, withGlobe: Boolean): List<KeyboardRow> {
+        val top = chars("qwertyuiop")
+        val home = chars("asdfghjkl")
+        val lower = chars("zxcvbnm")
+        val command = tabletCommandRow("?123", KeyboardMode.NUMBERS, family, withGlobe)
+        return when (family) {
+            TabletFamily.COMPACT -> listOf(
+                KeyboardRow(top + Key.Backspace, List(10) { 1.0 } + W.Compact.BACKSPACE),
+                KeyboardRow(home + Key.Return, List(9) { 1.0 } + W.Compact.RETURN, leadingFlex = W.Compact.HOME_INDENT),
+                KeyboardRow(
+                    listOf<Key>(Key.Shift) + lower + rowThreeTail + Key.Shift,
+                    listOf(W.Compact.LEFT_SHIFT) + List(9) { 1.0 } + W.Compact.RIGHT_SHIFT,
+                ),
+                command,
+            )
+            TabletFamily.STANDARD -> listOf(
+                KeyboardRow(listOf<Key>(Key.Tab) + top + Key.Backspace, listOf(W.Standard.TAB) + List(10) { 1.0 } + W.Standard.BACKSPACE),
+                KeyboardRow(listOf<Key>(Key.CapsLock) + home + Key.Return, listOf(W.Standard.CAPS) + List(9) { 1.0 } + W.Standard.RETURN),
+                KeyboardRow(
+                    listOf<Key>(Key.Shift) + lower + rowThreeTail + Key.Shift,
+                    listOf(W.Standard.LEFT_SHIFT) + List(9) { 1.0 } + W.Standard.RIGHT_SHIFT,
+                ),
+                command,
+            )
+            TabletFamily.EXTENDED -> listOf(
+                numberRow(),
+                KeyboardRow(
+                    listOf<Key>(Key.Tab) + top + lit("[", "]", "\\"),
+                    listOf(W.Extended.TAB) + List(13) { 1.0 },
+                ),
+                KeyboardRow(
+                    listOf<Key>(Key.CapsLock) + home + lit(";", "'") + Key.Return,
+                    listOf(W.Extended.CAPS) + List(11) { 1.0 } + W.Extended.RETURN,
+                ),
+                KeyboardRow(
+                    listOf<Key>(Key.Shift) + lower + rowThreeTail + Key.Symbol("/") + Key.Shift,
+                    listOf(W.Extended.SHIFT) + List(10) { 1.0 } + W.Extended.SHIFT,
+                ),
+                command,
+            )
+        }
+    }
+
+    /**
+     * Number and symbol pages keep the family's frame, the same row count and the same command
+     * row, so switching pages never resizes the keyboard.
+     */
+    private fun tabletSymbolRows(
+        family: TabletFamily, withGlobe: Boolean, modeLabel: String, target: KeyboardMode,
+        first: List<Key>, second: List<Key>, third: List<Key>,
+    ): List<KeyboardRow> {
+        val compact = family == TabletFamily.COMPACT
+        val edge = when (family) { TabletFamily.COMPACT -> W.Compact.BACKSPACE; TabletFamily.STANDARD -> W.Standard.BACKSPACE; else -> W.Extended.BACKSPACE }
+        val caps = when (family) { TabletFamily.COMPACT -> W.Compact.BACKSPACE; TabletFamily.STANDARD -> W.Standard.CAPS; else -> W.Extended.CAPS }
+        val ret = when (family) { TabletFamily.COMPACT -> W.Compact.RETURN; TabletFamily.STANDARD -> W.Standard.RETURN; else -> W.Extended.RETURN }
+        val shiftL = when (family) { TabletFamily.COMPACT -> W.Compact.LEFT_SHIFT; TabletFamily.STANDARD -> W.Standard.LEFT_SHIFT; else -> W.Extended.SHIFT }
+        val shiftR = when (family) { TabletFamily.COMPACT -> W.Compact.RIGHT_SHIFT; TabletFamily.STANDARD -> W.Standard.RIGHT_SHIFT; else -> W.Extended.SHIFT }
+
+        val rows = ArrayList<KeyboardRow>()
+        if (family == TabletFamily.EXTENDED) rows += numberRow()
+        rows += KeyboardRow(
+            (if (compact) emptyList() else listOf<Key>(Key.Tab)) + first + Key.Backspace,
+            (if (compact) emptyList() else listOf(edge)) + List(first.size) { 1.0 } + edge,
+        )
+        rows += KeyboardRow(
+            (if (compact) emptyList() else listOf<Key>(Key.CapsLock)) + second + Key.Return,
+            (if (compact) emptyList() else listOf(caps)) + List(second.size) { 1.0 } + ret,
+        )
+        rows += KeyboardRow(
+            listOf<Key>(Key.ModeSwitch(modeLabel, target)) + third + Key.ModeSwitch(modeLabel, target),
+            listOf(shiftL) + List(third.size) { 1.0 } + shiftR,
+        )
+        rows += tabletCommandRow("ABC", KeyboardMode.LETTERS, family, withGlobe)
+        return rows
+    }
+
+    // ----------------------------------------------------- secondary (flick-down) labels
+    //
+    // A tablet letter key prints a second glyph in its top-left and emits it when the key is
+    // flicked downward or held. Positions follow the standard tablet keyboard; content
+    // substitutes where a Bangla keyboard makes a strictly better choice: the digit row is
+    // ১২৩৪৫৬৭৮৯০ (Obadh has no Latin digits on the main pages) and d carries ৳ where English
+    // carries $. Everything else is kept where muscle memory expects it.
+
+    private val secondaryByCharacter = mapOf(
+        "q" to "১", "w" to "২", "e" to "৩", "r" to "৪", "t" to "৫",
+        "y" to "৬", "u" to "৭", "i" to "৮", "o" to "৯", "p" to "০",
+        "a" to "@", "s" to "#", "d" to "৳", "f" to "&", "g" to "*",
+        "h" to "(", "j" to ")", "k" to "'", "l" to "\"",
+        "z" to "%", "x" to "-", "c" to "+", "v" to "=", "b" to "/", "n" to ";", "m" to ":",
+    )
+
+    private val secondaryBySymbolOutput = mapOf(
+        "," to "!", "।" to "?", "/" to "\\", "`" to "~", "-" to "_", "=" to "+",
+        "[" to "{", "]" to "}", "\\" to "|", ";" to ":", "'" to "\"",
+        // The extended number row: Latin digits, the only place both numeral systems can sit.
+        "১" to "1", "২" to "2", "৩" to "3", "৪" to "4", "৫" to "5",
+        "৬" to "6", "৭" to "7", "৮" to "8", "৯" to "9", "০" to "0",
+    )
+
+    /** The flick-down/long-press glyph for [key], or null. Tablet layouts only. */
+    fun secondaryFor(key: Key): Key.Symbol? = when (key) {
+        is Key.Character -> secondaryByCharacter[key.value]?.let { Key.Symbol(it) }
+        is Key.Symbol -> secondaryBySymbolOutput[key.output]?.let { label ->
+            if (label == "?" || label == "!") Key.Symbol(label, terminator = true) else Key.Symbol(label)
+        }
+        else -> null
     }
 }

@@ -175,6 +175,9 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
             is Key.ModeSwitch -> { commitActiveWord(); keyboardView.mode = key.target }
             Key.Globe -> { commitActiveWord(); showKeyboardPicker() }
             Key.Emoji -> openEmojiPanel()
+            Key.Tab -> { commitActiveWord(); sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB) }
+            Key.CapsLock -> toggleCapsLock()
+            Key.HideKeyboard -> { commitActiveWord(); requestHideSelf(0) }
             Key.Backspace -> Unit // handled via onBackspace
         }
     }
@@ -238,6 +241,11 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         replaceBeforeCaret(result)
         if (key.terminator) engine.clearAutosuggestSession()
         refreshRibbon()
+    }
+
+    private fun toggleCapsLock() {
+        keyboardView.capsLock = !keyboardView.capsLock
+        keyboardView.shiftActive = false
     }
 
     private fun toggleShift() {
@@ -444,8 +452,10 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
                 emojiSearchQuery += " "; syncEmojiSearch()
             }
             Key.Shift -> toggleShift()
+            Key.CapsLock -> toggleCapsLock()
             is Key.ModeSwitch -> keyboardView.mode = key.target
-            Key.Return, Key.Emoji, Key.Globe -> exitEmojiSearch()
+            Key.Return, Key.Emoji, Key.Globe, Key.HideKeyboard -> exitEmojiSearch()
+            Key.Tab -> Unit
             Key.Backspace -> Unit // via onBackspace
         }
     }
