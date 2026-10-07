@@ -29,6 +29,7 @@ class KeyboardPreferences(context: Context) {
         get() = prefs.getBoolean("f_volume_cursor", false)
         set(v) = prefs.edit().putBoolean("f_volume_cursor", v).apply()
     var doubleSpacePeriod: Boolean get() = flag("f_double_space"); set(v) = setFlag("f_double_space", v)
+    var spaceLeavesSymbols: Boolean get() = flag("f_space_leaves_symbols"); set(v) = setFlag("f_space_leaves_symbols", v)
     var swipeToDelete: Boolean get() = flag("f_swipe_delete"); set(v) = setFlag("f_swipe_delete", v)
     var longPressSymbols: Boolean get() = flag("f_long_press"); set(v) = setFlag("f_long_press", v)
     var clipboardKeys: Boolean get() = flag("f_clip_keys"); set(v) = setFlag("f_clip_keys", v)

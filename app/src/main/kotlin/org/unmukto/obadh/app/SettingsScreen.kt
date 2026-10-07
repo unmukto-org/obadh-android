@@ -182,6 +182,12 @@ fun SettingsScreen(state: KeyboardState, prefs: KeyboardPreferences, onOpenPriva
             ) { prefs.doubleSpacePeriod = it }
             RowRule()
             PrefToggle(
+                "Space Returns to Letters",
+                "On the numbers and symbols pages, tapping space goes back to the letters, like typing \"(5)\" then space. Off keeps the page open.",
+                prefs.spaceLeavesSymbols,
+            ) { prefs.spaceLeavesSymbols = it }
+            RowRule()
+            PrefToggle(
                 "Pair Brackets and Quotes",
                 "Typing ( also adds ) and puts the cursor between them. Typing the closing one steps over it.",
                 prefs.autoPairs,

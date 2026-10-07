@@ -326,7 +326,13 @@ class ObadhInputMethodService : InputMethodService(), KeyboardViewListener {
         when (key) {
             is Key.Character -> typeLetter(key.value)
             is Key.Symbol -> typeSymbol(key)
-            Key.Space -> typeSpace()
+            Key.Space -> {
+                typeSpace()
+                // The number and symbol pages are for a quick insert: space goes back to letters.
+                if (prefs.spaceLeavesSymbols &&
+                    (keyboardView.mode == KeyboardMode.NUMBERS || keyboardView.mode == KeyboardMode.SYMBOLS)
+                ) { keyboardView.mode = KeyboardMode.LETTERS; updateChrome() }
+            }
             Key.Return -> typeReturn()
             Key.Shift -> toggleShift()
             is Key.ModeSwitch -> { commitActiveWord(); keyboardView.mode = key.target; updateChrome() }

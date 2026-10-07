@@ -75,6 +75,8 @@ tagged release yet.
 - The emoji key uses the same smiley icon as the tools row.
 - **Comma and full stop on the bottom row.** A comma sits left of the space and a dari (a full stop
   in English) right of it on the phone's letters page, and the return key is as narrow as backspace.
+- **Space returns to letters.** Optional switch (on by default): tapping space on the
+  numbers or symbols page goes back to the letters. Off keeps the page open.
 - **Slide to select, cut or copy.** Hold X or C, then slide left or right: words before
   or after the caret are selected (one per 30 dp, like backspace's swipe), and lifting cuts
   or copies them. Lifting without sliding still takes the whole field; cut and copy now
