@@ -35,6 +35,13 @@ class MediaSafetyTest {
         assertNull(MediaSafety.select(listOf(large.copy(bytes=MediaSafety.MAX_MEDIA+1)),listOf("*/*")))
         assertNull(MediaSafety.select(listOf(file("image/png")),listOf("*/*")))
     }
+    @Test fun recentLookupAcceptsProviderCanonicalSlugsWithoutChangingIdentity() {
+        assertTrue(MediaSafety.sameItem("bangla-15--kpkkxUZAt","bangla-15"))
+        assertTrue(MediaSafety.sameItem("bangla-15--kpkkxUZAt","bangla-15--kpkkxUZAt"))
+        assertFalse(MediaSafety.sameItem("bangla-15--kpkkxUZAt","bangla-1"))
+        assertFalse(MediaSafety.sameItem("bangla-15","bangla-15--kpkkxUZAt"))
+        assertFalse(MediaSafety.sameItem("../bangla-15--kpkkxUZAt","../bangla-15"))
+    }
     @Test fun truncatedGifAndWrongCanvasAreRejected() {
         assertTrue(MediaSafety.valid(gif,file()))
         for(n in gif.indices)assertFalse("truncated at $n",MediaSafety.valid(gif.copyOf(n),file()))

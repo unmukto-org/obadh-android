@@ -13,6 +13,7 @@ class ObadhInputMethodService : helium314.keyboard.latin.LatinIME() {
         super.onCreate()
         NativeObadhFeatures.attach(this)
         NativeDataMigration.run(this)
+        org.unmukto.obadh.media.LegacyStickerCleanup.start(this,cancelDownloads=false)
     }
     override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)

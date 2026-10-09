@@ -38,7 +38,11 @@ object MediaPreferences {
             prefs=p
         }
     }
-    fun setEnabled(value: Boolean) { enabled=value;prefs?.edit()?.putBoolean("enabled",value)?.apply() }
+    fun setEnabled(value: Boolean) {
+        enabled=value
+        if(!value)MediaController.stopBackground()
+        prefs?.edit()?.putBoolean("enabled",value)?.apply()
+    }
     fun recent(kind: MediaKind)=history.filter { it.kind==kind }.take(20)
     fun remember(kind: MediaKind,item: MediaItem) {
         if(!enabled)return
@@ -49,5 +53,5 @@ object MediaPreferences {
             .put("preview",JSONObject().put("url",r.preview.url).put("mime",r.preview.mime).put("width",r.preview.width).put("height",r.preview.height).put("bytes",r.preview.bytes))) }
         prefs?.edit()?.putString("recents",rows.toString())?.apply()
     }
-    fun clear() { history=emptyList();prefs?.edit()?.remove("recents")?.apply() }
+    fun clear() { MediaController.stopBackground();history=emptyList();prefs?.edit()?.remove("recents")?.apply() }
 }

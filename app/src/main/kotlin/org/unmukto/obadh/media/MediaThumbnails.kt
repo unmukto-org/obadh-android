@@ -35,6 +35,8 @@ object MediaThumbnails {
             withContext(Dispatchers.IO) {
                 ensureActive()
                 runCatching { synchronized(filesLock) {
+                    // A settings clear may win the lock after this job was canceled.
+                    ensureActive()
                     val dir=directory(context).apply { mkdirs() }
                     val stage=File(dir,".tmp-${UUID.randomUUID()}")
                     try { stage.writeBytes(fetched);stage.renameTo(cachedFile(context,file)) } finally { stage.delete() }

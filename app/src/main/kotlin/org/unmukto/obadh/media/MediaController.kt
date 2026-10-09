@@ -25,7 +25,7 @@ object MediaController {
         companion object { fun of(info: EditorInfo)=Target(info.packageName,info.fieldId,info.fieldName,info.inputType) }
     }
     class SearchMemory {
-        var query="";var renderedQuery="";var recent=false;var items: List<MediaItem> = emptyList()
+        var initialized=false;var query="";var renderedQuery="";var recent=false;var items: List<MediaItem> = emptyList()
         var page=0;var hasNext=false;var scroll=0
     }
     data class Session(val token: String,val kind: MediaKind,val types: List<String>,val expires: Long,val memory: SearchMemory=SearchMemory())
@@ -36,6 +36,7 @@ object MediaController {
     private var owner: Owned?=null
     private var returnOwner: Owned?=null
     private var pending: Choice?=null
+    fun stopBackground() { analytics.coroutineContext.cancelChildren() }
     fun allowed(ime: ObadhInputMethodService?=NativeObadhFeatures.activeIme): Boolean {
         val info=ime?.currentInputEditorInfo ?: return false
         val settings=Settings.getValues()

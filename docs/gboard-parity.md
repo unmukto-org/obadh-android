@@ -7,6 +7,11 @@ system light/dark surface colors. The 18 solid colors, 25 light gradients and 28
 gradients are measured from rendered reference previews and expressed as owned color parameters. Google
 code, artwork and APK are not included in the product or repository.
 
+Gboard is a reference for useful Android interaction patterns, spacing, typography,
+colors and keyboard geometry. Obadh should simplify inconsistent or unnecessarily
+complex flows rather than reproduce them. Media search therefore has one search
+field and a recents toggle, without an extra row of tabs or an overflow menu.
+
 The existing Android 15 ARM64 AVD is resized, rather than downloading tablet images.
 Profiles: 393 dp phone (1080×2340 / 440 dpi), 600 dp compact tablet
 (1200×1920 / 320 dpi), and 900 dp tablet (1800×2560 / 320 dpi). Additional profiles cover 360 dp and
@@ -87,15 +92,17 @@ or deleted. Activity rotation retains the editor state without reopening the pre
 on top, and deleting the active photo falls back to System Auto. Gallery originals
 are only the photos a user explicitly saves; no asset/download cache is populated.
 
-The home toolbar has fixed grid, emoji/media, clipboard, settings, theme and microphone
+The home toolbar has fixed grid, sticker, GIF, clipboard, settings, theme and microphone
 positions around the native suggestion strip. Suggestions, clipboard and editor
 completion chips retain their upstream behavior. Password fields hide the grid and
 microphone and disable sensitive tools. Additional local editing/layout tools are
-behind a four-column grid in the existing keyboard area, rather than a scrolling
+behind an adaptive one-to-four-column grid in the existing keyboard area, rather than a scrolling
 home toolbar. The grid/back control and primary tools remain usable above it,
 and short landscape windows scroll within that area. The combined comma/emoji key
 inserts punctuation on tap and opens emoji on hold. Official Material Symbols are
 pinned as individual licensed vectors; the microphone is a permission-free toast.
+On narrow keyboards, secondary controls move into Tools so visible targets remain
+at least 48 dp. Emoji has no duplicate toolbar shortcut; it remains on the comma key.
 
 ## Feature scope
 
@@ -111,7 +118,8 @@ pinned as individual licensed vectors; the microphone is a permission-free toast
 | Clipboard/pins, editing toolbar, undo/redo, cursor navigation | Native tools; excludes private/sensitive collection |
 | Text shortcuts and paired punctuation | Shared editor transactions for both languages |
 | Voice typing | Microphone in the reference position; next-release toast, no backend or microphone permission |
-| Online GIFs, cloud translation, Google account/AI services | Not represented as working local features; GIF provider evaluation is documented separately |
+| Online GIFs and stickers | Optional KLIPY search and scoped rich-content delivery; bounded thumbnail recents, testing provider key |
+| Cloud translation, Google account/AI services | No backend or proprietary service imitation |
 
 This is a measured approximation of the observed release, not pixel equality of
 every Google screen or a promise to reproduce proprietary services. Custom themes,

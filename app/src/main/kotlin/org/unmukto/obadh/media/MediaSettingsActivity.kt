@@ -25,6 +25,11 @@ private fun MediaSettings(onBack: ()->Unit) {
     var loaded by remember { mutableStateOf(false) }
     var enabled by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
+    fun openLink(url: String) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url))) }.onFailure {
+            scope.launch { snackbar.showSnackbar("No browser is available to open this link.") }
+        }
+    }
     LaunchedEffect(Unit) { MediaPreferences.load(context);enabled=MediaPreferences.enabled;loaded=true }
     SettingsScaffold("GIFs & stickers",onBack,snackbar=snackbar) {
         if(loaded && KlipyClient.configured) {
@@ -36,8 +41,8 @@ private fun MediaSettings(onBack: ()->Unit) {
         PreferenceItem(content={ Text("Clear local recents & thumbnails",color=MaterialTheme.colorScheme.error) },onClick={ if(loaded)confirm=true })
         PreferenceHeading("Provider")
         PreferenceItem(content={ Text("Powered by KLIPY") },supportingContent={ Text("GIF and sticker content is supplied by KLIPY. Obadh is independently developed by Unmukto.") })
-        PreferenceItem(content={ Text("KLIPY privacy policy") },onClick={ context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://klipy.com/support/privacy-policy"))) })
-        PreferenceItem(content={ Text("KLIPY API terms") },onClick={ context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://klipy.com/support/api-terms"))) })
+        PreferenceItem(content={ Text("KLIPY privacy policy") },onClick={ openLink("https://klipy.com/support/privacy-policy") })
+        PreferenceItem(content={ Text("KLIPY API terms") },onClick={ openLink("https://klipy.com/support/api-terms") })
     }
     if(confirm) AlertDialog(onDismissRequest={ confirm=false },title={ Text("Clear local media recents?") },text={ Text("Remove recent GIF/sticker references and cached thumbnails from this device. KLIPY's own records are managed under its privacy policy.") },
         confirmButton={ TextButton(onClick={ confirm=false;scope.launch { MediaPreferences.clear();MediaThumbnails.clear(context);snackbar.showSnackbar("Local recents and thumbnails cleared") } }) { Text("Clear") } },

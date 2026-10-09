@@ -83,4 +83,4 @@ def run():
 
 if __name__=='__main__':
     try:run()
-    finally:n.command('configure')
+    finally:n.command('configure',**{'native.suggest_clipboard_content':True})

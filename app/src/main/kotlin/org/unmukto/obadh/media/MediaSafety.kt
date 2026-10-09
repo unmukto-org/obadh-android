@@ -11,6 +11,9 @@ object MediaSafety {
     const val MAX_THUMB = 384 * 1024
     const val MAX_JSON = 1024 * 1024
     fun slug(value: String) = value.matches(Regex("[A-Za-z0-9_-]{1,200}"))
+    // Search adds a provider identifier suffix; /items can return the canonical slug.
+    fun sameItem(requested: String, returned: String) = slug(requested) && slug(returned) &&
+        (requested==returned || requested.substringBeforeLast("--",requested)==returned)
     fun mediaUrl(value: String): Boolean = runCatching {
         val uri = URI(value)
         value.length <= 1600 && uri.scheme == "https" && uri.host == "static.klipy.com" &&

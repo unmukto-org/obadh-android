@@ -71,7 +71,8 @@ object KlipyClient {
     suspend fun item(kind: MediaKind, slug: String): MediaItem {
         if(!MediaSafety.slug(slug))throw MediaException(MediaFailure.INVALID)
         return parse(request(endpoint(kind,"items",mapOf("slugs" to slug)),MediaSafety.MAX_JSON)).items
-            .firstOrNull { it.slug==slug } ?: throw MediaException(MediaFailure.INVALID)
+            .singleOrNull { MediaSafety.sameItem(slug,it.slug) }?.copy(slug=slug)
+            ?: throw MediaException(MediaFailure.INVALID)
     }
     suspend fun image(file: MediaFile, thumb: Boolean=false, progress: (Int)->Unit={}): ByteArray {
         val max=if(thumb)MediaSafety.MAX_THUMB else MediaSafety.MAX_MEDIA

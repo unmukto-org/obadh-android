@@ -67,7 +67,7 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --no-daemon :app:assembleDebug
 
-      - name: Build optimized APK with the CI testing key
+      - name: Build optimized APK with CI debug signing (no media API key)
         run: ./gradlew --no-daemon :app:assembleRelease -PdebugSign
 
       - name: Verify native 16 KB memory and APK alignment

@@ -19,7 +19,7 @@ def tap(label):
     node=next(x for x in nodes() if x.get('text')==label or x.get('content-desc')==label)
     x0,y0,x1,y1=bounds(node);n.shell('input','tap',(x0+x1)//2,(y0+y1)//2)
 
-def rows(kind):return [x for x in nodes() if f', {kind}' in x.get('content-desc','') and x.get('enabled')=='true']
+def rows(kind):return [x for x in nodes() if f', {kind}' in x.get('content-desc','') and x.get('enabled')=='true' and 'preview unavailable' not in x.get('content-desc','')]
 def wait_rows(kind):
     deadline=time.monotonic()+40
     while time.monotonic()<deadline:
@@ -59,6 +59,11 @@ def send(kind):
         time.sleep(.2)
     raise AssertionError('Animation not received: '+output)
 
+def show_recents(kind):
+    clock=next(x for x in nodes() if x.get('content-desc')=='Recent')
+    if clock.get('selected')!='true':tap('Recent')
+    return wait_rows(kind)
+
 def cache_info():
     output=n.shell('run-as',n.PACKAGE,'sh','-c','find cache/klipy-thumbnails -type f -exec wc -c {} \\;')
     sizes=[int(x.split()[0]) for x in output.splitlines() if x.split() and x.split()[0].isdigit()]
@@ -87,13 +92,15 @@ def run():
     n.expect('আমি আমি ','WebP sticker preserves Bangla composition and resumes typing')
     print('PASS explicit WebP recipient and distinct sticker destination',flush=True)
 
-    open_picker('GIFs');tap('Recent');recent=wait_rows('GIFs');assert recent
-    assert any('Originals download when sent' in x.get('text','') for x in nodes())
+    open_picker('GIFs');recent=show_recents('GIFs');assert recent
+    assert any('Recent GIFs' in x.get('text','') for x in nodes())
     assert cache_info()[0]>0
     network(False)
     # Force a fresh activity/process load of recent references while offline.
     n.shell('am','force-stop',n.PACKAGE);n.shell('ime','set',n.PACKAGE+'/.keyboard.ObadhInputMethodService')
-    t.start('en',field='media');t.tap('GIFs');tap('Recent');wait_rows('GIFs');time.sleep(1)
+    t.start('en',field='media')
+    if 'GIFs' not in t.controls():t.tap('Keyboard tools')
+    t.tap('GIFs');show_recents('GIFs');time.sleep(1)
     assert cache_info()[0]>0
     tap(wait_rows('GIFs')[0].get('content-desc'));time.sleep(2)
     assert any(x.get('text')=='Retry' for x in nodes())
@@ -101,7 +108,7 @@ def run():
     print('PASS persisted bounded thumbnail recents and offline send retry without text leakage',flush=True)
 
     network(True)
-    open_picker('GIFs');tap('Recent');send('GIFs')
+    open_picker('GIFs');show_recents('GIFs');send('GIFs')
     print('PASS recent reference resolves fresh provider metadata and sends again',flush=True)
 
     open_picker('Stickers');search('Stickers','hello')
@@ -112,22 +119,29 @@ def run():
     print('PASS search rotation, retained query and safe Back',flush=True)
     n.shell('settings','put','system','user_rotation','0');time.sleep(1)
 
-    open_picker('GIFs',field='reject_media');n.adb('logcat','-c');tap(wait_rows('GIFs')[0].get('content-desc'));time.sleep(3)
-    assert 'rejected' in n.adb('logcat','-d','-s','ObadhMediaReceipt:I','-v','raw')
+    open_picker('GIFs',field='reject_media');n.adb('logcat','-c')
+    x0,y0,x1,y1=bounds(wait_rows('GIFs')[0]);n.shell('input','tap',(x0+x1)//2,(y0+y1)//2)
+    deadline=time.monotonic()+30
+    while 'rejected' not in n.adb('logcat','-d','-s','ObadhMediaReceipt:I','-v','raw'):
+        assert time.monotonic()<deadline,'Rejected callback not received';time.sleep(.1)
+    time.sleep(.2)
+    assert "couldn't accept the animation" in n.shell('dumpsys','notification'),'No rejection toast'
     assert n.text()==''
-    assert "couldn't accept the animation" in n.shell('dumpsys','notification')
     print('PASS rejected insertion feedback; recipient text unchanged',flush=True)
 
     for field in ('text','sticker','password'):
         t.start('en',field=field);controls=t.controls()
+        if 'GIFs' not in controls and 'Keyboard tools' in controls:tap_label='Keyboard tools';t.tap(tap_label);controls=t.controls()
         assert not controls['Stickers']['enabled'] and not controls['GIFs']['enabled'],controls
     t.start('en',field='media');n.command('configure',**{'native.always_incognito_mode':True});n.screen()
-    assert not t.controls()['GIFs']['enabled'] and not t.controls()['Stickers']['enabled']
-    n.command('configure')
+    controls=t.controls()
+    if 'GIFs' not in controls and 'Keyboard tools' in controls:t.tap('Keyboard tools');controls=t.controls()
+    assert not controls['GIFs']['enabled'] and not controls['Stickers']['enabled'],controls
+    n.command('configure',**{'native.always_incognito_mode':False})
     print('PASS unsupported, password and incognito media guards',flush=True)
     print('Native online media checks passed.',flush=True)
 
 if __name__=='__main__':
     try:run()
     finally:
-        network(True);n.shell('settings','put','system','user_rotation','0');n.command('configure')
+        network(True);n.shell('settings','put','system','user_rotation','0');n.command('configure',**{'native.always_incognito_mode':False,'native.suggest_clipboard_content':True})
