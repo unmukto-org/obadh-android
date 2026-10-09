@@ -81,7 +81,10 @@ object NativePreferences {
         org.unmukto.obadh.keyboard.NativeObadhFeatures.configure(values)
         val native = context.prefs()
         val photoChanged = values.getLong("obadh.photo_revision") != native.getLong("obadh.photo_revision", 0)
-        val appearanceChanged = photoChanged || values.getString("obadh.theme_mode") != native.getString("obadh.theme_mode", "system")
+        val appearanceChanged = photoChanged || values.getString("obadh.theme_mode") != native.getString("obadh.theme_mode", "system") ||
+            listOf(Settings.PREF_THEME_COLORS, Settings.PREF_THEME_COLORS_NIGHT, Settings.PREF_THEME_STYLE)
+                .any { values.getString(it) != native.getString(it, null) } ||
+            values.getBoolean(Settings.PREF_THEME_KEY_BORDERS) != native.getBoolean(Settings.PREF_THEME_KEY_BORDERS, true)
         if (photoChanged) Settings.clearCachedBackgroundImages()
         val editor = native.edit()
         if (values.containsKey("obadh.tablet_layout_revision") &&

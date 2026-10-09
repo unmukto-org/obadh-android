@@ -76,6 +76,13 @@ def run():
             for language in ('bn','en'):
                 colors(language)
                 print('PASS dynamic system night',night,language,'render',flush=True)
+        # These palettes all use System mode: changing only the palette must invalidate
+        # cached views, rather than updating preference values/navigation color alone.
+        for label,rgb in [('Red',(198,40,40)),('Material Dark',(38,50,56))]:
+            apply(label)
+            for language in ('bn','en'):
+                colors(language,rgb)
+                print('PASS same-mode palette change',label,language,'render',flush=True)
         apply('Default',toggle_borders=True)
         for language in ('bn','en'):
             controls=colors(language)

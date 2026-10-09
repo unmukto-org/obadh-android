@@ -48,9 +48,14 @@ handling, popup keys and gesture machinery are retained.
 ## Theme selector and fixed toolbar
 
 The gallery follows the reference flow: My themes, Default, Colors, Light gradient,
-and Dark gradient. No Google landscape photographs are included. It uses three
-columns on an equal physical-pixel grid, 24 dp side insets, 8 dp column gaps, 4:3 tiles and 20 dp corners. Groups
-show nine tiles initially; their expansion arrow disappears after expansion.
+and Dark gradient. No Google landscape photographs are included. The equal physical-pixel
+grid adapts from three columns on phones to four at 600 dp, five at 800 dp and six
+at 900 dp and above. Actual 600/800/900 dp portrait and 900 dp landscape
+galleries were compared with the second Gboard AVD. It uses 24 dp side insets, 8 dp portrait gaps, 4:3 portrait
+tiles and 20 dp corners. Landscape uses wider 16:9 tiles, 16 dp gaps and the
+actual display-cutout safe inset. Groups show three rows initially; their
+expansion arrow disappears after expansion. The gallery fills the available
+tablet width while other settings retain a readable content width.
 Default contains Dynamic Color, System Auto, Default and Default Dark. Selection
 opens a preview with a key-border switch and Cancel/Apply. System Auto shows both
 light/dark keyboards and explains following system settings. On the 393 dp phone,
@@ -61,7 +66,9 @@ wraps and action buttons grow without clipping their labels.
 
 Public Android dynamic roles are used for both the preview and native keyboard,
 including `system_surface_container`, `system_surface_bright` and
-`system_secondary_container`; wallpaper/night changes invalidate the native colors.
+`system_secondary_container`; wallpaper/night changes invalidate the native colors. Palette, key-border and
+style changes also invalidate cached keyboard views, even when the night mode
+stays the same; 18 actual rendering checks cover both languages.
 Gradient keys use 25% white. Photo letters/space use 30% white, function keys 5%
 white, and the toolbar a 30% black overlay. Five two-dimensional gradients use tiny
 17×17 numerical color meshes; there are no downloaded theme images or icon fonts.

@@ -17,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.unmukto.obadh.R
@@ -31,11 +32,14 @@ fun SettingsScaffold(
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    contentMaxWidth: Dp = 720.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val safeInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
     Scaffold(
         modifier = Modifier.semantics { paneTitle = title }.imePadding().nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = safeInsets,
         topBar = {
             LargeTopAppBar(
                 title = { Text(title, Modifier.padding(start = if (scrollBehavior.state.collapsedFraction < .5f) 8.dp else 0.dp).offset(y = 10.dp * (1f - scrollBehavior.state.collapsedFraction))) },
@@ -47,6 +51,7 @@ fun SettingsScaffold(
                 actions = actions,
                 scrollBehavior = scrollBehavior,
                 expandedHeight = 152.dp,
+                windowInsets = safeInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                 colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surface, titleContentColor = MaterialTheme.colorScheme.onSurface, navigationIconContentColor = MaterialTheme.colorScheme.onSurface, actionIconContentColor = MaterialTheme.colorScheme.onSurface),
             )
         },
@@ -55,7 +60,7 @@ fun SettingsScaffold(
     ) { insets ->
         Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
             Column(
-                Modifier.widthIn(max = 720.dp).fillMaxWidth()
+                Modifier.widthIn(max = contentMaxWidth).fillMaxWidth()
                     .verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
                 content = content,
             )

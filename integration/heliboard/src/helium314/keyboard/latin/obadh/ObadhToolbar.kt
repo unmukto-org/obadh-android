@@ -134,9 +134,9 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         })
         data class Tool(val label: String, val key: ToolbarKey? = null, val icon: Int? = null, val action: (() -> Unit)? = null)
         val automatic = context.prefs().getString("obadh.tablet_layout", "automatic") == "automatic"
-        val tools = listOf(Tool("One-handed",ToolbarKey.ONE_HANDED),Tool("Text editing",ToolbarKey.DPAD,icon=R.drawable.obadh_ic_text_editing),
+        val tools = listOf(Tool("One-handed",ToolbarKey.ONE_HANDED,icon=R.drawable.obadh_ic_mobile_hand),Tool("Text editing",ToolbarKey.DPAD,icon=R.drawable.obadh_ic_text_editing),
             if (automatic) Tool("Split",ToolbarKey.SPLIT) else Tool("Incognito",ToolbarKey.INCOGNITO),Tool("Floating",ToolbarKey.FLOATING,icon=R.drawable.obadh_ic_keyboard),
-            Tool("Keyboard size",icon=R.drawable.obadh_ic_keyboard,action={ open("org.unmukto.obadh.app.MainActivity",Intent.ACTION_APPLICATION_PREFERENCES) }),
+            Tool("Keyboard size",icon=R.drawable.obadh_ic_resize,action={ open("org.unmukto.obadh.app.MainActivity",Intent.ACTION_APPLICATION_PREFERENCES) }),
             Tool("Next language",icon=R.drawable.obadh_ic_language,action={ send(KeyCode.LANGUAGE_SWITCH) }),Tool("Emoji",ToolbarKey.EMOJI),Tool("Undo",ToolbarKey.UNDO))
         tools.chunked(4).forEach { row ->
             root.addView(LinearLayout(context).apply {

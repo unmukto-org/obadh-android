@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +49,7 @@ import kotlinx.coroutines.launch
 internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
+    val grid = themeGridMetrics()
     val scope = rememberCoroutineScope()
     val photoState = remember(context) { androidx.lifecycle.ViewModelProvider(context as androidx.activity.ComponentActivity)[ThemePhotoState::class.java] }
     val snackbar = remember { SnackbarHostState() }
@@ -81,14 +83,14 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     val systemNight = isSystemInDarkTheme()
     fun openPreview(id: String) { previewBorders = prefs.keyBorders; preview = id }
     val selectedId = when { selectedTheme == "default" && selectedMode == 1 -> "light"; selectedTheme == "default" && selectedMode == 2 -> "dark"; else -> selectedTheme }
-    SettingsScaffold("Theme", onBack, snackbar = snackbar) {
+    SettingsScaffold("Theme", onBack, snackbar = snackbar, contentMaxWidth = Dp.Infinity) {
         Column(Modifier.padding(horizontal = 24.dp)) {
-            ThemeHeading("My themes", height = 60.dp)
+            ThemeHeading("My themes", height = if (grid.landscape) 64.dp else 60.dp)
             val entries = listOf<String?>(null) + photoState.photos.map { it.id }
-            entries.chunked(3).forEach { row ->
+            entries.chunked(grid.columns).forEach { row ->
                 ThemeGrid { tileWidth ->
                     row.forEach { id ->
-                        if (id == null) Box(Modifier.width(tileWidth).aspectRatio(4f / 3f).clip(RoundedCornerShape(20.dp))
+                        if (id == null) Box(Modifier.width(tileWidth).aspectRatio(grid.aspectRatio).clip(RoundedCornerShape(20.dp))
                             .border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp))
                             .clickable(enabled = !saving && !loadingPhoto, role = Role.Button) { picker.launch("image/*") }
                             .semantics { contentDescription = "Create keyboard theme with my image" }, contentAlignment = Alignment.Center) {
@@ -104,19 +106,22 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                                 systemNight, thumbnail, Modifier.width(tileWidth)) { photoState.show(context,item) }
                         }
                     }
-                    repeat(3-row.size) { Spacer(Modifier.width(tileWidth)) }
+                    repeat(grid.columns-row.size) { Spacer(Modifier.width(tileWidth)) }
                 }
-                if(entries.size>3) Spacer(Modifier.height(8.dp))
+                if(entries.size>grid.columns) Spacer(Modifier.height(grid.gap))
             }
             // A photo from the older release stays available until replaced or removed.
-            if (photoExists && prefs.photoId == null) ThemeTile("photo", "Custom photo", selectedId == "photo", systemNight, photo,
-                Modifier.fillMaxWidth(.32f)) { photoState.current=null; photoState.staged=null; openPreview("photo") }
-            Spacer(Modifier.height(24.dp))
+            if (photoExists && prefs.photoId == null) ThemeGrid { tileWidth ->
+                ThemeTile("photo", "Custom photo", selectedId == "photo", systemNight, photo,
+                    Modifier.width(tileWidth)) { photoState.current=null; photoState.staged=null; openPreview("photo") }
+                repeat(grid.columns - 1) { Spacer(Modifier.width(tileWidth)) }
+            }
+            Spacer(Modifier.height(if (grid.landscape) 32.dp else 24.dp))
             ThemeSection("Default", listOf("dynamic", "default", "light", "dark").filter { it != "dynamic" || Build.VERSION.SDK_INT >= 31 },
                 selectedId, systemNight, labels = true, onSelect = ::openPreview)
-            ThemeSection("Colors", ObadhColors.catalog.filter { it.group == "Colors" }.map { it.id }, selectedId, systemNight, collapsedCount = 9, onSelect = ::openPreview)
-            ThemeSection("Light gradient", ObadhColors.catalog.filter { it.group == "Light gradient" }.map { it.id }, selectedId, systemNight, collapsedCount = 9, onSelect = ::openPreview)
-            ThemeSection("Dark gradient", ObadhColors.catalog.filter { it.group == "Dark gradient" }.map { it.id }, selectedId, systemNight, collapsedCount = 9, onSelect = ::openPreview)
+            ThemeSection("Colors", ObadhColors.catalog.filter { it.group == "Colors" }.map { it.id }, selectedId, systemNight, collapsedCount = grid.columns * 3, onSelect = ::openPreview)
+            ThemeSection("Light gradient", ObadhColors.catalog.filter { it.group == "Light gradient" }.map { it.id }, selectedId, systemNight, collapsedCount = grid.columns * 3, onSelect = ::openPreview)
+            ThemeSection("Dark gradient", ObadhColors.catalog.filter { it.group == "Dark gradient" }.map { it.id }, selectedId, systemNight, collapsedCount = grid.columns * 3, onSelect = ::openPreview)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -188,22 +193,23 @@ private fun ThemeHeading(title: String, expanded: Boolean? = null, height: andro
 @Composable
 private fun ThemeSection(title: String, ids: List<String>, selectedId: String, night: Boolean, labels: Boolean = false,
     collapsedCount: Int = Int.MAX_VALUE, onSelect: (String) -> Unit) {
+    val grid = themeGridMetrics()
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     ThemeHeading(title, if (ids.size > collapsedCount && !expanded) false else null) { expanded = !expanded }
-    (if (expanded) ids else ids.take(collapsedCount)).chunked(3).forEach { row ->
+    (if (expanded) ids else ids.take(collapsedCount)).chunked(grid.columns).forEach { row ->
         ThemeGrid { tileWidth ->
             row.forEach { id ->
                 val label = when(id) { "dynamic" -> "Dynamic Color"; "default" -> "System Auto"; "light" -> "Default"; "dark" -> "Default Dark"; else -> ObadhColors.catalog.first { it.id == id }.label }
                 Column(Modifier.width(tileWidth), horizontalAlignment = Alignment.CenterHorizontally) {
                     ThemeTile(id, label, selectedId == id, night, modifier = Modifier.fillMaxWidth()) { onSelect(id) }
-                    if (labels) Text(label, Modifier.padding(top = 3.dp).offset(y = (-1).dp), style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, letterSpacing = 0.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (labels) Text(label, Modifier.padding(top = 3.dp).offset(y = (-1).dp), style = MaterialTheme.typography.bodySmall.copy(fontSize = if (grid.landscape) 14.sp else 11.sp, lineHeight = when { grid.landscape -> 30.sp; grid.columns > 3 -> 20.sp; else -> 16.sp }, letterSpacing = 0.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            repeat(3 - row.size) { Spacer(Modifier.width(tileWidth)) }
+            repeat(grid.columns - row.size) { Spacer(Modifier.width(tileWidth)) }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(grid.gap))
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(if (grid.landscape) 16.dp else 12.dp))
 }
 
 /** System Auto previews both modes and explains the wallpaper-independent night behavior. */
@@ -225,24 +231,37 @@ private fun SystemThemePreview(borders: Boolean, modifier: Modifier) {
     }
 }
 
+private data class ThemeGridMetrics(val columns: Int, val gap: Dp, val aspectRatio: Float, val landscape: Boolean)
+
+/** Three initial rows, with the native gallery's wider tablet and landscape tiles. */
+@Composable
+private fun themeGridMetrics(): ThemeGridMetrics {
+    val configuration = LocalConfiguration.current
+    val landscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    return ThemeGridMetrics((configuration.screenWidthDp / 140).coerceIn(3, 6),
+        if (landscape) 16.dp else 8.dp, if (landscape) 16f / 9f else 4f / 3f, landscape)
+}
+
 /** Keep every tile on the same physical pixel grid, including fractional device densities. */
 @Composable
 private fun ThemeGrid(content: @Composable RowScope.(androidx.compose.ui.unit.Dp) -> Unit) {
     val density = LocalDensity.current
+    val grid = themeGridMetrics()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val tileWidth = with(density) { ((constraints.maxWidth - 2 * 8.dp.roundToPx()) / 3).toDp() }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { content(tileWidth) }
+        val tileWidth = with(density) { ((constraints.maxWidth - (grid.columns - 1) * grid.gap.roundToPx()) / grid.columns).toDp() }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (grid.columns == 3) Arrangement.spacedBy(grid.gap) else Arrangement.SpaceBetween) { content(tileWidth) }
     }
 }
 
 @Composable
 private fun ThemeTile(id: String, label: String, selected: Boolean, night: Boolean, photo: Bitmap? = null,
     modifier: Modifier = Modifier, onSelect: () -> Unit) {
+    val grid = themeGridMetrics()
     val p = themePalette(id, night)
     val brush = themeBrush(id, night)
     val frame = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .8f).compositeOver(MaterialTheme.colorScheme.surface)
         else MaterialTheme.colorScheme.onSurface.copy(alpha = .05f).compositeOver(MaterialTheme.colorScheme.surface)
-    Box(modifier.aspectRatio(4f / 3f).clip(RoundedCornerShape(20.dp)).background(frame)
+    Box(modifier.aspectRatio(grid.aspectRatio).clip(RoundedCornerShape(20.dp)).background(frame)
         .clickable(role = Role.RadioButton, onClick = onSelect).semantics { this.selected = selected; contentDescription = label }, contentAlignment = Alignment.Center) {
         Box(Modifier.matchParentSize().padding(3.dp).clip(RoundedCornerShape(17.dp)).background(brush), contentAlignment = Alignment.Center) {
         if (photo != null) Image(photo.asImageBitmap(), null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
