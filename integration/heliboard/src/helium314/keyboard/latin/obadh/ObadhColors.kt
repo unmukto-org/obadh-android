@@ -51,17 +51,27 @@ object ObadhColors {
     @JvmStatic
     fun create(context: Context, name: String, style: String, borders: Boolean, night: Boolean): Colors {
         if (name == "dynamic" && Build.VERSION.SDK_INT >= 31) {
-            val config = Configuration(context.resources.configuration).apply {
-                uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
-                    (if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
-            }
-            return DynamicColors(context.createConfigurationContext(config), style, borders)
+            return withActionCapsule(DynamicColors(themeContext(context, night), style, borders), context, night)
         }
         val p = palette(name, night)
         val image = if (name == "photo") helium314.keyboard.latin.settings.Settings.readUserBackgroundImage(context, false) else null
         val base = DefaultColors(style, borders, p.accent, p.background, p.keys, p.functional, p.keys,
             p.text, p.text, spaceBarText = p.text, keyboardBackground = image)
+        return withActionCapsule(base, context)
+    }
+
+    private fun themeContext(context: Context, night: Boolean): Context {
+        val mode = if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+        if (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == mode) return context
+        return context.createConfigurationContext(Configuration(context.resources.configuration).apply {
+            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or mode
+        })
+    }
+
+    private fun withActionCapsule(base: Colors, context: Context, night: Boolean? = null): Colors {
         return object : Colors by base {
+            override fun haveColorsChanged(context: Context): Boolean =
+                base.haveColorsChanged(if (night == null) context else themeContext(context, night))
             override fun selectAndColorDrawable(attr: TypedArray, color: ColorType): Drawable {
                 if (color != ColorType.ACTION_KEY_BACKGROUND) return base.selectAndColorDrawable(attr, color)
                 return GradientDrawable().apply {

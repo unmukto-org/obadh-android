@@ -46,6 +46,12 @@ def start(language='bn', field='text', initial=''):
     screen()
     shell('input', 'tap', '350', '180')
     screen()
+    for _ in range(2):
+        if 'mInputShown=true' in shell('dumpsys', 'input_method'):
+            break
+        shell('input', 'tap', '350', '180')
+        screen()
+    assert 'mInputShown=true' in shell('dumpsys', 'input_method'), 'Editor IME did not become visible'
     command('language', language=language)
 
 
@@ -213,6 +219,29 @@ def run():
             assert state['space_vertical'] == ('TOUCHPAD_MODE' if enabled else 'NONE'), state
             print('PASS', language, 'shared native controls', enabled, flush=True)
         command('configure')
+
+    # Personal OOV predictions must reach the real strip, not merely persist to disk.
+    learned_word = None
+    for _ in range(8):
+        start('bn')
+        type_text('amar obadhnamoporikkha ')
+        learned_word = text().split()[-1]
+    start('bn')
+    type_text('amar ')
+    screen()
+    assert learned_word in inspect()['words'], (learned_word, inspect())
+    print('PASS personal Bangla prediction reaches native strip', flush=True)
+    try:
+        for key in ('always_incognito_mode', 'use_personalized_dicts'):
+            command('configure', **{'native.' + key: key == 'always_incognito_mode'})
+            start('bn')
+            type_text('amar ')
+            screen()
+            assert learned_word not in inspect()['words'], (learned_word, inspect())
+            print('PASS Bangla model-only prediction', key, flush=True)
+            command('configure', **{'native.always_incognito_mode': False, 'native.use_personalized_dicts': True})
+    finally:
+        command('configure', **{'native.always_incognito_mode': False})
 
     # Literal selection and remaining feature regressions.
     start('bn')

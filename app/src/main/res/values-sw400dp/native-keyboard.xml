@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gboard uses taller keys on phones at least 400 dp wide. Tablets override these. -->
+    <dimen name="config_default_keyboard_height">240dp</dimen>
+    <fraction name="config_key_horizontal_gap_holo">1.3%p</fraction>
+    <fraction name="config_key_vertical_gap_holo">5%p</fraction>
+</resources>

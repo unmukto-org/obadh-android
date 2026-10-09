@@ -46,6 +46,9 @@ def apply(main, replace):
         'InputMethodPickerKt.createInputMethodPickerDialog(this, mRichImm, mKeyboardSwitcher.getMainKeyboardView().getWindowToken())',
         'helium314.keyboard.latin.obadh.ObadhLanguagePickerKt.createObadhLanguagePicker(this, mRichImm, mKeyboardSwitcher.getMainKeyboardView().getWindowToken())')
     replace(base / 'latin/settings/SettingsValues.java',
+        '        mShowsVoiceInputKey = mInputAttributes.mShouldShowVoiceInputKey;',
+        '        mShowsVoiceInputKey = false; // Voice typing is outside this product phase.')
+    replace(base / 'latin/settings/SettingsValues.java',
         '        mIsSplitKeyboardEnabled = Settings.readSplitKeyboardEnabled(prefs, isLandscape, isFolded);',
         '        final boolean obadhTablet = res.getConfiguration().smallestScreenWidthDp >= 600;\n'
         '        final String obadhTabletLayout = prefs.getString("obadh.tablet_layout", "automatic");\n'
@@ -106,7 +109,7 @@ def apply(main, replace):
     replace(logic, '        // Add the word to the user history dictionary\n        performAdditionToUserHistoryDictionary',
         '        final var obadh = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();\n'
         '        if (obadh != null) obadh.committed(mWordComposer.getTypedWord(), chosenWord,\n'
-        '            commitType == LastComposedWord.COMMIT_TYPE_MANUAL_PICK, settingsValues);\n'
+        '            commitType == LastComposedWord.COMMIT_TYPE_MANUAL_PICK, settingsValues, ngramContext);\n'
         '        // Add the word to the user history dictionary\n        performAdditionToUserHistoryDictionary')
     replace(logic, '            if (settingsValues.mAutoCorrectEnabled && ! isInlineEmojiSearchAction()) {',
         '            if ((settingsValues.mAutoCorrectEnabled || !mWordComposer.getObadhRoman().isEmpty()) && ! isInlineEmojiSearchAction()) {')

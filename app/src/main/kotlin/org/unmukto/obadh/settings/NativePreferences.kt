@@ -16,7 +16,9 @@ object NativePreferences {
         return Bundle().apply {
             putBoolean(Settings.PREF_THEME_DAY_NIGHT, true)
             putString(Settings.PREF_THEME_STYLE, helium314.keyboard.keyboard.KeyboardTheme.STYLE_ROUNDED)
-            val theme = p.getString("keyboard_theme", "default").takeIf { it in helium314.keyboard.latin.obadh.ObadhColors.names } ?: "default"
+            val theme = p.getString("keyboard_theme", "default").takeIf {
+                it in helium314.keyboard.latin.obadh.ObadhColors.names && (it != "photo" || KeyboardPhoto.exists(context))
+            } ?: "default"
             putLong("obadh.photo_revision", p.getLong("keyboard_photo_revision", 0))
             putString(Settings.PREF_THEME_COLORS, "obadh_$theme")
             putString(Settings.PREF_THEME_COLORS_NIGHT, "obadh_$theme")
@@ -36,7 +38,8 @@ object NativePreferences {
             }
             for (index in 0..3) putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_BOTTOM_PADDING_SCALE_PREFIX, index, 2), 1f)
             for (index in 0..7) putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_SIDE_PADDING_SCALE_PREFIX, index, 3), 1f)
-            putString(Settings.PREF_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true|SETTINGS:true|ONE_HANDED:true|FLOATING:true|SPLIT:true|DPAD:true|UNDO:true|REDO:true|SELECT_ALL:true|COPY:true|CUT:true|PASTE:true|INCOGNITO:true|VOICE:false|BACKGROUND_GATHERING:false")
+            val splitTool = p.getInt("tablet_layout", 0) == 0
+            putString(Settings.PREF_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true|SETTINGS:true|ONE_HANDED:true|FLOATING:true|SPLIT:$splitTool|DPAD:true|UNDO:true|REDO:true|SELECT_ALL:true|COPY:true|CUT:true|PASTE:true|INCOGNITO:true|VOICE:false|BACKGROUND_GATHERING:false")
             putString(Settings.PREF_PINNED_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true")
             putBoolean(Settings.PREF_AUTO_SHOW_TOOLBAR, true)
             putBoolean(Settings.PREF_AUTO_HIDE_TOOLBAR, true)
@@ -75,7 +78,9 @@ object NativePreferences {
     fun apply(context: Context, values: Bundle) {
         org.unmukto.obadh.keyboard.NativeObadhFeatures.configure(values)
         val native = context.prefs()
-        if (values.getLong("obadh.photo_revision") != native.getLong("obadh.photo_revision", 0)) Settings.clearCachedBackgroundImages()
+        val photoChanged = values.getLong("obadh.photo_revision") != native.getLong("obadh.photo_revision", 0)
+        val appearanceChanged = photoChanged || values.getString("obadh.theme_mode") != native.getString("obadh.theme_mode", "system")
+        if (photoChanged) Settings.clearCachedBackgroundImages()
         val editor = native.edit()
         for (key in values.keySet()) {
             @Suppress("DEPRECATION")
@@ -88,7 +93,7 @@ object NativePreferences {
             }
         }
         editor.apply()
-        org.unmukto.obadh.keyboard.NativeObadhFeatures.refreshSettings()
+        org.unmukto.obadh.keyboard.NativeObadhFeatures.refreshSettings(appearanceChanged)
     }
 }
 

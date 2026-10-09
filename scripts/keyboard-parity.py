@@ -179,8 +179,11 @@ def compare(output, reference):
         key = (row['profile'], row['rotation'], row['theme'])
         baseline = references[key]
         stem = f"{key[0]}-{'landscape' if key[1] else 'portrait'}-{key[2]}"
-        a = measure(out / (stem + '-' + row['language'] + '.png'), row['density'])
-        b = measure(ref / (stem + '-' + baseline['language'] + '.png'), baseline['density'])
+        # Capture already measured these exact images. Reuse the recorded values
+        # rather than scanning millions of pixels again for every comparison.
+        fields = ('q_glyph_dp', 'keyboard_surfaces_rgb', 'panel_top_dp', 'letter_rows_dp')
+        a = row if all(f in row for f in fields) else measure(out / (stem + '-' + row['language'] + '.png'), row['density'])
+        b = baseline if all(f in baseline for f in fields) else measure(ref / (stem + '-' + baseline['language'] + '.png'), baseline['density'])
         deltas = []
         for ra, rb in zip(a['letter_rows_dp'][:3], b['letter_rows_dp'][:3]):
             assert ra['count'] == rb['count'], f'{stem}: wrong row key count'

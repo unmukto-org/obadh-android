@@ -52,6 +52,17 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
         if (ime.currentInputEditorInfo == null) return
         val handler = Handler(Looper.getMainLooper())
         when (intent.getStringExtra("command")) {
+            "coordinates" -> {
+                val codes = intent.getStringExtra("codes")?.split(',')?.map(String::toInt)?.toIntArray()
+                    ?: intent.getStringExtra("text").orEmpty().codePoints().toArray()
+                val coordinates = ime.getCoordinatesForCurrentKeyboard(codes)
+                val origin = IntArray(2)
+                helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView.getLocationOnScreen(origin)
+                android.util.Log.i("ObadhProbeCoordinates", org.json.JSONObject()
+                    .put("codes", org.json.JSONArray(codes.toList()))
+                    .put("coordinates", org.json.JSONArray(coordinates.toList()))
+                    .put("origin", org.json.JSONArray(origin.toList())).toString())
+            }
             "personalization_probe" -> {
                 Thread({
                     val result = runCatching {
@@ -75,10 +86,14 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                             check(personalized == client.autosuggestSuggestions(query, 6, true))
                             val other = client.autosuggestSuggestions("তুমি ", 6, false)
                             check(other == client.autosuggestSuggestions("তুমি ", 6, true))
+                            check(client.commitAutosuggestToken("তুমি"))
+                            check(client.commitAutosuggestToken("আমার", "অন্য"))
+                            check(name in client.autosuggestSuggestions(query, 6, true))
                             client.clearPersonalAutosuggest()
                             check(name !in client.autosuggestSuggestions(query, 6, true))
                             org.json.JSONObject().put("public_model_preserved", true).put("personal_predictions_work", true)
-                                .put("editor_context_guard", true).put("incognito_excludes_personal", true).put("clear_works", true)
+                                .put("editor_context_guard", true).put("learning_context_guard", true)
+                                .put("incognito_excludes_personal", true).put("clear_works", true)
                         }
                     }.getOrElse { org.json.JSONObject().put("error", it.toString()) }
                     android.util.Log.i("ObadhPersonalizationProbe", result.toString())
@@ -113,7 +128,13 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                     .put("night", ime.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                     .put("smallest_width", ime.resources.configuration.smallestScreenWidthDp)
                     .put("split", settings.mIsSplitKeyboardEnabled)
+                    .put("floating", settings.mIsFloatingKeyboard)
+                    .put("one_handed", settings.mOneHandedModeEnabled)
                     .put("theme_background", settings.mColors.get(helium314.keyboard.latin.common.ColorType.MAIN_BACKGROUND))
+                    .put("theme_keys", settings.mColors.get(helium314.keyboard.latin.common.ColorType.KEY_BACKGROUND))
+                    .put("borders", settings.mColors.hasKeyBorders)
+                    .put("incognito", settings.mIncognitoModeEnabled)
+                    .put("learning", settings.mUsePersonalizedDicts)
                     .put("suggestions", settings.mSuggestionsEnabled)
                     .put("autocorrect", settings.mAutoCorrectEnabled)
                     .put("preview", settings.mKeyPreviewPopupOn)

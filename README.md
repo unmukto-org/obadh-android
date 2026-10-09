@@ -23,10 +23,6 @@ You type roman, it composes Bangla live.
 Letter-key shortcuts: `tq` → **ৎ**, `qq` → **ঁ**. For example, `sotq` → **সৎ**
 and `baqq` → **বাঁ**.
 
-<p align="center">
-  <img src="docs/assets/typing.gif" alt="Typing Bangla with Obadh in Google Keep" width="330">
-</p>
-
 ## What it does
 
 - **Live native composition.** Roman input renders Bangla immediately through the
@@ -47,14 +43,12 @@ and `baqq` → **বাঁ**.
 - **Native gestures.** Swipe space to switch Bangla/English, move upward from space
   for the cursor trackpad, or swipe backspace to delete. Hold X/C/V for native
   cut/copy/paste popups. Each shared control has one setting.
-- **Android keyboard and Material settings.** Native keyboard layouts, previews,
-  toolbar, clipboard and emoji panel, plus organized Material preference screens.
+- **Android keyboard and Material settings.** Gboard-measured default geometry and
+  light/dark colors, wallpaper/fixed/photo themes, key borders, number row, size and
+  tablet split choices. Shared native toolbar, clipboard and emoji panels accompany
+  organized Material preference screens.
 - **On-device typing.** Models, learning and clipboard remain private on the device.
   Network access serves the explicitly requested optional swipe-library download.
-
-<p align="center">
-  <img src="docs/assets/keyboard.png" alt="The Obadh keyboard with suggestions and an emoji" width="330">
-</p>
 
 ## Getting started
 
@@ -71,10 +65,6 @@ with an NDK, [rustup](https://rustup.rs) (the toolchain is pinned in
 **Settings › System › Languages & input › On-screen keyboard**; the app walks
 you through it. Details and the engine-bump workflow:
 [docs/build-and-release.md](docs/build-and-release.md).
-
-<p align="center">
-  <img src="docs/assets/app.png" alt="The Obadh app: welcome and settings" width="560">
-</p>
 
 Signed APKs are on the [Releases](https://github.com/unmukto-org/obadh-android/releases)
 page; allow installs from your browser or file manager, install, then turn Obadh on.
@@ -93,7 +83,8 @@ the shared bridge. The small checked adapter is described in the integration gui
 | [text-composition.md](docs/text-composition.md) | Legacy composition reference; current native behavior links to the integration guide |
 | [autocorrect.md](docs/autocorrect.md) | The engine/client policy split and the auto-insert confidence gate |
 | [emoji.md](docs/emoji.md) | Data, inline suggestions, the panel, search, recents, skin tones |
-| [layouts.md](docs/layouts.md) | Phone, tablet families, landscape, secondary glyphs, the debug preview |
+| [gboard-parity.md](docs/gboard-parity.md) | Native geometry, colors, feature scope and measured Gboard comparisons |
+| [layouts.md](docs/layouts.md) | Legacy canvas layout reference |
 | [testing.md](docs/testing.md) | Unit tests, what is and is not verified, manual checks |
 | [build-and-release.md](docs/build-and-release.md) | Setup, the Rust bridge, device install, engine bumps |
 | [KNOWN-ISSUES.md](KNOWN-ISSUES.md) | Open issues, evidence, and what remains unverified |

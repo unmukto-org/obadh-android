@@ -11,7 +11,7 @@ interface ObadhExtension {
     fun decorate(composer: WordComposer, words: SuggestedWords, settings: SettingsValues): SuggestedWords = words
     fun preferredEmoji(emoji: String): String? = null
     fun emojiVariants(emoji: String): List<String> = emptyList()
-    fun committed(typed: String, chosen: String, manual: Boolean, settings: SettingsValues)
+    fun committed(typed: String, chosen: String, manual: Boolean, settings: SettingsValues, context: NgramContext)
     fun startInput()
     fun shortcut(trigger: String, settings: SettingsValues): String?
     fun emojiSearch(query: String): List<String>

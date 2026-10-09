@@ -62,7 +62,10 @@ Bangla next-word queries use the personalized session C ABI only when its bounde
 committed context matches the actual editor context. Otherwise they use the
 model-only explicit-context C ABI. Incognito and disabled learning always use
 model-only queries, without swapping snapshots or allocating a second model.
-Learning completion requests a fresh generation-checked suggestion update.
+Learning completion requests a fresh generation-checked suggestion update. The
+native commit hook passes its existing pre-commit n-gram context; cursor changes,
+sentence boundaries and language changes discard stale session context before
+learning. Existing editor words are never replayed into the personal model.
 
 Emulator handler timings are diagnostic, not physical-device latency guarantees.
 Most ordinary letter events measured below 1 ms; cold queries, model startup,
@@ -101,11 +104,15 @@ Small checked hooks enable the upstream split-layout flag and replace tablet ext
 keys with the measured QWERTY rows. Wide split layouts duplicate the center Latin
 keys and retain one spacebar. Automatic splitting is disabled while floating;
 explicit Full/Split controls still pass through the same native layout machinery.
+The toolbar split toggle is offered in Automatic mode; an explicit Full/Split choice
+is controlled from the shared Preferences page, avoiding a conflicting inactive toggle.
 
 Photo themes use one atomically replaced, metadata-stripped private JPEG. Decode,
 orientation, bounded downsampling and dimming happen off the main thread. The IME
 uses the processed file and invalidates its background cache when its revision
-changes; it never reads the source picker URI during typing. No photo service or
+changes. Forced appearance and photo revisions mark the native theme for reload,
+so the existing view cannot retain stale colors or images. It never reads the source
+picker URI during typing. No photo service or
 additional image library is used.
 
 ## Optional English swipe typing

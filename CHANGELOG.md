@@ -16,6 +16,11 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
   matches, with model-only incognito queries and an isolated real-model regression.
 - Kept voice typing out of scope. Documented GIF provider evaluation; no suitable
   free/open production catalog is verified, so no unfinished online panel is exposed.
+- Actual touch checks cover language switching, English glide, one-handed and floating
+  typing. Both languages pass 24 Gboard geometry/theme configurations each; all 48
+  JVM checks and 54 real-editor checks pass. Photo removal handles shrinking theme
+  choices without a stale selection crash. Live appearance changes rebuild the cached
+  native view; learning uses the editor’s existing context to avoid false word pairs.
 - Default Rust builds now target only the ARM64 APK ABI, saving unused build space.
 
 - Optional English swipe typing: one native switch and download prompt in setup and

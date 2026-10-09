@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 
 /** Small state in plain SharedPreferences: no database, same as iOS UserDefaults. */
 class KeyboardPreferences(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
     private val nativeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
@@ -48,7 +49,9 @@ class KeyboardPreferences(context: Context) {
     var englishAutoCorrection: Boolean get() = flag("english_autocorrect"); set(v) = setFlag("english_autocorrect", v)
 
     var keyboardTheme: String
-        get() = prefs.getString("keyboard_theme", "default").orEmpty().takeIf { it in helium314.keyboard.latin.obadh.ObadhColors.names } ?: "default"
+        get() = prefs.getString("keyboard_theme", "default").orEmpty().takeIf {
+            it in helium314.keyboard.latin.obadh.ObadhColors.names && (it != "photo" || KeyboardPhoto.exists(appContext))
+        } ?: "default"
         set(v) = prefs.edit().putString("keyboard_theme", v).apply()
     var themeMode: Int
         get() = prefs.getInt("keyboard_theme_mode", 0).coerceIn(0, 2)

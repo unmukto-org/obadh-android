@@ -44,7 +44,12 @@ object NativeObadhFeatures : ObadhExtension {
     private var imeReference = java.lang.ref.WeakReference<ObadhInputMethodService>(null)
     val activeIme get() = imeReference.get()
     fun attach(ime: ObadhInputMethodService) { imeReference = java.lang.ref.WeakReference(ime) }
-    fun refreshSettings() { activeIme?.reloadObadhSettings() }
+    fun refreshSettings(appearanceChanged: Boolean = false) {
+        activeIme?.let {
+            if (appearanceChanged) helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().setThemeNeedsReload()
+            it.reloadObadhSettings()
+        }
+    }
 
     private data class Options(
         val autoInsert: Boolean = false, val pairs: Boolean = true,
@@ -164,14 +169,15 @@ object NativeObadhFeatures : ObadhExtension {
             }
     }
 
-    override fun committed(typed: String, chosen: String, manual: Boolean, settings: SettingsValues) {
+    override fun committed(typed: String, chosen: String, manual: Boolean, settings: SettingsValues, context: NgramContext) {
         recordEmoji(chosen)
         if (settings.mLocale.language != "bn" || literal(settings) || settings.mIncognitoModeEnabled || !settings.mUsePersonalizedDicts) return
         if (chosen.isEmpty() || chosen.none { it in '\u0980'..'\u09ff' }) return // emoji queries never enter learning
+        val previous = (context.prevWordCount downTo 1).mapNotNull { context.getNthPrevWord(it)?.toString()?.takeIf(String::isNotBlank) }.joinToString(" ")
         worker.execute {
             if (!modelsReady) return@execute
             if (manual && typed == chosen) learned.protect(chosen)
-            engine.commitAutosuggestToken(chosen)
+            engine.commitAutosuggestToken(chosen, previous)
             Handler(Looper.getMainLooper()).post { activeIme?.takeIf { it.isInputViewShown }?.requestObadhSuggestions() }
             if (!savePending) {
                 savePending = true

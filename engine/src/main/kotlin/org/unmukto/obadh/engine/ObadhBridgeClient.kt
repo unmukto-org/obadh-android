@@ -114,8 +114,17 @@ class ObadhBridgeClient : BanglaTypingEngine, AutoCloseable {
         else PackedRecords.parseStringList(ObadhNative.autosuggestSuggest(autosuggestHandle, limit.coerceAtLeast(0)))
     }
 
-    fun commitAutosuggestToken(token: String): Boolean = autosuggestLock.withLock {
+    fun commitAutosuggestToken(token: String, editorContext: String? = null): Boolean = autosuggestLock.withLock {
         if (autosuggestHandle == 0L) return@withLock false
+        if (editorContext != null) {
+            val tail = editorContext.trim().split(whitespace).filter(String::isNotBlank).takeLast(3)
+            // Accumulate only newly typed words; never learn existing editor text.
+            // Cursor moves, sentence breaks and language changes must not create false pairs.
+            if (tail.takeLast(committedContext.size) != committedContext.toList()) {
+                committedContext.clear()
+                ObadhNative.autosuggestClearSession(autosuggestHandle)
+            }
+        }
         val committed = ObadhNative.autosuggestCommit(autosuggestHandle, token.toByteArray()) == 1
         if (committed) {
             committedContext.addLast(token)

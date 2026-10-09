@@ -34,7 +34,8 @@ python3 scripts/test-native-keyboard.py
 ```
 
 The script checks both languages, fast boundaries, correction policy, next-word
-prediction, shortcuts and pairs on/off, email/numeric fields, emoji selection,
+prediction, personal OOV words in the actual strip, incognito/learning-off queries,
+shortcuts and pairs on/off, email/numeric fields, emoji selection,
 double-space punctuation, cursor edits, return actions and language switches.
 It also checks shared native controls, manual spelling protection, volume cursor
 handling and sensitive clipboard exclusions. Probe overrides leave canonical app
@@ -45,6 +46,18 @@ controls afterward. Debug tooling is entirely excluded from the release APK.
 Root JVM suites have 41 checks; six native combiner checks verify the seam,
 including Roman snapshots retained across boundary flushes. One palette test checks WCAG 4.5:1 label contrast across both modes and all fixed palettes. Legacy canvas-layout
 checks below are reference coverage, not native screenshot comparisons.
+
+## Actual touch regressions
+
+```sh
+python3 scripts/test-native-touch.py
+```
+
+This reads the renderer's key coordinates but sends real Android touch events for
+letters, globe, long-space language picking, space-swipe switching and English
+word glide, plus typing/restoration in one-handed and floating modes for both
+languages. The optional swipe decoder must already be installed via the app's
+switch. Touch fixtures use the same debug editor and do not add an emulator image.
 
 ## Gboard geometry and theme comparison
 
@@ -65,9 +78,22 @@ The harness checks the keyboard is actually visible and the theme has settled,
 then restores viewport, rotation, system night mode and selected IME even on failure.
 Screenshots and JSON remain ignored build artifacts; no Google artwork is packaged.
 
+Live appearance regression:
+
+```sh
+python3 scripts/test-native-appearance.py
+```
+
+This changes the actual Material settings, then samples the rendered keyboard
+background and key fills in both languages. It checks repeated Light/Dark switches,
+wallpaper palettes and border removal without restarting the IME. This catches the
+case where preference values update but a cached view still renders the old theme.
+Photo picker QA separately verified bounded resize, metadata removal, live display,
+deleting the active photo, and the shrinking palette-choice transition.
+
 The debug `personalization_probe` command creates isolated C ABI handles, trains a
 synthetic OOV word and checks learned predictions, model-only incognito results,
-editor-context mismatch, snapshot preservation and deletion. It frees its handles
+editor-context mismatch, learning-context reset, snapshot preservation and deletion. It frees its handles
 and does not change the user's personal dictionary.
 
 ## What is not covered

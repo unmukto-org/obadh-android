@@ -117,7 +117,7 @@ fun ChoiceRow(title: String, options: List<String>, initial: Int, enabled: Boole
     LaunchedEffect(initial, options) { selected = initial.coerceIn(options.indices) }
     var choosing by rememberSaveable { mutableStateOf(false) }
     PreferenceItem(
-        content = { Text(title) }, supportingContent = { Text(options[selected]) },
+        content = { Text(title) }, supportingContent = { Text(options.getOrNull(selected) ?: options.getOrNull(initial).orEmpty()) },
         onClick = if (enabled) ({ choosing = true }) else null,
     )
     if (choosing) {

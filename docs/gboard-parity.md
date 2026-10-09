@@ -8,8 +8,10 @@ code, artwork and APK are not included in the product or repository.
 
 The existing Android 15 ARM64 AVD is resized, rather than downloading tablet images.
 Profiles: 393 dp phone (1080×2340 / 440 dpi), 600 dp compact tablet
-(1200×1920 / 320 dpi), and 900 dp tablet (1800×2560 / 320 dpi). Each is tested in
-portrait and landscape, light and dark: **12 reference and 12 Obadh captures**.
+(1200×1920 / 320 dpi), and 900 dp tablet (1800×2560 / 320 dpi). Additional profiles cover 360 dp and
+411 dp phones (1080×2160 / 480 dpi and 1440×3120 / 560 dpi), plus an 800 dp
+tablet (1600×2560 / 320 dpi). Each is tested in portrait and landscape, light
+and dark: **24 reference captures, 24 English Obadh captures and 24 Bangla Obadh captures**.
 
 `scripts/keyboard-parity.py` uses actual editor taps for both IMEs. It measures solid
 key fills with connected components, then isolates the first q glyph below its hint.
@@ -19,7 +21,11 @@ three letter rows: exact detected key counts, ≤3 dp row/panel position differe
 levels per shared keyboard surface. Colors are measured on the keyboard, not on the
 host editor. Captures/JSON remain under ignored `build/parity/`.
 
-All 12 configurations pass. Maximum q glyph difference is **0.36 dp**. Representative
+All 48 Obadh configurations pass, 24 per language. The original three-profile matrix has a
+maximum q glyph difference of **0.36 dp**; the expanded phone/tablet matrix is
+also within the 1 dp glyph gate. Actual touch regressions also verify composing
+Bangla through key taps, globe and space-swipe switching, the long-space picker,
+English glide typing of “world”, and one-handed/floating typing in both languages. Representative
 light-mode top-row values below are **Obadh / Gboard**, in dp:
 
 | Profile | Orientation | Fill width | Fill height | Row top |
@@ -35,7 +41,8 @@ Default light: background `#F0F4F9`, keys `#FFFFFF`, functional keys `#E1E3E1`,
 text `#1F1F1F`. Dark: background `#1E1F20`, keys `#37393B`, functional `#444746`,
 text `#E3E3E3`. Enter uses the blue action capsule. Split layouts keep a single
 spacebar and repeat the center boundary letter keys. Explicit full/split settings
-remain available. Native key handling, popup keys and gesture machinery are retained.
+remain available. Phones at least 400 dp wide use the measured taller-key resources. Native key
+handling, popup keys and gesture machinery are retained.
 
 ## Feature scope
 

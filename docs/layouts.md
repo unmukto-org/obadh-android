@@ -1,5 +1,9 @@
 # Layouts: phone, tablet, landscape
 
+This document describes the unregistered legacy canvas host. The current Android
+native renderer uses measured Gboard-style geometry and split/full layouts; see
+[gboard-parity.md](gboard-parity.md) and [heliboard-integration.md](heliboard-integration.md).
+
 The keyboard has one layout engine, `KeyboardLayoutProvider`, that returns rows
 of keys with weights. `KeyboardView` turns weights into pixels. Everything below
 is data plus a few rules, which is why it is unit-tested without a device.

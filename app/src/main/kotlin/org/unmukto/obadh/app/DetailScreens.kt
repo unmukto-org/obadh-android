@@ -109,7 +109,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
         PreferenceHeading("On-device processing")
         PreferenceNote("Transliteration, autocorrect, suggestions and emoji search work on your device. Obadh does not send your typing to a server. Network access is used only for the optional swipe-typing library download you request.")
         PreferenceHeading("Stored data")
-        PreferenceNote("Obadh stores learned words, recent emoji, your text shortcuts and clipboard history in its private storage. Clipboard collection excludes password fields and items marked sensitive.")
+        PreferenceNote("Obadh stores learned words, recent emoji, your text shortcuts, clipboard history and an optional resized keyboard photo in its private storage. Clipboard collection excludes password fields, incognito mode and items marked sensitive.")
         PreferenceHeading("Keyboard access")
         PreferenceNote("Android warns that any keyboard can read what you type. Obadh uses this access to enter and correct text, with all processing on your device.")
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))

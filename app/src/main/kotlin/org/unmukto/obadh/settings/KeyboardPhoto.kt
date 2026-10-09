@@ -71,7 +71,7 @@ object KeyboardPhoto {
             atomic.finishWrite(output)
             output = null
             val p = context.getSharedPreferences("obadh_prefs", Context.MODE_PRIVATE)
-            p.edit().putLong("keyboard_photo_revision", System.currentTimeMillis()).putString("keyboard_theme", "photo").apply()
+            check(p.edit().putLong("keyboard_photo_revision", System.currentTimeMillis()).putString("keyboard_theme", "photo").commit())
             NativePreferences.send(context)
             true
         } catch (_: Exception) {
@@ -85,10 +85,10 @@ object KeyboardPhoto {
             AtomicFile(file(context)).delete()
             if (file(context).exists()) return@withContext false
             val preferences = context.getSharedPreferences("obadh_prefs", Context.MODE_PRIVATE)
-            preferences.edit().apply {
+            check(preferences.edit().apply {
                 if (preferences.getString("keyboard_theme", "default") == "photo") putString("keyboard_theme", "default")
                 putLong("keyboard_photo_revision", System.currentTimeMillis())
-            }.apply()
+            }.commit())
             NativePreferences.send(context)
             true
         } catch (_: Exception) { false }
