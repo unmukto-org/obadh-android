@@ -106,17 +106,19 @@ fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null, onChang
 @Composable
 fun PrefToggle(title: String, subtitle: String, initial: Boolean, onChange: (Boolean) -> Unit) {
     var value by rememberSaveable { mutableStateOf(initial) }
+    LaunchedEffect(initial) { value = initial }
     ToggleRow(title, value, subtitle) { value = it; onChange(it) }
 }
 
 /** Standard single-choice preference dialog, rather than a custom segmented control. */
 @Composable
-fun ChoiceRow(title: String, options: List<String>, initial: Int, onSelect: (Int) -> Unit) {
+fun ChoiceRow(title: String, options: List<String>, initial: Int, enabled: Boolean = true, onSelect: (Int) -> Unit) {
     var selected by rememberSaveable { mutableIntStateOf(initial.coerceIn(options.indices)) }
+    LaunchedEffect(initial, options) { selected = initial.coerceIn(options.indices) }
     var choosing by rememberSaveable { mutableStateOf(false) }
     PreferenceItem(
         content = { Text(title) }, supportingContent = { Text(options[selected]) },
-        onClick = { choosing = true },
+        onClick = if (enabled) ({ choosing = true }) else null,
     )
     if (choosing) {
         AlertDialog(

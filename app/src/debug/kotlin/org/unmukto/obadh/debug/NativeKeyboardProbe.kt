@@ -52,6 +52,38 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
         if (ime.currentInputEditorInfo == null) return
         val handler = Handler(Looper.getMainLooper())
         when (intent.getStringExtra("command")) {
+            "personalization_probe" -> {
+                Thread({
+                    val result = runCatching {
+                        org.unmukto.obadh.engine.ObadhBridgeClient().use { client ->
+                            client.configureModels(org.unmukto.obadh.settings.ModelInstaller.ensureInstalled(context))
+                            val query = "আমার "
+                            val name = "ওবাধনামপরীক্ষা"
+                            val public = client.autosuggestSuggestions(query, 6, false)
+                            repeat(8) {
+                                client.clearAutosuggestSession()
+                                check(client.commitAutosuggestToken("আমার"))
+                                check(client.commitAutosuggestToken(name))
+                            }
+                            client.clearAutosuggestSession()
+                            check(client.commitAutosuggestToken("আমার"))
+                            val snapshot = client.exportPersonalAutosuggestSnapshot()!!
+                            val personalized = client.autosuggestSuggestions(query, 6, true)
+                            check(name in personalized && name !in public)
+                            check(public == client.autosuggestSuggestions(query, 6, false))
+                            check(snapshot.contentEquals(client.exportPersonalAutosuggestSnapshot()!!))
+                            check(personalized == client.autosuggestSuggestions(query, 6, true))
+                            val other = client.autosuggestSuggestions("তুমি ", 6, false)
+                            check(other == client.autosuggestSuggestions("তুমি ", 6, true))
+                            client.clearPersonalAutosuggest()
+                            check(name !in client.autosuggestSuggestions(query, 6, true))
+                            org.json.JSONObject().put("public_model_preserved", true).put("personal_predictions_work", true)
+                                .put("editor_context_guard", true).put("incognito_excludes_personal", true).put("clear_works", true)
+                        }
+                    }.getOrElse { org.json.JSONObject().put("error", it.toString()) }
+                    android.util.Log.i("ObadhPersonalizationProbe", result.toString())
+                }, "Obadh isolated ABI test").start()
+            }
             "language" -> {
                 val locale = intent.getStringExtra("language") ?: "bn"
                 SubtypeSettings.getEnabledSubtypes().firstOrNull { it.languageTag.startsWith(locale) || it.locale.startsWith(locale) }

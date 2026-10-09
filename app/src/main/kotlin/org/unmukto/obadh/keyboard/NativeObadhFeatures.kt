@@ -154,7 +154,7 @@ object NativeObadhFeatures : ObadhExtension {
             }
         } else if (modelsReady) {
             val previous = (context.prevWordCount downTo 1).mapNotNull { context.getNthPrevWord(it)?.toString()?.takeIf(String::isNotBlank) }
-            if (previous.isNotEmpty()) engine.autosuggestSuggestions(previous.joinToString(" ") + " ", 6)
+            if (previous.isNotEmpty()) engine.autosuggestSuggestions(previous.joinToString(" ") + " ", 6, settings.mUsePersonalizedDicts && !settings.mIncognitoModeEnabled)
                 .forEach { entries += info(it, Info.KIND_PREDICTION) }
             previous.lastOrNull()?.let { word -> emoji.emojis(word).forEach { entries += info(it, Info.KIND_PREDICTION) } }
         }
@@ -172,6 +172,7 @@ object NativeObadhFeatures : ObadhExtension {
             if (!modelsReady) return@execute
             if (manual && typed == chosen) learned.protect(chosen)
             engine.commitAutosuggestToken(chosen)
+            Handler(Looper.getMainLooper()).post { activeIme?.takeIf { it.isInputViewShown }?.requestObadhSuggestions() }
             if (!savePending) {
                 savePending = true
                 pendingSave = worker.schedule({ savePending = false; personal.save(engine) }, 1, TimeUnit.SECONDS)

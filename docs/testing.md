@@ -3,7 +3,7 @@
 Behavior is verified against the real thing where that is possible without a
 device, and the remainder is listed honestly in [KNOWN-ISSUES.md](../KNOWN-ISSUES.md).
 
-## Unit tests (47)
+## Unit tests (48)
 
 ```bash
 ./gradlew :app:testDebugUnitTest :keyboard:testDebugUnitTest
@@ -43,26 +43,41 @@ development emulator and clear those fixtures through the app's Privacy/Clipboar
 controls afterward. Debug tooling is entirely excluded from the release APK.
 
 Root JVM suites have 41 checks; six native combiner checks verify the seam,
-including Roman snapshots retained across boundary flushes. Legacy canvas-layout
+including Roman snapshots retained across boundary flushes. One palette test checks WCAG 4.5:1 label contrast across both modes and all fixed palettes. Legacy canvas-layout
 checks below are reference coverage, not native screenshot comparisons.
 
-## Legacy preview, not a screenshot test
+## Gboard geometry and theme comparison
 
-`KeyboardPreviewActivity` (debug only) renders the real keyboard view at a forced
-width and orientation, so every layout can be reviewed on a phone. It is a review
-tool, not an assertion: there is no automated screenshot comparison yet, and the
-measured parity suite iOS has (against Apple's keyboard) has no Android
-counterpart.
+The real installed Gboard and Obadh are measured with actual touch input on one
+resized Android 15 ARM64 emulator. This avoids extra emulator images. See
+[gboard-parity.md](gboard-parity.md) for the pinned reference, profiles, tolerances,
+results and remaining physical-device validation.
+
+```sh
+python3 scripts/keyboard-parity.py --keyboard gboard --output build/parity/gboard-system
+python3 scripts/keyboard-parity.py --keyboard obadh --output build/parity/obadh \
+  --compare-with build/parity/gboard-system
+```
+
+Select Gboard System Auto, key borders on and English QWERTY first. Select Obadh
+Default / Follow system / borders on / default height / automatic tablet layout.
+The harness checks the keyboard is actually visible and the theme has settled,
+then restores viewport, rotation, system night mode and selected IME even on failure.
+Screenshots and JSON remain ignored build artifacts; no Google artwork is packaged.
+
+The debug `personalization_probe` command creates isolated C ABI handles, trains a
+synthetic OOV word and checks learned predictions, model-only incognito results,
+editor-context mismatch, snapshot preservation and deletion. It frees its handles
+and does not change the user's personal dictionary.
 
 ## What is not covered
 
-- **Host coverage.** The emulator suite drives a real `InputConnection` and JNI,
-  but physical devices and diverse third-party editors still need review.
-- **No engine fingerprint pins** on Android, so a silent artifact swap on an
-  engine bump would not fail a test. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-005).
-- **Touch behaviour is checked by hand**, not by a test: nothing injects taps on the
-  test phone, so the emoji panel, gestures and rotation follow the manual checklist.
-- **A tablet.** Every tablet layout was reviewed through the preview on a phone.
+- Physical devices, vendor fonts/insets, Android 17 runtime and diverse third-party
+  editors still need release validation. Emulated tablet configurations are measured;
+  this is not a claim of physical tablet certification.
+- Handler timings describe the emulator, not a hardware touch-to-photon guarantee.
+- Legacy preview tests describe the previous canvas layout and are reference coverage.
+- Engine model fingerprints are exposed through the C ABI but not yet pinned in CI.
 
 ## Device notes
 
@@ -76,7 +91,7 @@ activities accept launch extras so screens can be reached without taps:
 adb shell am start -n org.unmukto.obadh/.app.MainActivity --es screen about
 ```
 
-(`screen`: settings, preferences, correction, gestures, clipboard, shortcuts,
+(`screen`: settings, appearance, preferences, correction, gestures, clipboard, shortcuts,
 emoji, privacy, about, advanced, setup. Honoured only in debuggable builds. Setup now
 uses one page rather than separate welcome/setup/done steps.)
 
@@ -99,8 +114,8 @@ library while target SDK stays at 35.
 4. Space, double-space (dari), numbers, symbols, shift, caps lock.
 5. Open the emoji panel: scroll, jump categories, long-press a hand for tones,
    search in English and in Bangla, return.
-6. On a tablet: every key, flick down and long-press on letters, Tab, Caps Lock,
-   hide. Rotate with the keyboard open.
+6. On a tablet: every key and long-press symbols, split/full layout, keyboard
+   tools and rotation with the keyboard open.
 7. Switch away and back: the word is kept. Open recents with the keyboard up: the
    card must show the keys at the bottom (see "Window shape" in
    [text-composition.md](text-composition.md)).

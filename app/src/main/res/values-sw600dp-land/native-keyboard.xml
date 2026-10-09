@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <fraction name="config_key_letter_ratio_lxx">56%</fraction>
+    <dimen name="config_suggestions_strip_height">48dp</dimen>
+    <dimen name="config_suggestions_strip_edge_key_width">48dp</dimen>
     <dimen name="config_default_keyboard_height">226dp</dimen>
+    <fraction name="config_keyboard_left_padding">5%p</fraction>
+    <fraction name="config_keyboard_right_padding">5%p</fraction>
+    <fraction name="config_key_horizontal_gap_holo">1.5%p</fraction>
+    <fraction name="config_keyboard_top_padding_holo">2.335%p</fraction>
+    <fraction name="config_keyboard_bottom_padding_holo">4%p</fraction>
     <fraction name="config_min_keyboard_height">0%p</fraction>
     <fraction name="config_key_vertical_gap_holo">5.1%p</fraction>
 </resources>

@@ -4,9 +4,8 @@
     <style name="Theme.Obadh.Base" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/obadh_window_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">#202124</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
     </style>
     <style name="Theme.Obadh" parent="Theme.Obadh.Base" />
 </resources>

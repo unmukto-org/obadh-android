@@ -15,7 +15,7 @@ from PIL import Image
 
 IMES = {'gboard': 'com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME',
         'obadh': 'org.unmukto.obadh/.keyboard.ObadhInputMethodService'}
-PROFILES = {'phone': (1080, 2340, 440), 'compact-tablet': (1200, 1920, 320), 'tablet': (1800, 2560, 320)}
+PROFILES = {'phone': (1080, 2340, 440), 'compact-tablet': (1200, 1920, 320), 'tablet': (1800, 2560, 320), 'small-phone': (1080, 2160, 480), 'large-phone': (1440, 3120, 560), 'medium-tablet': (1600, 2560, 320)}
 
 
 def adb(*args, binary=False):
@@ -90,7 +90,21 @@ def measure(path, density):
     if len(letter_rows) < 3:
         raise RuntimeError(f'{path}: only {len(letter_rows)} key rows; check onboarding/layout/borders before accepting capture')
     scale = density / 160
-    return {'size_px': [w, h], 'density': density, 'palette_rgb': palette.tolist(), 'rows': rows,
+    q = letter_rows[0]['keys'][0]
+    x0, y0, x1, y1 = q['box']
+    inset = max(2, int(2 * scale))
+    glyph = pixels[y0 + int((y1-y0)*.25):y1-inset, x0+inset:x1-inset].astype(np.int16)
+    mask = np.max(np.abs(glyph - np.asarray(q['fill'])), axis=2) > 100
+    parts = components(mask)
+    main = max(parts, key=lambda b: (b[2]-b[0])*(b[3]-b[1])) if parts else None
+    glyph_dp = [round((main[2]-main[0])/scale, 2), round((main[3]-main[1])/scale, 2)] if main else None
+    gap_x = (letter_rows[0]['keys'][0]['box'][2] + letter_rows[0]['keys'][1]['box'][0])//2
+    gap_y = (y0+y1)//2
+    bg = pixels[gap_y, gap_x].tolist()
+    ratio = np.mean(np.all(pixels == bg, axis=2), axis=1)
+    panel = int(np.flatnonzero(ratio > .7)[0])
+    surfaces = {'background': bg, 'keys': q['fill'], 'functional': letter_rows[2]['keys'][0]['fill']}
+    return {'panel_top_dp': round(panel/scale, 2), 'keyboard_surfaces_rgb': surfaces, 'q_glyph_dp': glyph_dp,'size_px': [w, h], 'density': density, 'palette_rgb': palette.tolist(), 'rows': rows,
             'letter_rows_dp': [{'top': round(r['top']/scale, 2),
                                'height': round(float(np.median([k['box'][3]-k['box'][1] for k in r['keys']]))/scale, 2),
                                'width': round(float(np.median([k['box'][2]-k['box'][0] for k in r['keys']]))/scale, 2),
@@ -132,9 +146,16 @@ def capture(args):
                     stem = f'{profile}-{"landscape" if rotation else "portrait"}-{theme}-{args.language}'
                     path = out / f'{stem}.png'
                     path.write_bytes(adb('exec-out', 'screencap', '-p', binary=True))
+                    controls = None
+                    if args.keyboard == 'obadh':
+                        shell('am', 'broadcast', '-n', 'org.unmukto.obadh/.debug.NativeKeyboardProbeReceiver', '--es', 'command', 'inspect')
+                        states = [line for line in adb('logcat', '-d', '-s', 'ObadhProbeState:I', '-v', 'raw').splitlines() if line.startswith('{')]
+                        controls = json.loads(states[-1])['controls']
+                        if controls['night'] != (32 if theme == 'dark' else 16):
+                            raise RuntimeError('IME theme configuration did not settle')
                     metrics = measure(path, dpi)
                     results.append({'profile': profile, 'rotation': rotation, 'theme': theme,
-                                    'keyboard': args.keyboard, 'language': args.language, **metrics})
+                                    'keyboard': args.keyboard, 'language': args.language, 'native_controls': controls, **metrics})
                     (out / 'measurements.json').write_text(json.dumps(results, indent=2)+'\n')
                     print(stem, metrics['letter_rows_dp'], flush=True)
     finally:
@@ -147,11 +168,45 @@ def capture(args):
         shell('rm', '-f', '/sdcard/obadh-parity.xml')
 
 
+def compare(output, reference):
+    """Fail on key-box, glyph or shared-palette drift, including split layouts."""
+    out, ref = Path(output), Path(reference)
+    actual = json.loads((out / 'measurements.json').read_text())
+    expected = json.loads((ref / 'measurements.json').read_text())
+    references = {(r['profile'], r['rotation'], r['theme']): r for r in expected}
+    report = []
+    for row in actual:
+        key = (row['profile'], row['rotation'], row['theme'])
+        baseline = references[key]
+        stem = f"{key[0]}-{'landscape' if key[1] else 'portrait'}-{key[2]}"
+        a = measure(out / (stem + '-' + row['language'] + '.png'), row['density'])
+        b = measure(ref / (stem + '-' + baseline['language'] + '.png'), baseline['density'])
+        deltas = []
+        for ra, rb in zip(a['letter_rows_dp'][:3], b['letter_rows_dp'][:3]):
+            assert ra['count'] == rb['count'], f'{stem}: wrong row key count'
+            delta = {name: round(abs(ra[name]-rb[name]), 2) for name in ('top', 'height', 'width')}
+            assert delta['top'] <= 3 and delta['height'] <= 1.5 and delta['width'] <= 1.5, f'{stem}: {delta}'
+            deltas.append(delta)
+        glyph = [round(abs(x-y), 2) for x, y in zip(a['q_glyph_dp'], b['q_glyph_dp'])]
+        assert max(glyph) <= 1.0, f'{stem}: glyph size differs by {glyph} dp'
+        assert abs(a['panel_top_dp'] - b['panel_top_dp']) <= 3, f'{stem}: keyboard panel height differs'
+        for surface, color in b['keyboard_surfaces_rgb'].items():
+            delta = max(abs(x-y) for x, y in zip(color, a['keyboard_surfaces_rgb'][surface]))
+            assert delta <= 6, f'{stem}: {surface} color differs by {delta}'
+        report.append({'profile': key[0], 'orientation': key[1], 'theme': key[2], 'row_deltas_dp': deltas, 'glyph_delta_dp': glyph})
+    (out / 'comparison.json').write_text(json.dumps(report, indent=2)+'\n')
+    print(f'PASS Gboard parity across {len(report)} configurations (boxes, glyphs, shared surface colors).', flush=True)
+
+
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--keyboard', choices=IMES, required=True)
     p.add_argument('--output', required=True)
-    p.add_argument('--profiles', nargs='+', choices=PROFILES, default=list(PROFILES))
+    p.add_argument('--profiles', nargs='+', choices=PROFILES, default=['phone', 'compact-tablet', 'tablet'])
     p.add_argument('--themes', nargs='+', choices=('light', 'dark'), default=['light', 'dark'])
     p.add_argument('--language', choices=('en', 'bn'), default='en')
-    capture(p.parse_args())
+    p.add_argument('--compare-with', help='Directory containing reference captures and measurements.json')
+    args = p.parse_args()
+    capture(args)
+    if args.compare_with:
+        compare(args.output, args.compare_with)

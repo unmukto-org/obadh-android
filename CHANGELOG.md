@@ -6,6 +6,18 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 
 ## Unreleased
 
+- Measured default key boxes, glyph sizes and light/dark colors against installed
+  Gboard on phone and tablet, portrait and landscape. Fixed tablet split activation,
+  removed unrelated tablet alphabet extras and aligned functional keys.
+- Added shared fixed/wallpaper/photo themes, key borders, number and language keys,
+  keyboard size and automatic/full/split tablet layouts. Photo processing is bounded,
+  private and asynchronous; native language picking follows the selected appearance.
+- Corrected Bangla personal predictions to use the session C ABI when editor context
+  matches, with model-only incognito queries and an isolated real-model regression.
+- Kept voice typing out of scope. Documented GIF provider evaluation; no suitable
+  free/open production catalog is verified, so no unfinished online panel is exposed.
+- Default Rust builds now target only the ARM64 APK ABI, saving unused build space.
+
 - Optional English swipe typing: one native switch and download prompt in setup and
   Gestures, Android background transfer, progress/waiting/error states, cancellation
   and retry, pinned checksum verification and automatic activation. No file import.

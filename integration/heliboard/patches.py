@@ -5,6 +5,31 @@ def apply(main, replace):
         '    private val mCombiners = ArrayList<Combiner>()',
         '    private val mCombiners = ArrayList<Combiner>()\n'
         '    val obadhRoman: String get() = (mCombiners.lastOrNull() as? ObadhCombiner)?.romanInput.orEmpty()')
+    replace(base / 'keyboard/KeyboardLayoutSet.kt',
+        '            params.settingsValues = settingsValues',
+        '            params.settingsValues = settingsValues\n'
+        '            params.isSplitLayoutEnabled = settingsValues?.mIsSplitKeyboardEnabled == true')
+    replace(base / 'keyboard/internal/KeyboardParams.java',
+        'final float defaultKeyWidthFactor = context.getResources().getInteger(R.integer.config_screen_metrics) > 2 ? 0.9f : 1f;',
+        'final float defaultKeyWidthFactor = 1f;')
+    replace(base / 'keyboard/internal/KeyboardBuilder.kt',
+        '        val spacerRelativeWidth = Settings.getValues().mSplitKeyboardSpacerRelativeWidth',
+        '        val spacerRelativeWidth = (mParams.mBaseWidth / mContext.resources.displayMetrics.density / 545f - 1f).coerceAtLeast(0.15f)')
+    replace(base / 'keyboard/internal/KeyboardParams.java',
+        '        setTabletExtraKeys = Settings.getInstance().isTablet() && !mId.getSubtype().isCustom();',
+        '        setTabletExtraKeys = false; // Obadh uses the same QWERTY rows on phones and tablets.')
+    replace(base / 'keyboard/internal/KeyboardBuilder.kt',
+        '        for (row in keysInRows) {\n            val y = row.first().yPos',
+        '        for (row in keysInRows) {\n'
+        '            if (row.any { it.mCode == Constants.CODE_SPACE }) continue // Keep the shared space bar across the split.\n'
+        '            val y = row.first().yPos')
+    replace(base / 'keyboard/internal/KeyboardBuilder.kt',
+        '            val indexOfProperSpace = row.indexOfFirst { key ->',
+        '            if (mParams.mId.element.isAlphabet && row.count { it.mCode in 97..122 } % 2 == 1) {\n'
+        '                val boundary = row.getOrNull(insertIndex - 1)\n'
+        '                if (boundary != null && boundary.mCode in 97..122) row.add(insertIndex, KeyParams(boundary))\n'
+        '            }\n'
+        '            val indexOfProperSpace = row.indexOfFirst { key ->')
     replace(base / 'keyboard/KeyboardTheme.kt',
         '            val backgroundImage = Settings.readUserBackgroundImage(context, isNight)',
         '            if (themeName.startsWith("obadh_")) return helium314.keyboard.latin.obadh.ObadhColors.create(context, themeName.removePrefix("obadh_"), themeStyle, hasBorders, isNight)\n'
@@ -25,7 +50,7 @@ def apply(main, replace):
         '        final boolean obadhTablet = res.getConfiguration().smallestScreenWidthDp >= 600;\n'
         '        final String obadhTabletLayout = prefs.getString("obadh.tablet_layout", "automatic");\n'
         '        final String splitPref = isLandscape ? Settings.PREF_ENABLE_SPLIT_KEYBOARD_LANDSCAPE : Settings.PREF_ENABLE_SPLIT_KEYBOARD;\n'
-        '        mIsSplitKeyboardEnabled = !mIsLocked && (obadhTablet && !obadhTabletLayout.equals("automatic")\n'
+        '        mIsSplitKeyboardEnabled = !mIsLocked && !SettingsKt.isFloatingKeyboardEnabled(context) && (obadhTablet && !obadhTabletLayout.equals("automatic")\n'
         '            ? obadhTabletLayout.equals("split")\n'
         '            : prefs.contains(splitPref) ? Settings.readSplitKeyboardEnabled(prefs, isLandscape, isFolded)\n'
         '            : obadhTablet && (isLandscape || res.getConfiguration().smallestScreenWidthDp >= 768));')

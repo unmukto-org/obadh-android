@@ -52,7 +52,7 @@ Settings › Version, so you can tell what is actually installed.
 ## The Rust bridge
 
 ```bash
-./scripts/build-rust-android.sh   # arm64-v8a, armeabi-v7a, x86_64 into app/src/main/jniLibs
+./scripts/build-rust-android.sh   # shipped arm64-v8a only; optional ABI arguments must be requested explicitly
 ```
 
 Rerun after any change under `rust/`. `jniLibs/` is git-ignored. The script
@@ -176,7 +176,7 @@ Two GitHub Actions workflows live in `.github/workflows/`.
 
 - **`ci.yml`** runs on every push to `main` and every pull request: it checks out this repo
   and `unmukto-org/obadh-ios` (the models), syncs the models, builds the native library for
-  the three ABIs, runs the unit tests and builds the debug APK, which it uploads as an
+  the shipped ARM64 ABI, runs the unit tests and builds the debug APK, which it uploads as an
   artifact (14 days).
 - **`release.yml`** runs when a tag `v*` is pushed. It refuses a tag that does not match
   `versionName` in `app/build.gradle.kts` or that has no matching section in

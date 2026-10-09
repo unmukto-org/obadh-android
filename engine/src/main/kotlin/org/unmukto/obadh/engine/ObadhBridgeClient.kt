@@ -13,13 +13,15 @@ import kotlin.concurrent.withLock
  * traversal on another handle (measured on iOS; the same reasoning applies).
  * No method takes more than one lock, so there is no ordering hazard.
  */
-class ObadhBridgeClient : BanglaTypingEngine {
+class ObadhBridgeClient : BanglaTypingEngine, AutoCloseable {
     private val engineLock = ReentrantLock()
     private val autocorrectLock = ReentrantLock()
     private val autosuggestLock = ReentrantLock()
     private var engineHandle = 0L
     private var autocorrectHandle = 0L
     private var autosuggestHandle = 0L
+    private val committedContext = ArrayDeque<String>()
+    private val whitespace = Regex("\\s+")
 
     /** Cheap startup path, independent of model I/O and suggestion handles. */
     fun initializeTransliteration() {
@@ -94,9 +96,17 @@ class ObadhBridgeClient : BanglaTypingEngine {
 
     // Autosuggest
 
-    override fun autosuggestSuggestions(context: String, limit: Int): List<String> = autosuggestLock.withLock {
-        if (autosuggestHandle == 0L) emptyList()
-        else PackedRecords.parseStringList(ObadhNative.autosuggestSuggestForContext(autosuggestHandle, context.toByteArray(), limit.coerceAtLeast(0)))
+    override fun autosuggestSuggestions(context: String, limit: Int): List<String> = autosuggestSuggestions(context, limit, true)
+
+    /** Session ABI merges learned words. Stateless ABI is model-only and never learns editor text. */
+    fun autosuggestSuggestions(context: String, limit: Int, personalized: Boolean): List<String> = autosuggestLock.withLock {
+        if (autosuggestHandle == 0L) return@withLock emptyList()
+        val tail = context.trim().split(whitespace).filter(String::isNotBlank).takeLast(3)
+        val matchesSession = tail.isNotEmpty() && tail == committedContext.toList()
+        val bytes = if (personalized && matchesSession)
+            ObadhNative.autosuggestSuggest(autosuggestHandle, limit.coerceAtLeast(0))
+        else ObadhNative.autosuggestSuggestForContext(autosuggestHandle, context.toByteArray(), limit.coerceAtLeast(0))
+        PackedRecords.parseStringList(bytes)
     }
 
     fun autosuggestSessionSuggestions(limit: Int): List<String> = autosuggestLock.withLock {
@@ -105,10 +115,17 @@ class ObadhBridgeClient : BanglaTypingEngine {
     }
 
     fun commitAutosuggestToken(token: String): Boolean = autosuggestLock.withLock {
-        autosuggestHandle != 0L && ObadhNative.autosuggestCommit(autosuggestHandle, token.toByteArray()) == 1
+        if (autosuggestHandle == 0L) return@withLock false
+        val committed = ObadhNative.autosuggestCommit(autosuggestHandle, token.toByteArray()) == 1
+        if (committed) {
+            committedContext.addLast(token)
+            while (committedContext.size > 3) committedContext.removeFirst()
+        }
+        committed
     }
 
     fun clearAutosuggestSession() = autosuggestLock.withLock {
+        committedContext.clear()
         if (autosuggestHandle != 0L) ObadhNative.autosuggestClearSession(autosuggestHandle)
     }
 
@@ -123,6 +140,16 @@ class ObadhBridgeClient : BanglaTypingEngine {
 
     fun importPersonalAutosuggestSnapshot(data: ByteArray): Boolean = autosuggestLock.withLock {
         autosuggestHandle != 0L && data.isNotEmpty() && ObadhNative.autosuggestImportPersonal(autosuggestHandle, data) == 1
+    }
+
+    override fun close() {
+        engineLock.withLock { if (engineHandle != 0L) ObadhNative.engineFree(engineHandle); engineHandle = 0 }
+        autocorrectLock.withLock { if (autocorrectHandle != 0L) ObadhNative.autocorrectFree(autocorrectHandle); autocorrectHandle = 0 }
+        autosuggestLock.withLock {
+            if (autosuggestHandle != 0L) ObadhNative.autosuggestFree(autosuggestHandle)
+            autosuggestHandle = 0
+            committedContext.clear()
+        }
     }
 
     companion object {

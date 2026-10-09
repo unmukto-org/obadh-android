@@ -58,6 +58,12 @@ loanword result. Cursor reads for pairs happen only on relevant symbol/delete
 keys. Personal snapshots are coalesced and written with `AtomicFile`; emoji search
 runs away from the UI thread and rejects stale results.
 
+Bangla next-word queries use the personalized session C ABI only when its bounded
+committed context matches the actual editor context. Otherwise they use the
+model-only explicit-context C ABI. Incognito and disabled learning always use
+model-only queries, without swapping snapshots or allocating a second model.
+Learning completion requests a fresh generation-checked suggestion update.
+
 Emulator handler timings are diagnostic, not physical-device latency guarantees.
 Most ordinary letter events measured below 1 ms; cold queries, model startup,
 editor IPC and device scheduling can take longer. No zero-latency claim is made.
@@ -81,6 +87,26 @@ before the Material UI shows success. Learned-data deletion clears Bangla person
 snapshots/protected words and native English histories/caches. Clipboard deletion
 removes pins, database rows and stored files. Password, incognito and sensitive
 clipboard data are excluded from collection.
+
+## Appearance and keyboard geometry
+
+Owned `ObadhColors` palettes drive keys, popup keys, suggestion strip, emoji,
+clipboard and tools. Light/dark selection, wallpaper colors, key borders, size,
+number row and language key are canonical settings shared by both languages.
+Default colors and adaptive key geometry are measured against Gboard System Auto.
+The language picker honors the selected keyboard appearance and lists only Bangla
+and English, with Android's other-keyboards picker available separately.
+
+Small checked hooks enable the upstream split-layout flag and replace tablet extra
+keys with the measured QWERTY rows. Wide split layouts duplicate the center Latin
+keys and retain one spacebar. Automatic splitting is disabled while floating;
+explicit Full/Split controls still pass through the same native layout machinery.
+
+Photo themes use one atomically replaced, metadata-stripped private JPEG. Decode,
+orientation, bounded downsampling and dimming happen off the main thread. The IME
+uses the processed file and invalidates its background cache when its revision
+changes; it never reads the source picker URI during typing. No photo service or
+additional image library is used.
 
 ## Optional English swipe typing
 

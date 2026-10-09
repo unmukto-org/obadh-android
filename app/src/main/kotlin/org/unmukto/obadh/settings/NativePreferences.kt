@@ -17,6 +17,7 @@ object NativePreferences {
             putBoolean(Settings.PREF_THEME_DAY_NIGHT, true)
             putString(Settings.PREF_THEME_STYLE, helium314.keyboard.keyboard.KeyboardTheme.STYLE_ROUNDED)
             val theme = p.getString("keyboard_theme", "default").takeIf { it in helium314.keyboard.latin.obadh.ObadhColors.names } ?: "default"
+            putLong("obadh.photo_revision", p.getLong("keyboard_photo_revision", 0))
             putString(Settings.PREF_THEME_COLORS, "obadh_$theme")
             putString(Settings.PREF_THEME_COLORS_NIGHT, "obadh_$theme")
             putString("obadh.theme_mode", arrayOf("system", "light", "dark")[p.getInt("keyboard_theme_mode", 0).coerceIn(0, 2)])
@@ -33,6 +34,8 @@ object NativePreferences {
                 putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_KEYBOARD_HEIGHT_SCALE_PREFIX, index, 2),
                     floatArrayOf(.85f, 1f, 1.15f)[p.getInt("keyboard_height", 1).coerceIn(0, 2)])
             }
+            for (index in 0..3) putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_BOTTOM_PADDING_SCALE_PREFIX, index, 2), 1f)
+            for (index in 0..7) putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_SIDE_PADDING_SCALE_PREFIX, index, 3), 1f)
             putString(Settings.PREF_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true|SETTINGS:true|ONE_HANDED:true|FLOATING:true|SPLIT:true|DPAD:true|UNDO:true|REDO:true|SELECT_ALL:true|COPY:true|CUT:true|PASTE:true|INCOGNITO:true|VOICE:false|BACKGROUND_GATHERING:false")
             putString(Settings.PREF_PINNED_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true")
             putBoolean(Settings.PREF_AUTO_SHOW_TOOLBAR, true)
@@ -71,13 +74,16 @@ object NativePreferences {
 
     fun apply(context: Context, values: Bundle) {
         org.unmukto.obadh.keyboard.NativeObadhFeatures.configure(values)
-        val editor = context.prefs().edit()
+        val native = context.prefs()
+        if (values.getLong("obadh.photo_revision") != native.getLong("obadh.photo_revision", 0)) Settings.clearCachedBackgroundImages()
+        val editor = native.edit()
         for (key in values.keySet()) {
             @Suppress("DEPRECATION")
             when (val value = values.get(key)) {
                 is Boolean -> editor.putBoolean(key, value)
                 is Int -> editor.putInt(key, value)
                 is Float -> editor.putFloat(key, value)
+                is Long -> editor.putLong(key, value)
                 is String -> editor.putString(key, value)
             }
         }

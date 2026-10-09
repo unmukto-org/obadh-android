@@ -7,7 +7,7 @@ host uses different layout and composition machinery; see
 emulator coverage; fingerprint pins and physical-host/device diversity remain
 additional validation work.
 
-Updated: **2026-10-08**. Only open issues and what remains unverified belong here.
+Updated: **2026-10-09**. Only open issues and what remains unverified belong here.
 Resolved work belongs in [CHANGELOG.md](CHANGELOG.md). Add dated evidence to the
 relevant issue, and remove an entry when its acceptance checks pass.
 
@@ -19,7 +19,7 @@ was reviewed as a rendering or a unit test, not driven on a device.
 | ID | Open issue | Status |
 |---|---|---|
 | [KI-003](#ki-003) | Merged words after a space (`jukto borrno`) | Fix shipped, not confirmed |
-| [KI-004](#ki-004) | Tablet and landscape geometry not measured | Fitted from iPad, not Android |
+| [KI-004](#ki-004) | Physical tablet/vendor-inset validation | Emulator Gboard parity measured |
 | [KI-005](#ki-005) | No engine fingerprint pins or real-data calibration tests | Gap |
 
 <a id="ki-003"></a>
@@ -39,16 +39,15 @@ and the user has not reported back that the problem is gone.
 
 <a id="ki-004"></a>
 
-## KI-004: Tablet and landscape geometry not measured
+## KI-004: Physical-device geometry verification remaining
 
-Tablet key weights, margins and gaps are the iPad measurements from obadh-ios.
-Landscape tablet row heights (58, 64 and 56 dp), the phone landscape row height
-(38 dp) and the 820 dp phone cap are engineering choices. None were compared with
-Gboard or measured on an Android tablet. The family breakpoints (600, 720, 900 dp)
-sit between common device widths but are unvalidated against real devices.
+The current native host has measured Gboard comparisons for phone and tablet
+portrait/landscape in both system themes, recorded in
+[docs/gboard-parity.md](docs/gboard-parity.md). Legacy iPad-derived geometry is no
+longer registered. Physical tablet/vendor-inset verification remains outstanding.
 
-**Acceptance:** a measurement pass against Gboard on at least one device per family,
-recorded as numbers in [docs/layouts.md](docs/layouts.md).
+**Acceptance:** repeat the automated measurement and touch checklist on physical
+phones/tablets, including cutouts and gesture/three-button navigation.
 
 <a id="ki-005"></a>
 
