@@ -18,15 +18,14 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
-import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.common.Colors
 import kotlinx.coroutines.*
 
 internal fun View.dp(n: Int)=(resources.displayMetrics.density*n+.5f).toInt()
 
 /** Recycled thumbnails; bounded viewport, cancel on detach and stop every hidden animation. */
-internal class MediaGrid(private val context: Context,private val kind: MediaKind,
+internal class MediaGrid(private val context: Context,private val kind: MediaKind,private val colors: Colors,
     private val scope: CoroutineScope,private val network: ()->Boolean,private val reducedMotion: Boolean,private val selected: (MediaItem)->Unit): RecyclerView.Adapter<MediaGrid.Cell>() {
-    private val colors=Settings.getValues().mColors
     private val attached=mutableSetOf<Cell>()
     private val visibleRect=android.graphics.Rect()
     var playing=true

@@ -144,4 +144,4 @@ def run():
 if __name__=='__main__':
     try:run()
     finally:
-        network(True);n.shell('settings','put','system','user_rotation','0');n.command('configure',**{'native.always_incognito_mode':False,'native.suggest_clipboard_content':True})
+        network(True);n.shell('settings','put','system','user_rotation','0');n.command('configure',**{'native.always_incognito_mode':False,'native.suggest_clipboard_content':True,'native.next_word_prediction':True})

@@ -18,14 +18,17 @@ def tap(label):
     a.touch.tap((c['x'],c['y']));n.screen()
 
 def start(language, field="text"):
+    n.command("clipboard",text="") # Empty real clipboard keeps the home-layout fixture deterministic.
+    # Learned greeting predictions legitimately replace the home toolbar. This fixture
+    # tests that toolbar independently, then tests composing suggestions below.
+    n.command("configure", **{"native.suggest_clipboard_content":False,"native.next_word_prediction":False})
     n.start(language,field=field)
-    n.command("configure", **{"native.suggest_clipboard_content": False}) # No clipboard fixture chip in the home-layout checks.
     n.command("key",code=-201) # Reset the fixture to the native alphabet layout.
     n.screen()
 
-def run():
+def run(languages=('bn','en')):
     n.shell('ime','set',n.PACKAGE+'/.keyboard.ObadhInputMethodService')
-    for language in ('bn','en'):
+    for language in languages:
         start(language);home=controls()
         media='Stickers' in home
         expected=['Keyboard tools']+(['Stickers','GIFs'] if media else [])+['Clipboard','Settings','Theme','Voice typing']
@@ -83,4 +86,4 @@ def run():
 
 if __name__=='__main__':
     try:run()
-    finally:n.command('configure',**{'native.suggest_clipboard_content':True})
+    finally:n.command('configure',**{'native.suggest_clipboard_content':True,'native.next_word_prediction':True})

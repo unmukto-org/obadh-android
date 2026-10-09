@@ -21,7 +21,8 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
-import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.common.Colors
+import helium314.keyboard.keyboard.KeyboardTheme
 import kotlinx.coroutines.*
 
 /** A private search editor: provider queries can never be inserted into the recipient. */
@@ -46,6 +47,7 @@ class MediaSearchActivity : ComponentActivity() {
     private var alive=true
     private var reducedMotion=false
     private var panelBackground=Color.BLACK
+    private lateinit var mediaColors: Colors
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -53,7 +55,10 @@ class MediaSearchActivity : ComponentActivity() {
         session=MediaController.session(token) ?: run { finish();return }
         val memory=session.memory
         reducedMotion=android.provider.Settings.Global.getFloat(contentResolver,android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,1f)==0f
-        val colors=Settings.getValues().mColors;val fg=colors.get(ColorType.KEY_TEXT)
+        // Resolve from the current window configuration: the hidden IME may still
+        // hold colors from before a system night-mode change.
+        val colors=KeyboardTheme.getColorsForCurrentTheme(this);mediaColors=colors
+        val fg=colors.get(ColorType.KEY_TEXT)
         val keyboardBackground=colors.get(ColorType.MAIN_BACKGROUND)
         // Photo keyboards use transparent surfaces. Media needs a readable solid canvas.
         val background=if(Color.alpha(keyboardBackground)==255)keyboardBackground else
@@ -88,7 +93,7 @@ class MediaSearchActivity : ComponentActivity() {
             id=android.R.id.edit;hint="Search KLIPY";contentDescription=session.kind.searchHint;textSize=16f;setSingleLine(true)
             setTextColor(fg);setHintTextColor((fg and 0x00ffffff) or 0x99000000.toInt());setPadding(dp(12),0,dp(12),0)
             inputType=android.text.InputType.TYPE_CLASS_TEXT
-            imeOptions=EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+            imeOptions=EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING or EditorInfo.IME_FLAG_NO_FULLSCREEN
             privateImeOptions=MediaController.SEARCH_OPTIONS;filters=arrayOf(InputFilter.LengthFilter(120))
             this.background=GradientDrawable().apply { cornerRadius=dp(24).toFloat();setColor(colors.get(ColorType.KEY_BACKGROUND)) }
             if(android.os.Build.VERSION.SDK_INT>=29)textCursorDrawable=GradientDrawable().apply { setColor(fg);setSize(dp(2),dp(22)) }
@@ -120,7 +125,7 @@ class MediaSearchActivity : ComponentActivity() {
             // InsetDrawable supplies its own padding; set label padding afterwards.
             setPadding(dp(16),0,dp(16),0);minWidth=dp(48)
         }
-        adapter=MediaGrid(this,session.kind,scope,{ MediaController.canRequest(token) },reducedMotion,::select)
+        adapter=MediaGrid(this,session.kind,colors,scope,{ MediaController.canRequest(token) },reducedMotion,::select)
         grid=RecyclerView(this).apply {
             this.adapter=this@MediaSearchActivity.adapter;itemAnimator=null;setHasFixedSize(true);clipToPadding=false
             layoutManager=if(session.kind==MediaKind.GIFS)StaggeredGridLayoutManager(2,StaggeredGridLayoutManager.VERTICAL).apply {
@@ -147,7 +152,8 @@ class MediaSearchActivity : ComponentActivity() {
         }
         body.addView(progress,LinearLayout.LayoutParams(-1,root.dp(3)))
         setContentView(root)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+            if(state==null)WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN else WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
         window.navigationBarColor=background
         if(android.os.Build.VERSION.SDK_INT>=29)window.isNavigationBarContrastEnforced=false
         androidx.core.view.WindowInsetsControllerCompat(window,root).isAppearanceLightNavigationBars=
@@ -160,7 +166,7 @@ class MediaSearchActivity : ComponentActivity() {
             val available=(resources.displayMetrics.heightPixels-system.top-maxOf(system.bottom,ime.bottom)-root.dp(120)-maxOf(0,status.lineHeight*3-root.dp(48))).coerceAtLeast(root.dp(64))
             grid.layoutParams.height=minOf(root.dp(240),available)
             val columns=((resources.displayMetrics.widthPixels-system.left-system.right-root.dp(16))/root.dp(if(session.kind==MediaKind.GIFS)168 else 84))
-                .coerceIn(if(session.kind==MediaKind.GIFS)2 else 3,if(session.kind==MediaKind.GIFS)4 else 6)
+                .coerceIn(if(session.kind==MediaKind.GIFS)2 else 3,6)
             when(val manager=grid.layoutManager) {
                 is GridLayoutManager -> manager.spanCount=columns
                 is StaggeredGridLayoutManager -> if(manager.spanCount!=columns)manager.spanCount=columns
@@ -172,7 +178,8 @@ class MediaSearchActivity : ComponentActivity() {
         field.addTextChangedListener(object: TextWatcher {
             override fun beforeTextChanged(s: CharSequence?,start: Int,count: Int,after: Int) {}
             override fun onTextChanged(s: CharSequence?,start: Int,before: Int,count: Int) {
-                memory.query=s?.toString().orEmpty();if(memory.query.isNotBlank())memory.recent=false;clear.visibility=if(memory.query.isBlank())View.GONE else View.VISIBLE;memory.page=0;memory.hasNext=false;request?.cancel()
+                val query=s?.toString().orEmpty();if(query==memory.query)return
+                memory.query=query;if(memory.query.isNotBlank())memory.recent=false;clear.visibility=if(memory.query.isBlank())View.GONE else View.VISIBLE;memory.page=0;memory.hasNext=false;request?.cancel()
                 if(ready) { adapter.enabled=false;updateTabs();request=scope.launch { delay(600);load() } }
             }
             override fun afterTextChanged(s: Editable?) {}
@@ -234,7 +241,7 @@ class MediaSearchActivity : ComponentActivity() {
     private fun updateTabs() {
         recent.isSelected=session.memory.recent;recent.alpha=if(recent.isSelected)1f else .65f
         if(android.os.Build.VERSION.SDK_INT>=30)recent.stateDescription=if(recent.isSelected)"Showing recent ${session.kind.title}. Tap for trending." else "Show recent ${session.kind.title}"
-        val colors=Settings.getValues().mColors;val fg=colors.get(ColorType.KEY_TEXT)
+        val colors=mediaColors;val fg=colors.get(ColorType.KEY_TEXT)
         val selectedFill=androidx.core.graphics.ColorUtils.blendARGB(panelBackground,colors.get(ColorType.ACTION_KEY_BACKGROUND),.18f)
         val iconColor=if(!recent.isSelected || androidx.core.graphics.ColorUtils.calculateContrast(fg,selectedFill)>=3.0)fg
             else if(androidx.core.graphics.ColorUtils.calculateContrast(Color.WHITE,selectedFill)>=3.0)Color.WHITE else Color.BLACK
