@@ -119,6 +119,17 @@ Android preferences route. Debug probes only read control coordinates for these 
 they do not invoke the tested actions. Reset the fixture to its alphabet layout before
 starting a new editor because native utility panels intentionally retain their state.
 
+Tablet policy regression:
+
+```sh
+ANDROID_SERIAL=emulator-5554 python3 scripts/test-native-layout.py
+```
+
+Four actual UI checks verify manual split overrides and that explicitly selecting
+Automatic restores adaptive tablet geometry in both languages. It resizes the
+existing QA AVD, restores its viewport afterward and leaves Automatic selected.
+Reselect Automatic before the parity matrix to clear deliberate toolbar overrides.
+
 The debug `personalization_probe` command creates isolated C ABI handles, trains a
 synthetic OOV word and checks learned predictions, model-only incognito results,
 editor-context mismatch, learning-context reset, snapshot preservation and deletion. It frees its handles

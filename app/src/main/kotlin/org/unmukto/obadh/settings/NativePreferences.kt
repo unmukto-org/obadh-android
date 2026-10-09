@@ -32,6 +32,7 @@ object NativePreferences {
             putBoolean(Settings.PREF_LOCALIZED_NUMBER_ROW, true)
             putBoolean(Settings.PREF_KEY_USE_PERSONALIZED_DICTS, flag("learn_words"))
             putString("obadh.tablet_layout", arrayOf("automatic", "full", "split")[p.getInt("tablet_layout", 0).coerceIn(0, 2)])
+            putLong("obadh.tablet_layout_revision", p.getLong("tablet_layout_revision", 0))
             for (index in 0..3) {
                 putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_KEYBOARD_HEIGHT_SCALE_PREFIX, index, 2),
                     floatArrayOf(.85f, 1f, 1.15f)[p.getInt("keyboard_height", 1).coerceIn(0, 2)])
@@ -83,6 +84,14 @@ object NativePreferences {
         val appearanceChanged = photoChanged || values.getString("obadh.theme_mode") != native.getString("obadh.theme_mode", "system")
         if (photoChanged) Settings.clearCachedBackgroundImages()
         val editor = native.edit()
+        if (values.containsKey("obadh.tablet_layout_revision") &&
+            values.getLong("obadh.tablet_layout_revision") != native.getLong("obadh.tablet_layout_revision", 0)) {
+            // The settings choice owns layout policy. Keep quick toolbar overrides until that
+            // policy is explicitly selected again; theme/other settings never erase them.
+            listOf(Settings.PREF_ENABLE_SPLIT_KEYBOARD, Settings.PREF_ENABLE_SPLIT_KEYBOARD_LANDSCAPE,
+                Settings.PREF_ENABLE_SPLIT_KEYBOARD_FOLDED, Settings.PREF_ENABLE_SPLIT_KEYBOARD_FOLDED_LANDSCAPE)
+                .forEach(editor::remove)
+        }
         for (key in values.keySet()) {
             @Suppress("DEPRECATION")
             when (val value = values.get(key)) {

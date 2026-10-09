@@ -79,7 +79,9 @@ class KeyboardPreferences(context: Context) {
         set(v) = prefs.edit().putInt("keyboard_height", v.coerceIn(0, 2)).apply()
     var tabletLayout: Int
         get() = prefs.getInt("tablet_layout", 0).coerceIn(0, 2)
-        set(v) = prefs.edit().putInt("tablet_layout", v.coerceIn(0, 2)).apply()
+        set(v) = prefs.edit().putInt("tablet_layout", v.coerceIn(0, 2))
+            // An explicit choice (including reselecting Automatic) supersedes toolbar overrides.
+            .putLong("tablet_layout_revision", prefs.getLong("tablet_layout_revision", 0) + 1).apply()
     var learnWords: Boolean get() = flag("learn_words"); set(v) = setFlag("learn_words", v)
 
     var keySoundEnabled: Boolean

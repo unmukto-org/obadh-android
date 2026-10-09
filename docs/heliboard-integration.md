@@ -176,3 +176,10 @@ verification tests cover corruption, size bounds, cancellation and partial clean
 Manual emulator checks cover download waiting/cancellation/retry, process death,
 release activation and a real English glide gesture. Physical-device and diverse
 host-editor testing remain additional release coverage.
+
+Explicit tablet layout choices carry a small revision in the canonical preference
+snapshot. Selecting Automatic again clears native portrait/landscape/folded split
+overrides atomically before reloading the keyboard. Toolbar overrides remain useful
+until that explicit choice; changing a theme or unrelated preference preserves them.
+There is no new work on the typing path. The native layout regression exercises
+this reset through actual settings and toolbar taps in both languages.
