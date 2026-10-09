@@ -59,6 +59,11 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
 
+      - name: Set up Android command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
       - name: Android SDK and pinned NDK
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;27.0.12077973"
 
@@ -73,7 +78,7 @@ jobs:
         run: python3 scripts/prepare-heliboard.py
 
       - name: Unit tests
-        run: ./gradlew --no-daemon :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :keyboard:testDebugUnitTest :app:lintDebug
 
       - name: Restore the signing key
         env:
