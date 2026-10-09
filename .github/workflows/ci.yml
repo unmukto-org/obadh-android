@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration/heliboard]
   pull_request:
 
 concurrency:
@@ -44,7 +44,7 @@ jobs:
         run: cargo install cargo-ndk --locked
 
       - name: Android SDK and pinned NDK
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0" "ndk;27.0.12077973"
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;27.0.12077973"
 
       - name: Sync models and build the native library
         env:
@@ -57,10 +57,13 @@ jobs:
         run: python3 scripts/prepare-heliboard.py
 
       - name: Unit tests
-        run: ./gradlew --no-daemon :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :keyboard:testDebugUnitTest :app:lintDebug
 
       - name: Build debug APK
         run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Build optimized APK with the CI testing key
+        run: ./gradlew --no-daemon :app:assembleRelease -PdebugSign
 
       - uses: actions/upload-artifact@v4
         with:

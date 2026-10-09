@@ -15,6 +15,28 @@ object NativePreferences {
         val strength = p.getInt("haptic_strength", if (flag("haptics")) Haptics.DEFAULT else 0).coerceIn(0, 3)
         return Bundle().apply {
             putBoolean(Settings.PREF_THEME_DAY_NIGHT, true)
+            putString(Settings.PREF_THEME_STYLE, helium314.keyboard.keyboard.KeyboardTheme.STYLE_ROUNDED)
+            val theme = p.getString("keyboard_theme", "default").takeIf { it in helium314.keyboard.latin.obadh.ObadhColors.names } ?: "default"
+            putString(Settings.PREF_THEME_COLORS, "obadh_$theme")
+            putString(Settings.PREF_THEME_COLORS_NIGHT, "obadh_$theme")
+            putString("obadh.theme_mode", arrayOf("system", "light", "dark")[p.getInt("keyboard_theme_mode", 0).coerceIn(0, 2)])
+            putBoolean(Settings.PREF_THEME_KEY_BORDERS, flag("keyboard_key_borders"))
+            putBoolean(Settings.PREF_SHOW_LANGUAGE_SWITCH_KEY, flag("keyboard_language_key"))
+            putString(Settings.PREF_LANGUAGE_SWITCH_KEY, "internal")
+            putBoolean(Settings.PREF_SPACE_TO_CHANGE_LANG, true)
+            putBoolean(Settings.PREF_SHOW_EMOJI_KEY, flag("keyboard_emoji_key", false))
+            putBoolean(Settings.PREF_SHOW_NUMBER_ROW, flag("keyboard_number_row", false))
+            putBoolean(Settings.PREF_LOCALIZED_NUMBER_ROW, true)
+            putBoolean(Settings.PREF_KEY_USE_PERSONALIZED_DICTS, flag("learn_words"))
+            putString("obadh.tablet_layout", arrayOf("automatic", "full", "split")[p.getInt("tablet_layout", 0).coerceIn(0, 2)])
+            for (index in 0..3) {
+                putFloat(helium314.keyboard.latin.settings.createPrefKeyForBooleanSettings(Settings.PREF_KEYBOARD_HEIGHT_SCALE_PREFIX, index, 2),
+                    floatArrayOf(.85f, 1f, 1.15f)[p.getInt("keyboard_height", 1).coerceIn(0, 2)])
+            }
+            putString(Settings.PREF_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true|SETTINGS:true|ONE_HANDED:true|FLOATING:true|SPLIT:true|DPAD:true|UNDO:true|REDO:true|SELECT_ALL:true|COPY:true|CUT:true|PASTE:true|INCOGNITO:true|VOICE:false|BACKGROUND_GATHERING:false")
+            putString(Settings.PREF_PINNED_TOOLBAR_KEYS, "EMOJI:true|CLIPBOARD:true")
+            putBoolean(Settings.PREF_AUTO_SHOW_TOOLBAR, true)
+            putBoolean(Settings.PREF_AUTO_HIDE_TOOLBAR, true)
             putBoolean("obadh.auto_insert", flag("auto_insert", false))
             putBoolean("obadh.pairs", flag("f_pairs"))
             putBoolean("obadh.shortcuts_enabled", flag("f_shortcuts"))
@@ -55,6 +77,7 @@ object NativePreferences {
             when (val value = values.get(key)) {
                 is Boolean -> editor.putBoolean(key, value)
                 is Int -> editor.putInt(key, value)
+                is Float -> editor.putFloat(key, value)
                 is String -> editor.putString(key, value)
             }
         }

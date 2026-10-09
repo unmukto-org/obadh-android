@@ -47,6 +47,28 @@ class KeyboardPreferences(context: Context) {
     var englishSpelling: Boolean get() = flag("f_spelling"); set(v) = setFlag("f_spelling", v)
     var englishAutoCorrection: Boolean get() = flag("english_autocorrect"); set(v) = setFlag("english_autocorrect", v)
 
+    var keyboardTheme: String
+        get() = prefs.getString("keyboard_theme", "default").orEmpty().takeIf { it in helium314.keyboard.latin.obadh.ObadhColors.names } ?: "default"
+        set(v) = prefs.edit().putString("keyboard_theme", v).apply()
+    var themeMode: Int
+        get() = prefs.getInt("keyboard_theme_mode", 0).coerceIn(0, 2)
+        set(v) = prefs.edit().putInt("keyboard_theme_mode", v.coerceIn(0, 2)).apply()
+    var keyBorders: Boolean get() = flag("keyboard_key_borders"); set(v) = setFlag("keyboard_key_borders", v)
+    var numberRow: Boolean
+        get() = prefs.getBoolean("keyboard_number_row", false)
+        set(v) = setFlag("keyboard_number_row", v)
+    var languageKey: Boolean get() = flag("keyboard_language_key"); set(v) = setFlag("keyboard_language_key", v)
+    var emojiKey: Boolean
+        get() = prefs.getBoolean("keyboard_emoji_key", false)
+        set(v) = setFlag("keyboard_emoji_key", v)
+    var keyboardHeight: Int
+        get() = prefs.getInt("keyboard_height", 1).coerceIn(0, 2)
+        set(v) = prefs.edit().putInt("keyboard_height", v.coerceIn(0, 2)).apply()
+    var tabletLayout: Int
+        get() = prefs.getInt("tablet_layout", 0).coerceIn(0, 2)
+        set(v) = prefs.edit().putInt("tablet_layout", v.coerceIn(0, 2)).apply()
+    var learnWords: Boolean get() = flag("learn_words"); set(v) = setFlag("learn_words", v)
+
     var keySoundEnabled: Boolean
         get() = prefs.getBoolean(KEY_SOUND, false)
         set(v) = prefs.edit().putBoolean(KEY_SOUND, v).apply()

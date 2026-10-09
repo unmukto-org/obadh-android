@@ -5,6 +5,30 @@ def apply(main, replace):
         '    private val mCombiners = ArrayList<Combiner>()',
         '    private val mCombiners = ArrayList<Combiner>()\n'
         '    val obadhRoman: String get() = (mCombiners.lastOrNull() as? ObadhCombiner)?.romanInput.orEmpty()')
+    replace(base / 'keyboard/KeyboardTheme.kt',
+        '            val backgroundImage = Settings.readUserBackgroundImage(context, isNight)',
+        '            if (themeName.startsWith("obadh_")) return helium314.keyboard.latin.obadh.ObadhColors.create(context, themeName.removePrefix("obadh_"), themeStyle, hasBorders, isNight)\n'
+        '            val backgroundImage = Settings.readUserBackgroundImage(context, isNight)')
+    replace(base / 'keyboard/KeyboardTheme.kt',
+        '            val isNight = SettingsActivity.forceNight',
+        '            val isNight = when (prefs.getString("obadh.theme_mode", "system")) {\n'
+        '                "light" -> false\n                "dark" -> true\n'
+        '                else -> SettingsActivity.forceNight')
+    replace(base / 'keyboard/KeyboardTheme.kt',
+        '                ?: (ResourceUtils.isNight(context.resources) && prefs.getBoolean(Settings.PREF_THEME_DAY_NIGHT, Defaults.PREF_THEME_DAY_NIGHT))',
+        '                ?: (ResourceUtils.isNight(context.resources) && prefs.getBoolean(Settings.PREF_THEME_DAY_NIGHT, Defaults.PREF_THEME_DAY_NIGHT))\n            }')
+    replace(base / 'latin/LatinIME.java',
+        'InputMethodPickerKt.createInputMethodPickerDialog(this, mRichImm, mKeyboardSwitcher.getMainKeyboardView().getWindowToken())',
+        'helium314.keyboard.latin.obadh.ObadhLanguagePickerKt.createObadhLanguagePicker(this, mRichImm, mKeyboardSwitcher.getMainKeyboardView().getWindowToken())')
+    replace(base / 'latin/settings/SettingsValues.java',
+        '        mIsSplitKeyboardEnabled = Settings.readSplitKeyboardEnabled(prefs, isLandscape, isFolded);',
+        '        final boolean obadhTablet = res.getConfiguration().smallestScreenWidthDp >= 600;\n'
+        '        final String obadhTabletLayout = prefs.getString("obadh.tablet_layout", "automatic");\n'
+        '        final String splitPref = isLandscape ? Settings.PREF_ENABLE_SPLIT_KEYBOARD_LANDSCAPE : Settings.PREF_ENABLE_SPLIT_KEYBOARD;\n'
+        '        mIsSplitKeyboardEnabled = !mIsLocked && (obadhTablet && !obadhTabletLayout.equals("automatic")\n'
+        '            ? obadhTabletLayout.equals("split")\n'
+        '            : prefs.contains(splitPref) ? Settings.readSplitKeyboardEnabled(prefs, isLandscape, isFolded)\n'
+        '            : obadhTablet && (isLandscape || res.getConfiguration().smallestScreenWidthDp >= 768));')
     word = base / 'latin/WordComposer.java'
     replace(word, '    private String mCombiningSpec;',
         '    private boolean mObadhEditingFragment;\n    public boolean isObadhEditingFragment() { return mObadhEditingFragment; }\n    public void markObadhEditingFragment() { mObadhEditingFragment = true; }\n    private long mObadhGeneration;\n    public long getObadhGeneration() { return mObadhGeneration; }\n    private String mObadhRoman = "";\n    public String getObadhRoman() { return mObadhRoman; }\n    public boolean isObadh() { return "bn_obadh".equals(mCombiningSpec); }\n    private String mCombiningSpec;')

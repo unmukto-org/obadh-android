@@ -3,6 +3,7 @@
 Run after :app:assembleDebug and adb install -r. No additional test dependencies or emulator images.
 """
 import json
+import hashlib
 import shlex
 import subprocess
 import time
@@ -239,19 +240,19 @@ def run():
         command('configure')
 
     start('bn')
-    before = inspect()['clips']
-    command('clipboard', text='Obadh integration clipboard fixture ' + str(time.time_ns()))
+    fixture = 'Obadh integration clipboard fixture ' + str(time.time_ns())
+    command('clipboard', text=fixture)
     screen()
-    assert inspect()['clips'] > before, inspect()
+    # Adding a clip may expire old entries; test its presence, not a monotonic count.
+    assert hashlib.sha256(fixture.encode()).hexdigest() in inspect()['clip_hashes'], inspect()
     print('PASS native clipboard collection', flush=True)
-    before = inspect()['clips']
     command('clipboard', text='Sensitive integration fixture', sensitive=True)
     screen()
-    assert inspect()['clips'] == before, inspect()
+    assert hashlib.sha256(b'Sensitive integration fixture').hexdigest() not in inspect()['clip_hashes'], inspect()
     start('bn', field='password')
     command('clipboard', text='Password integration fixture')
     screen()
-    assert inspect()['clips'] == before, inspect()
+    assert hashlib.sha256(b'Password integration fixture').hexdigest() not in inspect()['clip_hashes'], inspect()
     print('PASS clipboard excludes sensitive and password fields', flush=True)
 
     start('bn')

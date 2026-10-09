@@ -49,6 +49,7 @@ fun RootScreen(startScreen: String?) {
         screenState.SaveableStateProvider(current) {
             when (current) {
                 AppScreen.Settings -> SettingsScreen(keyboard) { route = it }
+                AppScreen.Appearance -> AppearanceScreen(prefs, back)
                 AppScreen.Privacy -> PrivacyScreen(back)
                 AppScreen.About -> AboutScreen(back)
                 AppScreen.Shortcuts -> ShortcutsScreen(prefs, back)

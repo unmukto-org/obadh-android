@@ -24,7 +24,7 @@ import org.unmukto.obadh.settings.KeyboardPreferences
 import org.unmukto.obadh.settings.KeyboardState
 
 internal enum class AppScreen(val title: String) {
-    Settings("Obadh"), Preferences("Preferences"), Correction("Text correction"),
+    Settings("Obadh"), Preferences("Preferences"), Appearance("Theme"), Languages("Languages"), Correction("Text correction"),
     Gestures("Gestures"), Clipboard("Clipboard"), Emoji("Emoji"),
     Shortcuts("Text shortcuts"), Privacy("Privacy"), About("About"), Advanced("Advanced"),
 }
@@ -59,6 +59,8 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
         }
+        CategoryRow("Languages", "বাংলা and English · QWERTY", R.drawable.ic_keyboard) { onOpen(AppScreen.Languages) }
+        CategoryRow("Theme", "Colors, key borders and light or dark mode", R.drawable.ic_settings) { onOpen(AppScreen.Appearance) }
         CategoryRow("Preferences", "Sound, vibration and key previews", R.drawable.ic_settings) { onOpen(AppScreen.Preferences) }
         CategoryRow("Text correction", "Autocorrection, spelling and punctuation", R.drawable.ic_spellcheck) { onOpen(AppScreen.Correction) }
         CategoryRow("Gestures", "Switch languages, move the cursor and delete", R.drawable.ic_swipe) { onOpen(AppScreen.Gestures) }
@@ -149,6 +151,13 @@ internal fun KeyboardOptionsScreen(screen: AppScreen, prefs: KeyboardPreferences
     SettingsScaffold(screen.title, onBack) {
         when (screen) {
             AppScreen.Preferences -> {
+                PreferenceHeading("Layout")
+                PrefToggle("Number row", "Show a number row in both languages", prefs.numberRow) { prefs.numberRow = it }
+                PrefToggle("Language switch key", "Tap the globe to switch between Bangla and English", prefs.languageKey) { prefs.languageKey = it }
+                PrefToggle("Emoji switch key", "Show a separate emoji key beside the space bar", prefs.emojiKey) { prefs.emojiKey = it }
+                ChoiceRow("Keyboard height", listOf("Short", "Default", "Tall"), prefs.keyboardHeight) { prefs.keyboardHeight = it }
+                ChoiceRow("Tablet layout", listOf("Automatic", "Full width", "Split"), prefs.tabletLayout) { prefs.tabletLayout = it }
+                PreferenceNote("Automatic splits wide tablet keyboards. Use the keyboard toolbar for one-handed, floating and text editing modes.")
                 PreferenceHeading("Key press")
                 ChoiceRow("Vibration strength", listOf("Off", "Light", "Medium", "Strong"), prefs.hapticStrength) {
                     prefs.hapticStrength = it
@@ -161,6 +170,14 @@ internal fun KeyboardOptionsScreen(screen: AppScreen, prefs: KeyboardPreferences
                 PrefToggle("Pop-up on key press", "Show the letter above your finger", prefs.keyCallout) { prefs.keyCallout = it }
                 PrefToggle("Secondary symbols", "Show symbol hints on letter keys", prefs.longPressSymbols) { prefs.longPressSymbols = it }
             }
+            AppScreen.Languages -> {
+                PreferenceHeading("Your languages")
+                PreferenceItem(content = { Text("বাংলা") }, supportingContent = { Text("Obadh phonetic · QWERTY") })
+                PreferenceItem(content = { Text("English") }, supportingContent = { Text("English (US) · QWERTY") })
+                PreferenceNote("Tap the globe or swipe the space bar to switch. Hold the space bar to choose a language. Your current word is kept when you switch.")
+                PrefToggle("Language switch key", "Show the globe beside the space bar", prefs.languageKey) { prefs.languageKey = it }
+                PrefToggle("Swipe to switch language", "Swipe the space bar for Bangla or English", prefs.spaceSwipeLanguage) { prefs.spaceSwipeLanguage = it }
+            }
             AppScreen.Correction -> {
                 PreferenceHeading("Bangla")
                 PrefToggle("Auto-correction", "Replace likely typos when you press space", prefs.autoInsertCorrections) { prefs.autoInsertCorrections = it }
@@ -169,6 +186,8 @@ internal fun KeyboardOptionsScreen(screen: AppScreen, prefs: KeyboardPreferences
                 PrefToggle("Auto-correction", "Correct English spelling when you press space", prefs.englishAutoCorrection) { prefs.englishAutoCorrection = it }
                 PrefToggle("Spelling suggestions", "Show suggestions from the built-in English dictionary", prefs.englishSpelling) { prefs.englishSpelling = it }
                 PrefToggle("Auto-capitalization", "Capitalize the first word of a sentence", prefs.autoCapitalize) { prefs.autoCapitalize = it }
+                PreferenceHeading("Personalization")
+                PrefToggle("Learn from typing", "Keep learned words on this device in both languages. Passwords and incognito typing are excluded.", prefs.learnWords) { prefs.learnWords = it }
                 PreferenceHeading("Punctuation")
                 PrefToggle("Double-space full stop", "Insert । in Bangla or a period in English", prefs.doubleSpacePeriod) { prefs.doubleSpacePeriod = it }
             }

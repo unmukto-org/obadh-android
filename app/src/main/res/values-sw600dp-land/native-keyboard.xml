@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="config_default_keyboard_height">226dp</dimen>
+    <fraction name="config_min_keyboard_height">0%p</fraction>
+    <fraction name="config_key_vertical_gap_holo">5.1%p</fraction>
+</resources>

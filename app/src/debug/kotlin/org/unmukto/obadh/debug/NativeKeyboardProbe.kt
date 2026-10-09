@@ -78,6 +78,10 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                 val settings = helium314.keyboard.latin.settings.Settings.getValues()
                 val controls = org.json.JSONObject()
                     .put("locale", settings.mLocale.language)
+                    .put("night", ime.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    .put("smallest_width", ime.resources.configuration.smallestScreenWidthDp)
+                    .put("split", settings.mIsSplitKeyboardEnabled)
+                    .put("theme_background", settings.mColors.get(helium314.keyboard.latin.common.ColorType.MAIN_BACKGROUND))
                     .put("suggestions", settings.mSuggestionsEnabled)
                     .put("autocorrect", settings.mAutoCorrectEnabled)
                     .put("preview", settings.mKeyPreviewPopupOn)
@@ -95,6 +99,9 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                     .put("controls", controls)
                     .put("labels", org.json.JSONArray((0 until words.size()).map { words.getLabel(it) }))
                     .put("clips", helium314.keyboard.latin.database.ClipboardDao.getInstance(context)?.count() ?: -1)
+                    .put("clip_hashes", org.json.JSONArray(helium314.keyboard.latin.database.ClipboardDao.getInstance(context)?.getAll().orEmpty().map { clip ->
+                        java.security.MessageDigest.getInstance("SHA-256").digest(clip.text.orEmpty().toByteArray()).joinToString("") { "%02x".format(it) }
+                    }))
                     .put("words", org.json.JSONArray((0 until words.size()).map { words.getWord(it) }))
                     .put("emojis", org.json.JSONArray((0 until words.size()).filter { words.getInfo(it).isEmoji }.map { words.getWord(it) }))
                 android.util.Log.i("ObadhProbeState", json.toString())
