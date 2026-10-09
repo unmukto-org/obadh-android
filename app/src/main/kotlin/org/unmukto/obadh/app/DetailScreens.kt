@@ -101,7 +101,10 @@ fun AboutScreen(onBack: () -> Unit) {
             supportingContent = { Text(if (details) "Tap to hide" else "Technical information for support") },
             onClick = { details = !details },
         )
-        org.unmukto.obadh.stickers.StickerCredits()
+        PreferenceHeading("Online media")
+        PreferenceItem(content={ Text("KLIPY") },supportingContent={ Text("Optional GIFs and stickers are provided by KLIPY. Obadh is independently developed by Unmukto. The provider's artwork and trademarks retain their own rights.") },onClick={
+            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://klipy.com/support/api-terms")))
+        })
         if (details) {
             ValueRow("Engine", AppBuildInfo.engineVersion)
             ValueRow("Build", AppBuildInfo.build)
@@ -129,9 +132,9 @@ fun PrivacyScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     SettingsScaffold("Privacy", onBack, snackbar = snackbar) {
         PreferenceHeading("On-device processing")
-        PreferenceNote("Transliteration, autocorrect, suggestions and emoji search work on your device. Obadh does not send your typing to a server. Network access is used only for optional swipe-typing and sticker-pack downloads you request. Sticker search also stays on your device.")
+        PreferenceNote("Transliteration, autocorrect, suggestions and emoji search work on your device. Ordinary typing, surrounding editor text and clipboard data are never sent to KLIPY. Optional online GIF/sticker searches and accepted shares go to KLIPY only after you enable the feature, using a random identifier for this installation. Online media is unavailable in password and incognito fields. Swipe-typing downloads use the network only when requested.")
         PreferenceHeading("Stored data")
-        PreferenceNote("Obadh stores learned words, recent emoji, your text shortcuts, clipboard history sticker favorites and recents, downloaded sticker packs, and an optional resized keyboard photo in its private storage. Clipboard collection excludes password fields, incognito mode and items marked sensitive.")
+        PreferenceNote("Obadh stores learned words, recent emoji, text shortcuts, clipboard history and an optional resized keyboard photo in private storage. GIF/sticker recents retain references and a bounded thumbnail cache; original animations are fetched for each send and are never written to disk. Clear local media recents from GIFs & stickers settings. Clipboard collection excludes password fields, incognito mode and items marked sensitive.")
         PreferenceHeading("Keyboard access")
         PreferenceNote("Android warns that any keyboard can read what you type. Obadh uses this access to enter and correct text, with all processing on your device.")
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))

@@ -27,8 +27,10 @@ def run():
     n.shell('ime','set',n.PACKAGE+'/.keyboard.ObadhInputMethodService')
     for language in ('bn','en'):
         start(language);home=controls()
-        assert list(home)==['Keyboard tools','Stickers','Clipboard','Settings','Theme','Voice typing'],home
-        assert home['Stickers']['enabled'] # Browsing explains unsupported editor capabilities.
+        media='Stickers' in home
+        expected=['Keyboard tools']+(['Stickers','GIFs'] if media else [])+['Clipboard','Settings','Theme','Voice typing']
+        assert list(home)==expected,home
+        if media: assert not home['Stickers']['enabled'] and not home['GIFs']['enabled'],home
         tap('Keyboard tools');grid=controls()
         assert 'Back to keyboard' in grid and 'Keyboard size' in grid and 'Next language' in grid,grid
         bottom=grid['Back to keyboard']['y']+grid['Back to keyboard']['height']/2
@@ -38,7 +40,7 @@ def run():
         start(language);n.type_text('am' if language=='bn' else 'hel');n.screen()
         before=n.inspect();assert before['labels'],before
         assert 'Stickers' not in controls(),controls()
-        tap('Keyboard tools');assert 'Stickers' in controls() and 'Back to keyboard' in controls()
+        tap('Keyboard tools');assert ('Stickers' in controls())==media and 'Back to keyboard' in controls()
         tap('Back to keyboard');assert 'Stickers' not in controls(),controls()
         assert n.inspect()['labels']==before['labels'],n.inspect()
         print('PASS context-aware tools restore composing candidates',language,flush=True)
@@ -70,7 +72,8 @@ def run():
         print('PASS private theme destination and microphone placeholder',language,flush=True)
         start(language,field='password');private=controls()
         assert 'Keyboard tools' not in private and 'Voice typing' not in private,private
-        assert not private['Clipboard']['enabled'] and not private['Stickers']['enabled'],private
+        assert not private['Clipboard']['enabled'],private
+        if media: assert not private['Stickers']['enabled'] and not private['GIFs']['enabled'],private
         print('PASS sensitive-field toolbar guards',language,flush=True)
     start('bn');tap('Keyboard tools');tap('Keyboard size')
     assert any(x.get('text')=='Preferences' for x in n.screen().iter('node'))

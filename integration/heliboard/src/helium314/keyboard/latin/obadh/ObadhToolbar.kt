@@ -45,13 +45,18 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
     private var menu: PopupWindow? = null
     private var toast: Toast? = null
     private var homeNormallyVisible = true
+    private var sensitive = false
+    private val hidden = linkedSetOf<String>()
 
     init {
         if (context.prefs().getString(Settings.PREF_THEME_COLORS, "") == "obadh_photo")
             strip.setBackgroundColor(0x4d000000)
         home.removeAllViews()
-        // Fixed Gboard-style home controls; stickers negotiate capabilities with the editor.
-        button("Stickers", R.drawable.obadh_ic_sticker) { showStickers() }
+        // The app owns the optional provider. Emoji remains on the bottom comma key.
+        if (ObadhExtensions.current?.onlineMediaAvailable == true) {
+            button("Stickers", R.drawable.obadh_ic_sticker) { ObadhExtensions.current?.openOnlineMedia(false) }
+            button("GIFs", R.drawable.obadh_ic_gif) { ObadhExtensions.current?.openOnlineMedia(true) }
+        }
         button("Clipboard", R.drawable.obadh_ic_assignment) { send(getCodeForToolbarKey(ToolbarKey.CLIPBOARD)) }
         button("Settings", R.drawable.obadh_ic_settings) { open("org.unmukto.obadh.app.MainActivity") }
         button("Theme", R.drawable.obadh_ic_palette) { open("org.unmukto.obadh.app.ThemeActivity") }
@@ -63,11 +68,35 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         voice.imageTintList = ColorStateList.valueOf(text)
         // The circle is 36dp inside a 48dp touch target, including at large font sizes.
         voice.background = android.graphics.drawable.InsetDrawable(ripple(this@ObadhToolbar.colors.get(ColorType.KEY_BACKGROUND)), dp(6))
-        voice.setOnClickListener {
-            toast?.cancel()
-            toast = Toast.makeText(context, "Voice typing will be available in the next release", Toast.LENGTH_SHORT).also { it.show() }
-        }
+        voice.setOnClickListener { voiceNotice() }
+        strip.addOnLayoutChangeListener { _,_,_,_,_,_,_,_,_ -> compact() }
+        strip.post { compact() }
         strip.findViewById<View>(R.id.pinned_keys).isVisible = false
+    }
+
+    private fun voiceNotice() {
+        toast?.cancel()
+        toast = Toast.makeText(context, "Voice typing will be available in the next release", Toast.LENGTH_SHORT).also { it.show() }
+    }
+    // Preserve >=48dp targets in floating/one-handed keyboards. Secondary controls
+    // remain available in the existing tools surface, without a scrolling home row.
+    private fun compact() {
+        if(strip.width<=0)return
+        hidden.clear()
+        for(i in 0 until home.childCount)home.getChildAt(i).isVisible=true
+        voice.isVisible=!sensitive
+        var count=home.childCount+(if(sensitive)0 else 2)
+        val capacity=(strip.width/dp(48)).coerceAtLeast(1)
+        if(count>capacity) {
+            for(label in listOf("Settings","Theme")) {
+                home.findViewWithTag<View>(label)?.isVisible=false;hidden.add(label);count--
+            }
+        }
+        for(label in listOf("Voice typing","Clipboard","GIFs","Stickers")) {
+            if(count<=capacity)break
+            val control=if(label=="Voice typing")voice else home.findViewWithTag<View>(label)
+            if(control?.isVisible==true) { control.isVisible=false;hidden.add(label);count-- }
+        }
     }
 
     private fun ripple(color: Int) = RippleDrawable(ColorStateList.valueOf((text and 0x00ffffff) or 0x22000000),
@@ -89,16 +118,20 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
     }
 
     fun update(words: SuggestedWords, external: Boolean) {
-        val sensitive = Settings.getValues().mInputAttributes.mIsPasswordField
+        sensitive = Settings.getValues().mInputAttributes.mIsPasswordField
         homeNormallyVisible = !external && (words.isEmpty || words.isPunctuationSuggestions)
         val showHome = menu?.isShowing == true || homeNormallyVisible
         container.isVisible = showHome
         candidates.isVisible = !showHome
         grid.isVisible = !sensitive
         voice.isVisible = !sensitive
-        home.findViewWithTag<View>("Stickers").apply { isEnabled = !sensitive; alpha = if (ObadhExtensions.current?.stickersSupported == true && !sensitive) 1f else .38f }
+        for (label in listOf("Stickers", "GIFs")) home.findViewWithTag<View>(label)?.apply {
+            isEnabled = !sensitive && ObadhExtensions.current?.onlineMediaAllowed == true && ObadhExtensions.current?.onlineMediaSupported == true
+            alpha = if (isEnabled) 1f else .38f
+        }
         home.findViewWithTag<View>("Clipboard").apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
         if (!showHome || sensitive || external) menu?.dismiss()
+        compact()
     }
 
     private fun open(activity: String, action: String? = null) {
@@ -119,12 +152,6 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         } else ripple(Color.TRANSPARENT)
     }
 
-    private fun showStickers() {
-        menu?.dismiss()
-        menu = ObadhExtensions.current?.showStickers(strip) { menu=null;setExpanded(false) }
-        if (menu != null) setExpanded(true)
-    }
-
     private fun showTools() {
         if (menu?.isShowing == true) { menu?.dismiss(); return }
         val keyboard = strip.rootView.findViewById<View>(R.id.keyboard_view_wrapper) ?: return
@@ -140,11 +167,18 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         })
         data class Tool(val label: String, val key: ToolbarKey? = null, val icon: Int? = null, val action: (() -> Unit)? = null)
         val automatic = context.prefs().getString("obadh.tablet_layout", "automatic") == "automatic"
-        val tools = listOf(Tool("One-handed",ToolbarKey.ONE_HANDED,icon=R.drawable.obadh_ic_mobile_hand),Tool("Text editing",ToolbarKey.DPAD,icon=R.drawable.obadh_ic_text_editing),
+        val tools = mutableListOf(Tool("One-handed",ToolbarKey.ONE_HANDED,icon=R.drawable.obadh_ic_mobile_hand),Tool("Text editing",ToolbarKey.DPAD,icon=R.drawable.obadh_ic_text_editing),
             if (automatic) Tool("Split",ToolbarKey.SPLIT) else Tool("Incognito",ToolbarKey.INCOGNITO),Tool("Floating",ToolbarKey.FLOATING,icon=R.drawable.obadh_ic_keyboard),
             Tool("Keyboard size",icon=R.drawable.obadh_ic_resize,action={ open("org.unmukto.obadh.app.MainActivity",Intent.ACTION_APPLICATION_PREFERENCES) }),
             Tool("Next language",icon=R.drawable.obadh_ic_language,action={ send(KeyCode.LANGUAGE_SWITCH) }),Tool("Undo",ToolbarKey.UNDO))
-        tools.chunked(4).forEach { row ->
+        if("Settings" in hidden)tools.add(Tool("Settings",icon=R.drawable.obadh_ic_settings,action={ open("org.unmukto.obadh.app.MainActivity") }))
+        if("Theme" in hidden)tools.add(Tool("Theme",icon=R.drawable.obadh_ic_palette,action={ open("org.unmukto.obadh.app.ThemeActivity") }))
+        if("Voice typing" in hidden)tools.add(Tool("Voice typing",icon=R.drawable.obadh_ic_mic,action={ voiceNotice() }))
+        if("Clipboard" in hidden)tools.add(Tool("Clipboard",ToolbarKey.CLIPBOARD,icon=R.drawable.obadh_ic_assignment))
+        for((label,gifs) in listOf("Stickers" to false,"GIFs" to true))if(label in hidden && ObadhExtensions.current?.onlineMediaAllowed==true && ObadhExtensions.current?.onlineMediaSupported==true)
+            tools.add(Tool(label,icon=if(gifs)R.drawable.obadh_ic_gif else R.drawable.obadh_ic_sticker,action={ ObadhExtensions.current?.openOnlineMedia(gifs) }))
+        val columns=((keyboard.width-dp(40))/dp(64)).coerceIn(1,4)
+        tools.chunked(columns).forEach { row ->
             root.addView(LinearLayout(context).apply {
                 row.forEach { tool ->
                     addView(LinearLayout(context).apply {
@@ -165,7 +199,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
                         setOnClickListener { menu?.dismiss();tool.action?.invoke() ?: tool.key?.let { send(getCodeForToolbarKey(it)) } }
                     })
                 }
-                repeat(4-row.size) { addView(View(context),LinearLayout.LayoutParams(0,dp(72),1f)) }
+                repeat(columns-row.size) { addView(View(context),LinearLayout.LayoutParams(0,dp(72),1f)) }
             })
         }
         val scroll=ScrollView(context).apply { isFillViewport=true;addView(root);setBackgroundColor(this@ObadhToolbar.colors.get(ColorType.MAIN_BACKGROUND)) }

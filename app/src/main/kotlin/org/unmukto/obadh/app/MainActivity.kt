@@ -16,6 +16,7 @@ import org.unmukto.obadh.settings.KeyboardPreferences
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        org.unmukto.obadh.media.LegacyStickerCleanup.start(this)
         enableObadhEdgeToEdge()
         val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         val screen = if (intent.action == Intent.ACTION_APPLICATION_PREFERENCES) "Preferences"

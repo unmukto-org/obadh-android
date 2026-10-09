@@ -120,10 +120,15 @@ object NativeObadhFeatures : ObadhExtension {
     override fun shortcut(trigger: String, settings: SettingsValues): String? =
         if (options.shortcutsEnabled && !literal(settings)) options.shortcuts[trigger] else null
 
-    override val stickersSupported get() = org.unmukto.obadh.stickers.StickerController.supported()
-    override fun showStickers(anchor: android.view.View, onDismiss: () -> Unit) = org.unmukto.obadh.stickers.StickerController.show(anchor, onDismiss)
+    override val onlineMediaAvailable get() = org.unmukto.obadh.media.KlipyClient.configured
+    override val onlineMediaAllowed get() = org.unmukto.obadh.media.MediaController.allowed()
+    override val onlineMediaSupported get() = activeIme?.currentInputEditorInfo?.let {
+        org.unmukto.obadh.media.MediaSafety.canAnimate(androidx.core.view.inputmethod.EditorInfoCompat.getContentMimeTypes(it).toList())
+    } == true
+    override fun openOnlineMedia(gifs: Boolean) = org.unmukto.obadh.media.MediaController.open(
+        if(gifs)org.unmukto.obadh.media.MediaKind.GIFS else org.unmukto.obadh.media.MediaKind.STICKERS)
 
-    override fun inputViewStarted() { activeIme?.let(org.unmukto.obadh.stickers.StickerController::returned) }
+    override fun inputViewStarted() { activeIme?.let(org.unmukto.obadh.media.MediaController::returned) }
     override fun startInput() { worker.execute { engine.clearAutosuggestSession() } }
 
     override fun suggestions(composer: WordComposer, context: NgramContext, settings: SettingsValues,

@@ -48,8 +48,8 @@ and `baqq` → **বাঁ**.
   tablet split choices. Shared native toolbar, clipboard and emoji panels accompany
   organized Material preference screens.
 - **On-device typing.** Models, learning and clipboard remain private on the device.
-  Network access serves explicitly requested optional swipe-library and sticker-pack downloads.
-  Sticker search is local; two small packs are included. See [sticker design and attribution](docs/stickers.md).
+  Network access serves explicit optional swipe-library downloads and opt-in KLIPY GIF/sticker search.
+  Recents cache small previews; offline sticker packs are excluded. See [media design, privacy and attribution](docs/stickers.md).
 
 ## Getting started
 

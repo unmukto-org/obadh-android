@@ -120,4 +120,4 @@ intentionally alter geometry. Emulated profiles do not certify physical device
 fonts, touch-to-photon latency, vendor insets, Android 17 runtime or every host app.
 Repeat the harness and interaction checklist on physical devices before store release.
 
-Stickers now use a native themed local picker, two default packs, optional verified GitHub downloads and local search. See [stickers](stickers.md) for editor compatibility, licensing and lifecycle policy.
+GIFs and stickers use an optional KLIPY picker with active keyboard colors, native rounded GIF tiles, separate sticker/GIF controls and bounded thumbnail recents. Offline packs are excluded. See [media](stickers.md) for editor compatibility, privacy, licensing and lifecycle policy. Provider production approval remains pending.

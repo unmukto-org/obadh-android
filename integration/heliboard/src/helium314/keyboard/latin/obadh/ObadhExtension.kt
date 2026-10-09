@@ -6,8 +6,10 @@ import helium314.keyboard.latin.settings.SettingsValues
 
 /** Narrow host contract. The app owns Obadh models and policy; the host owns editor transactions. */
 interface ObadhExtension {
-    val stickersSupported: Boolean get() = false
-    fun showStickers(anchor: android.view.View, onDismiss: () -> Unit): android.widget.PopupWindow? = null
+    val onlineMediaAvailable: Boolean get() = false
+    val onlineMediaAllowed: Boolean get() = false
+    val onlineMediaSupported: Boolean get() = false
+    fun openOnlineMedia(gifs: Boolean) {}
     fun suggestions(composer: WordComposer, context: NgramContext, settings: SettingsValues,
                     inputStyle: Int, sequence: Int): SuggestedWords?
     fun decorate(composer: WordComposer, words: SuggestedWords, settings: SettingsValues): SuggestedWords = words

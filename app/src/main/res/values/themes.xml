@@ -8,7 +8,7 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
     <style name="Theme.Obadh" parent="Theme.Obadh.Base" />
-    <style name="Theme.Obadh.StickerSearch" parent="Theme.Obadh">
+    <style name="Theme.Obadh.MediaSearch" parent="Theme.Obadh">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>

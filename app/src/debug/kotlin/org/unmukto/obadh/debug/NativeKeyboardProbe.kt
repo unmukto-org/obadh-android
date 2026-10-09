@@ -24,19 +24,27 @@ class NativeKeyboardProbeActivity : Activity() {
             override fun onCreateInputConnection(info: android.view.inputmethod.EditorInfo): android.view.inputmethod.InputConnection? {
                 val connection=super.onCreateInputConnection(info) ?: return null
                 val mode=intent.getStringExtra("field")
-                if(mode !in listOf("sticker","reject_sticker","gif_only")) return connection
-                info.contentMimeTypes=arrayOf(if(mode=="gif_only") "image/gif" else "image/png")
+                if(mode !in listOf("sticker","media","reject_media","gif_only","webp_only")) return connection
+                info.contentMimeTypes=when(mode) {
+                    "gif_only" -> arrayOf("image/gif")
+                    "webp_only" -> arrayOf("image/webp")
+                    "sticker" -> arrayOf("image/png")
+                    else -> arrayOf("image/gif","image/webp")
+                }
                 return object : android.view.inputmethod.InputConnectionWrapper(connection,false) {
                     override fun commitContent(content: android.view.inputmethod.InputContentInfo,flags: Int,options: Bundle?): Boolean {
-                        if(mode=="reject_sticker") { android.util.Log.i("ObadhStickerReceipt","rejected");return false }
+                        if(mode=="reject_media") { android.util.Log.i("ObadhMediaReceipt","rejected");return false }
                         return runCatching {
                             content.requestPermission()
                             val bytes=contentResolver.openInputStream(content.contentUri)!!.use { it.readBytes() }
-                            check(content.description.hasMimeType("image/png"))
-                            check(org.unmukto.obadh.stickers.StickerSafety.validPng(bytes))
-                            android.util.Log.i("ObadhStickerReceipt",org.json.JSONObject().put("bytes",bytes.size).put("flags",flags).put("uri",content.contentUri.toString()).put("hash",org.unmukto.obadh.stickers.StickerSafety.digest(bytes)).toString())
+                            val mime=contentResolver.getType(content.contentUri)!!
+                            val bounds=android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds=true }
+                            android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
+                            val file=org.unmukto.obadh.media.MediaFile("https://static.klipy.com/probe",mime,bounds.outWidth,bounds.outHeight,bytes.size)
+                            check(content.description.hasMimeType(mime) && org.unmukto.obadh.media.MediaSafety.valid(bytes,file))
+                            android.util.Log.i("ObadhMediaReceipt",org.json.JSONObject().put("bytes",bytes.size).put("mime",mime).put("flags",flags).put("uri",content.contentUri.toString()).put("hash",org.unmukto.obadh.media.MediaSafety.digest(bytes)).toString())
                             content.releasePermission();true
-                        }.getOrElse { android.util.Log.e("ObadhStickerReceipt","failed",it);false }
+                        }.getOrElse { android.util.Log.e("ObadhMediaReceipt","failed",it);false }
                     }
                 }
             }

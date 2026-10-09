@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Network is used only for an explicitly requested swipe-library download. -->
+    <!-- Optional swipe downloads and opted-in KLIPY GIF/sticker browsing. Ordinary typing stays local. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -22,11 +22,9 @@
             </intent-filter>
         </activity>
 
-        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.stickers" android:exported="false" android:grantUriPermissions="true">
-            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/sticker_paths" />
-        </provider>
-        <activity android:name=".stickers.StickerPacksActivity" android:exported="false" />
-        <activity android:name=".stickers.StickerSearchActivity" android:process=":keyboard" android:exported="false" android:theme="@style/Theme.Obadh.StickerSearch" android:excludeFromRecents="true" android:noHistory="true" android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+        <provider android:name=".media.MediaContentProvider" android:process=":keyboard" android:authorities="${applicationId}.media" android:exported="false" android:grantUriPermissions="true" />
+        <activity android:name=".media.MediaSettingsActivity" android:process=":keyboard" android:exported="false" />
+        <activity android:name=".media.MediaSearchActivity" android:process=":keyboard" android:exported="false" android:theme="@style/Theme.Obadh.MediaSearch" android:excludeFromRecents="true" android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
         <activity android:name=".app.ThemeActivity" android:exported="false" />
 
         <service

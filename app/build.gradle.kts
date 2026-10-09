@@ -34,6 +34,20 @@ val keystoreProps = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+// App keys identify the provider integration; they are supplied outside source control.
+// A testing key may be used only in an explicitly requested, locally signed development APK.
+val klipyKeyPath = providers.gradleProperty("klipyKeyFile").orNull
+val klipyKey = klipyKeyPath?.let { file(it).readText().trim() }
+    ?: providers.environmentVariable("KLIPY_APP_KEY").orNull.orEmpty().trim()
+val klipyTesting = providers.gradleProperty("klipyTesting").isPresent
+val klipyProduction = providers.gradleProperty("klipyProduction").isPresent
+require(!klipyTesting || !klipyProduction) { "Choose one KLIPY key mode" }
+require(klipyKey.isEmpty() || klipyTesting || klipyProduction) { "Declare -PklipyTesting or -PklipyProduction when providing a KLIPY key" }
+require(klipyKey.isEmpty() || klipyKey.matches(Regex("[A-Za-z0-9_-]{8,160}"))) { "Invalid KLIPY key format" }
+if (klipyTesting && gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+    require(project.hasProperty("debugSign")) { "Testing KLIPY release builds require -PdebugSign" }
+}
+
 android {
     ndkVersion = "27.0.12077973"
     namespace = "org.unmukto.obadh"
@@ -50,6 +64,8 @@ android {
         // Provenance shown in About: lets you tell what is actually installed.
         buildConfigField("String", "GIT_REVISION", "\"${gitRevision()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${buildTimeUtc()}\"")
+        buildConfigField("String", "KLIPY_APP_KEY", "\"$klipyKey\"")
+        buildConfigField("boolean", "KLIPY_TESTING", klipyTesting.toString())
         // Engine ships as per-ABI .so under src/main/jniLibs (scripts/build-rust-android.sh).
         // Match the native keyboard module; don't ship ABIs missing its Latin JNI library.
         ndk { abiFilters += "arm64-v8a" }
