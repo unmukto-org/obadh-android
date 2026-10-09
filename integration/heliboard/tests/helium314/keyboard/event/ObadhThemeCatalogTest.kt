@@ -12,13 +12,14 @@ class ObadhThemeCatalogTest {
             assertEquals(ObadhColors.palette(name,false), ObadhColors.palette(name,true))
         }
         assertEquals(0xff1f1f1f.toInt(),ObadhColors.palette("dark",false).actionText)
+        assertEquals(0xffea6671.toInt(), ObadhColors.palette("light_gradient_1", false).accent)
     }
     @Test fun gradientCatalogHasStableIdsAndDrawableSafeStops() {
         val themes=ObadhColors.catalog
         assertEquals(themes.size,themes.map { it.id }.distinct().size)
         assertEquals(18,themes.count { it.group=="Colors" })
         for(group in listOf("Light gradient","Dark gradient")) {
-            assertEquals(25,themes.count { it.group==group })
+            assertEquals(if (group == "Dark gradient") 28 else 25,themes.count { it.group==group })
             for(theme in themes.filter { it.group==group }) {
                 val colors=theme.gradient!!;val stops=theme.positions!!
                 assertEquals(colors.size,stops.size)
@@ -26,6 +27,7 @@ class ObadhThemeCatalogTest {
                 assertTrue(stops.asList().zipWithNext().all { (a,b) -> b>a })
                 assertTrue(colors.all { it ushr 24==255 })
                 assertEquals(0x40ffffff,theme.palette.keys)
+                theme.mesh?.let { assertEquals(17 * 17, it.size); assertTrue(it.all { color -> color ushr 24 == 255 }) }
             }
         }
     }

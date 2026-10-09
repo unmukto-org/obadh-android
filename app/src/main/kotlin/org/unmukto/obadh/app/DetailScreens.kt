@@ -38,7 +38,7 @@ fun SettingsScaffold(
         modifier = Modifier.semantics { paneTitle = title }.imePadding().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeTopAppBar(
-                title = { Text(title, Modifier.padding(start = if (scrollBehavior.state.collapsedFraction < .5f) 8.dp else 0.dp).offset(y = 12.dp * (1f - scrollBehavior.state.collapsedFraction))) },
+                title = { Text(title, Modifier.padding(start = if (scrollBehavior.state.collapsedFraction < .5f) 8.dp else 0.dp).offset(y = 10.dp * (1f - scrollBehavior.state.collapsedFraction))) },
                 navigationIcon = {
                     if (onBack != null) IconButton(onClick = onBack) {
                         Symbol(R.drawable.ic_arrow_back, "Back")

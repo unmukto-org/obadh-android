@@ -3,7 +3,7 @@
 Behavior is verified against the real thing where that is possible without a
 device, and the remainder is listed honestly in [KNOWN-ISSUES.md](../KNOWN-ISSUES.md).
 
-## Unit tests (48)
+## Unit tests (51)
 
 ```bash
 ./gradlew :app:testDebugUnitTest :keyboard:testDebugUnitTest
@@ -44,7 +44,9 @@ development emulator and clear those fixtures through the app's Privacy/Clipboar
 controls afterward. Debug tooling is entirely excluded from the release APK.
 
 Root JVM suites have 41 checks; six native combiner checks verify the seam,
-including Roman snapshots retained across boundary flushes. One palette test checks WCAG 4.5:1 label contrast across both modes and all fixed palettes. Legacy canvas-layout
+including Roman snapshots retained across boundary flushes. One palette test checks WCAG 4.5:1 label contrast for the system light/dark themes.
+Three catalog checks cover fixed reference RGB values, immutable theme IDs, 25 light/28 dark
+gradient counts, monotonic stops, numerical meshes and measured key opacity. Legacy canvas-layout
 checks below are reference coverage, not native screenshot comparisons.
 
 ## Actual touch regressions
@@ -73,7 +75,7 @@ python3 scripts/keyboard-parity.py --keyboard obadh --output build/parity/obadh 
 ```
 
 Select Gboard System Auto, key borders on and English QWERTY first. Select Obadh
-Default / Follow system / borders on / default height / automatic tablet layout.
+System Auto / borders on / default height / automatic tablet layout.
 The harness checks the keyboard is actually visible and the theme has settled,
 then restores viewport, rotation, system night mode and selected IME even on failure.
 Screenshots and JSON remain ignored build artifacts; no Google artwork is packaged.
@@ -88,8 +90,17 @@ This changes the actual Material settings, then samples the rendered keyboard
 background and key fills in both languages. It checks repeated Light/Dark switches,
 wallpaper palettes and border removal without restarting the IME. This catches the
 case where preference values update but a cached view still renders the old theme.
-Photo picker QA separately verified bounded resize, metadata removal, live display,
-deleting the active photo, and the shrinking palette-choice transition.
+It also verifies Cancel leaves the active theme unchanged. Photo regression:
+
+```sh
+ANDROID_SERIAL=emulator-5554 python3 scripts/test-native-photo.py
+```
+
+On the isolated rooted QA AVD, this creates a tiny fixture, exercises the system picker,
+crop/brightness, real activity rotation, Done/Cancel, Apply, actual bilingual typing,
+re-edit/back and deletion with active-theme fallback. It removes its own gallery theme
+and device photo. It does not delete existing themes. Always set `ANDROID_SERIAL`
+when the Gboard comparison emulator is also running.
 
 The debug `personalization_probe` command creates isolated C ABI handles, trains a
 synthetic OOV word and checks learned predictions, model-only incognito results,

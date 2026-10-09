@@ -24,7 +24,8 @@ object KeyboardPhoto {
         try {
             val resolver = context.contentResolver
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return@withContext null
+            val boundsStream = resolver.openInputStream(uri) ?: return@withContext null
+            boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth.toLong() * bounds.outHeight > 64_000_000L) return@withContext null
             var sample = 1
             while (bounds.outWidth / sample > 1200 || bounds.outHeight / sample > 1200) sample *= 2

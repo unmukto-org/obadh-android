@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -30,6 +33,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import helium314.keyboard.latin.obadh.ObadhColors
 import org.unmukto.obadh.settings.KeyboardPhoto
 import org.unmukto.obadh.settings.KeyboardPreferences
@@ -40,6 +45,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
     val scope = rememberCoroutineScope()
     val photoState = remember(context) { androidx.lifecycle.ViewModelProvider(context as androidx.activity.ComponentActivity)[ThemePhotoState::class.java] }
     val snackbar = remember { SnackbarHostState() }
@@ -59,7 +65,7 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { photoState.catalog(context) }
     LaunchedEffect(photoState.previewRevision) {
-        if (photoState.previewRevision > 0 && photoState.staged != null) { previewBorders = prefs.keyBorders; preview = "photo" }
+        if (photoState.previewRevision > 0 && photoState.staged != null && photoState.pending == null) { previewBorders = prefs.keyBorders; preview = "photo" }
     }
     LaunchedEffect(photoState.revision) {
         if (photoState.revision > 0) {
@@ -85,7 +91,10 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                             .clickable(enabled = !saving && !loadingPhoto, role = Role.Button) { picker.launch("image/*") }
                             .semantics { contentDescription = "Create keyboard theme with my image" }, contentAlignment = Alignment.Center) {
                             if (loadingPhoto) CircularProgressIndicator(Modifier.size(28.dp))
-                            else Icon(androidx.compose.ui.res.painterResource(helium314.keyboard.latin.R.drawable.obadh_ic_add), null, Modifier.size(52.dp), tint = MaterialTheme.colorScheme.primary)
+                            else Box(Modifier.size(32.dp)) {
+                                Box(Modifier.align(Alignment.Center).fillMaxWidth().height(4.dp).background(MaterialTheme.colorScheme.primary))
+                                Box(Modifier.align(Alignment.Center).fillMaxHeight().width(4.dp).background(MaterialTheme.colorScheme.primary))
+                            }
                         } else {
                             val item = photoState.photos.first { it.id == id }
                             val thumbnail by produceState<Bitmap?>(null, item, photoState.catalogRevision) { value = org.unmukto.obadh.settings.PhotoThemes.preview(context, item, small = true) }
@@ -127,7 +136,7 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
         val night = when(id) { "dark", "photo" -> true; "light" -> false; else -> systemNight }
         ModalBottomSheet(onDismissRequest = { if (!saving) { preview = null; photoState.staged = null } }, dragHandle = null,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-            Column(Modifier.fillMaxWidth().widthIn(max = 720.dp).padding(24.dp)) {
+            Column(Modifier.fillMaxWidth().widthIn(max = 720.dp).verticalScroll(rememberScrollState()).padding(24.dp)) {
                 if (id == "photo") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     IconButton(enabled = !saving && !loadingPhoto, onClick = {
                         preview = null
@@ -135,24 +144,27 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                     }) { Symbol(helium314.keyboard.latin.R.drawable.obadh_ic_edit, "Edit theme") }
                     IconButton(enabled = !saving, onClick = { deletingPhoto = true }) { Symbol(helium314.keyboard.latin.R.drawable.obadh_ic_delete, "Delete theme") }
                 }
-                KeyboardThemePreview(id, night, previewBorders, if (id == "photo") photoState.staged ?: photo else null, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable { previewBorders = !previewBorders }, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Key borders", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                val previewWidth = (configuration.screenHeightDp.dp - 224.dp - if (id == "photo") 48.dp else 0.dp).coerceAtLeast(100.dp) * (948f / 605f)
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    KeyboardThemePreview(id, night, previewBorders, if (id == "photo") photoState.staged ?: photo else null, Modifier.widthIn(max = previewWidth).fillMaxWidth())
+                }
+                Spacer(Modifier.height(24.dp))
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { previewBorders = !previewBorders }, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Key borders", Modifier.weight(1f), fontSize = 18.sp)
                     Switch(previewBorders, onCheckedChange = { previewBorders = it })
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    OutlinedButton(enabled = !saving, onClick = { preview = null; photoState.staged = null }) { Text("Cancel") }
-                    Button(enabled = !saving, onClick = {
+                    OutlinedButton(modifier = Modifier.width(91.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), enabled = !saving, onClick = { preview = null; photoState.staged = null }) { Text("Cancel", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.primary) }
+                    val actionPalette = themePalette("dynamic", systemNight)
+                    Button(modifier = Modifier.width(88.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(actionPalette.accent), contentColor = Color(actionPalette.actionText)), enabled = !saving, onClick = {
                         if (id == "photo" && photoState.current != null) { photoState.apply(context, previewBorders); return@Button }
                         val theme = when (id) { "light", "dark" -> "default"; else -> id }
                         val mode = when(id) { "light" -> 1; "dark", "photo" -> 2; else -> 0 }
                         prefs.applyTheme(theme, mode, previewBorders)
                         selectedTheme = theme; selectedMode = mode; preview = null
-                    }) { Text("Apply") }
+                    }) { Text("Apply", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Normal) }
                 }
-                Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -161,7 +173,7 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
 @Composable
 private fun ThemeHeading(title: String, expanded: Boolean? = null, height: androidx.compose.ui.unit.Dp = 48.dp, onExpand: () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+        Text(title, Modifier.weight(1f), fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
         if (expanded != null) IconButton(onClick = onExpand, Modifier.size(48.dp)) {
             Box(Modifier.size(24.dp).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(androidx.compose.ui.res.painterResource(helium314.keyboard.latin.R.drawable.obadh_ic_expand_more), "${if (expanded) "Show less" else "Show more"} $title", Modifier.size(20.dp))
@@ -203,10 +215,17 @@ private fun ThemeTile(id: String, label: String, selected: Boolean, night: Boole
         Box(Modifier.matchParentSize().padding(3.dp).clip(RoundedCornerShape(17.dp)).background(brush), contentAlignment = Alignment.Center) {
         if (photo != null) Image(photo.asImageBitmap(), null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
         if (id == "default") Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight().fillMaxWidth(.5f).background(Color(ObadhColors.palette("default", true).background)))
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp).fillMaxWidth(.4f).height(8.dp).clip(RoundedCornerShape(2.dp)).background(Color(p.space))) {
+        val thumbnailSpace = when(id) {
+            "dark" -> p.functional
+            "material_light" -> 0xffc9ced1.toInt()
+            "material_dark" -> 0xff3b464c.toInt()
+            "classic_light" -> 0xffe1e2e2.toInt()
+            else -> p.space
+        }
+        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp).fillMaxWidth(.4f).height(8.dp).clip(RoundedCornerShape(2.dp)).background(Color(thumbnailSpace))) {
             if (id == "default") Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight().fillMaxWidth(.5f).background(Color(ObadhColors.palette("default", true).functional)))
         }
-        Box(Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 12.dp).size(width = 14.dp, height = 10.dp).background(Color(if (id == "default") ObadhColors.palette("default", true).accent else p.accent), CircleShape))
+        Box(Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 10.dp).size(width = 14.dp, height = 10.dp).background(Color(if (id == "default") ObadhColors.palette("default", true).accent else p.accent), CircleShape))
         }
         if (selected) Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
             Icon(androidx.compose.ui.res.painterResource(helium314.keyboard.latin.R.drawable.obadh_ic_check), null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onPrimary)
@@ -226,6 +245,11 @@ internal fun themePalette(id: String, night: Boolean): ObadhColors.Palette {
 @Composable
 internal fun themeBrush(id: String, night: Boolean): Brush {
     val p = themePalette(id, night)
-    val gradient = ObadhColors.catalog.firstOrNull { it.id == id }?.gradient
-    return if (gradient != null) Brush.verticalGradient(*gradient.mapIndexed { index, color -> ObadhColors.catalog.first { it.id == id }.positions!![index] to Color(color) }.toTypedArray()) else Brush.verticalGradient(listOf(Color(p.background), Color(p.background)))
+    val theme = ObadhColors.catalog.firstOrNull { it.id == id }
+    return remember(id, p) {
+        if (theme?.mesh != null) object : ShaderBrush() {
+            override fun createShader(size: androidx.compose.ui.geometry.Size) = ObadhColors.meshShader(theme.mesh!!, size.width, size.height)
+        } else if (theme?.gradient != null) Brush.verticalGradient(*theme.gradient!!.mapIndexed { index, color -> theme.positions!![index] to Color(color) }.toTypedArray())
+        else Brush.verticalGradient(listOf(Color(p.background), Color(p.background)))
+    }
 }

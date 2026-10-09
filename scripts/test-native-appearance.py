@@ -6,6 +6,7 @@ Leaves Default / Follow system / key borders on after the test.
 import importlib.util
 import io
 import subprocess
+import re
 from pathlib import Path
 from PIL import Image
 
@@ -20,10 +21,22 @@ def settings():
     n.screen()
 
 
-def choose(title, option):
+def choose(label):
+    nodes = list(n.screen().iter('node'))
+    node = next((x for x in nodes if x.get('content-desc') == label), None)
+    if node is None:
+        node = next(x for x in nodes if x.get('text') == label)
+    x0,y0,x1,y1 = map(int, re.findall(r'\d+', node.get('bounds')))
+    touch.tap(((x0+x1)//2,(y0+y1)//2))
+    n.screen()
+
+
+def apply(label, toggle_borders=False):
     settings()
-    touch.choose(title)
-    touch.choose(option)
+    choose(label)
+    if toggle_borders:
+        choose('Key borders')
+    choose('Apply')
 
 
 def colors(language, expected=None):
@@ -48,31 +61,30 @@ def colors(language, expected=None):
 def run():
     n.shell('ime', 'set', n.PACKAGE + '/.keyboard.ObadhInputMethodService')
     try:
-        choose('Color palette','Default')
-        for mode,rgb in [('Light',(240,244,249)),('Dark',(30,31,32)),('Light',(240,244,249))]:
-            choose('Appearance',mode)
+        for label,rgb in [('Default',(240,244,249)),('Default Dark',(30,31,32)),('Default',(240,244,249))]:
+            apply(label)
             for language in ('bn','en'):
                 colors(language,rgb)
-                print('PASS actual',mode,language,'render after settings change',flush=True)
-        choose('Color palette','System colors')
-        for mode in ('Dark','Light'):
-            choose('Appearance',mode)
+                print('PASS actual',label,language,'render after Apply',flush=True)
+        settings();choose('Default Dark');choose('Cancel')
+        for language in ('bn','en'):
+            colors(language,(240,244,249))
+            print('PASS Cancel leaves active theme unchanged',language,flush=True)
+        apply('Dynamic Color')
+        for night in ('yes','no'):
+            n.shell('cmd','uimode','night',night)
             for language in ('bn','en'):
                 colors(language)
-                print('PASS wallpaper palette',mode,language,'render',flush=True)
-        # Border change must affect the actual fill, not only the preview preference.
-        settings();touch.choose('Key borders')
+                print('PASS dynamic system night',night,language,'render',flush=True)
+        apply('Default',toggle_borders=True)
         for language in ('bn','en'):
             controls=colors(language)
             assert not controls['borders'],controls
             print('PASS',language,'borderless rendered theme',flush=True)
     finally:
-        settings()
-        # Read canonical border state from the actual IME before restoring it.
-        if not n.inspect()['controls']['borders']:
-            touch.choose('Key borders')
-        choose('Color palette','Default')
-        choose('Appearance','Follow system')
+        n.shell('cmd','uimode','night','no')
+        controls=n.inspect()['controls']
+        apply('System Auto',toggle_borders=not controls['borders'])
     print('Native appearance regressions passed.',flush=True)
 
 

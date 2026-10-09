@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -34,7 +36,7 @@ import org.unmukto.obadh.settings.KeyboardPhoto
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** Gboard's full-screen crop/brightness sequence; Apply remains the only persistence boundary. */
+/** Full-screen crop/brightness sequence; Done saves My themes, and Apply activates the photo. */
 @Composable
 internal fun PhotoThemeEditor(bitmap: Bitmap, saving: Boolean, onCancel: () -> Unit, onSave: (KeyboardPhoto.Crop, Float) -> Unit, initialCrop: KeyboardPhoto.Crop? = null, initialBrightness: Float = .4f) {
     val aspect = 948f / 605f
@@ -64,12 +66,12 @@ internal fun PhotoThemeEditor(bitmap: Bitmap, saving: Boolean, onCancel: () -> U
         BackHandler(enabled = !saving) { back() }
         BoxWithConstraints(Modifier.fillMaxSize().background(if (brightnessStep) Color(0xff21272b) else Color.Black)) {
             val portrait = maxHeight > maxWidth
-            val contentWidth = if (portrait) maxWidth else minOf(maxWidth * .6f, maxHeight * 1.3f)
+            val contentWidth = if (portrait) maxWidth else minOf(maxWidth * .6f, (maxHeight - 220.dp).coerceAtLeast(120.dp) * aspect / .8f)
             val cropW = contentWidth * .8f
             val cropH = cropW / aspect
             if (brightnessStep) {
                 Column(Modifier.width(cropW).align(Alignment.Center).offset(y = -cropH / 2 - 43.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Adjust Brightness", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                    Text("Adjust Brightness", color = Color.White, fontSize = 18.sp)
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
                         AndroidView(factory = { ctx ->
@@ -117,12 +119,12 @@ internal fun PhotoThemeEditor(bitmap: Bitmap, saving: Boolean, onCancel: () -> U
                     drawRect(Color.Black.copy(alpha=.4f),topLeft=Offset(x+w,y),size=Size(x,h))
                     drawRect(Color.White,Offset(x,y),Size(w,h),style=Stroke(1.dp.toPx()))
                 }
-                Text("Pinch to Scale, Drag to Move", Modifier.align(Alignment.Center).offset(y = -cropH/2 - 56.dp), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                Text("Pinch to Scale, Drag to Move", Modifier.align(Alignment.Center).offset(y = -cropH/2 - 56.dp), color = Color.White, fontSize = 18.sp)
             }
             Button(enabled = !saving, onClick = { if (brightnessStep) onSave(crop, brightness) else brightnessStep = true },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (portrait) 96.dp else 12.dp).width(106.dp).height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(buttonColor), contentColor = Color.White)) {
-                if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text(if (brightnessStep) "Done" else "Next")
+                if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text(if (brightnessStep) "Done" else "Next", fontSize = 16.sp, fontWeight = FontWeight.Normal)
             }
         }
     }

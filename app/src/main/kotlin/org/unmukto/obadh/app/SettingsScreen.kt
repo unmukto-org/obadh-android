@@ -61,7 +61,7 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
         }
-        CategoryRow("Languages", "বাংলা (Obadh phonetic), English (US) (QWERTY)", helium314.keyboard.latin.R.drawable.obadh_ic_translate) { onOpen(AppScreen.Languages) }
+        CategoryRow("Languages", "বাংলা (Obadh phonetic)\nEnglish (US) (QWERTY)", helium314.keyboard.latin.R.drawable.obadh_ic_translate) { onOpen(AppScreen.Languages) }
         CategoryRow("Preferences", null, helium314.keyboard.latin.R.drawable.obadh_ic_tune) { onOpen(AppScreen.Preferences) }
         CategoryRow("Theme", null, helium314.keyboard.latin.R.drawable.obadh_ic_palette) { onOpen(AppScreen.Appearance) }
         CategoryRow("Corrections & suggestions", null, helium314.keyboard.latin.R.drawable.obadh_ic_spellcheck) { onOpen(AppScreen.Correction) }

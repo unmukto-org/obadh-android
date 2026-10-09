@@ -65,7 +65,7 @@ object ObadhColors {
         val p = if (name == "dynamic") dynamicPalette(context, night) else palette(name, night)
         val theme = catalog.firstOrNull { it.id == (aliases[name] ?: name) }
         val image = if (name == "photo") helium314.keyboard.latin.settings.Settings.readUserBackgroundImage(context, false)?.let(::CropDrawable)
-            else theme?.gradient?.let { StopsDrawable(it, theme.positions!!) }
+            else if (theme?.mesh != null) MeshDrawable(theme.mesh) else theme?.gradient?.let { StopsDrawable(it, theme.positions!!) }
         val base = DefaultColors(style, borders, p.accent, p.background, p.keys, p.functional, p.space,
             p.text, p.text, spaceBarText = p.text, keyboardBackground = image)
         return object : Colors by base {
@@ -100,6 +100,29 @@ object ObadhColors {
         override fun onBoundsChange(bounds: Rect) {
             paint.shader = LinearGradient(0f, bounds.top.toFloat(), 0f, bounds.bottom.toFloat(), colors, positions, Shader.TileMode.CLAMP)
         }
+        override fun draw(canvas: Canvas) { canvas.drawRect(bounds, paint) }
+        override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+        override fun setColorFilter(filter: ColorFilter?) { paint.colorFilter = filter }
+        @Deprecated("Deprecated in Android") override fun getOpacity() = PixelFormat.OPAQUE
+    }
+
+    /** A tiny procedural color grid preserves two-dimensional gradients without image assets. */
+    fun meshShader(colors: IntArray, width: Float, height: Float): BitmapShader {
+        val side = kotlin.math.sqrt(colors.size.toDouble()).toInt()
+        require(side * side == colors.size)
+        val bitmap = Bitmap.createBitmap(colors, side, side, Bitmap.Config.ARGB_8888)
+        return BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+            if (Build.VERSION.SDK_INT >= 33) setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
+            setLocalMatrix(Matrix().apply {
+                val sx = width / (side - 1); val sy = height / (side - 1)
+                setScale(sx, sy); postTranslate(-sx / 2, -sy / 2)
+            })
+        }
+    }
+
+    private class MeshDrawable(private val colors: IntArray) : Drawable() {
+        private val paint = Paint(Paint.DITHER_FLAG or Paint.FILTER_BITMAP_FLAG)
+        override fun onBoundsChange(bounds: Rect) { paint.shader = meshShader(colors, bounds.width().toFloat(), bounds.height().toFloat()) }
         override fun draw(canvas: Canvas) { canvas.drawRect(bounds, paint) }
         override fun setAlpha(alpha: Int) { paint.alpha = alpha }
         override fun setColorFilter(filter: ColorFilter?) { paint.colorFilter = filter }
