@@ -44,6 +44,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
     private val voice = strip.findViewById<ImageButton>(R.id.obadh_voice_placeholder)
     private var menu: PopupWindow? = null
     private var toast: Toast? = null
+    private var homeNormallyVisible = true
 
     init {
         if (context.prefs().getString(Settings.PREF_THEME_COLORS, "") == "obadh_photo")
@@ -89,7 +90,8 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
 
     fun update(words: SuggestedWords, external: Boolean) {
         val sensitive = Settings.getValues().mInputAttributes.mIsPasswordField
-        val showHome = menu?.isShowing == true || (!external && (words.isEmpty || words.isPunctuationSuggestions))
+        homeNormallyVisible = !external && (words.isEmpty || words.isPunctuationSuggestions)
+        val showHome = menu?.isShowing == true || homeNormallyVisible
         container.isVisible = showHome
         candidates.isVisible = !showHome
         grid.isVisible = !sensitive
@@ -105,6 +107,8 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
     }
 
     private fun setExpanded(expanded: Boolean) {
+        container.isVisible = expanded || homeNormallyVisible
+        candidates.isVisible = !container.isVisible
         grid.setImageResource(if (expanded) R.drawable.obadh_ic_arrow_back else R.drawable.obadh_ic_tools)
         grid.contentDescription = if (expanded) "Back to keyboard" else "Keyboard tools"
         grid.imageTintList = ColorStateList.valueOf(if (expanded) this@ObadhToolbar.colors.get(ColorType.FUNCTIONAL_KEY_TEXT) else text)

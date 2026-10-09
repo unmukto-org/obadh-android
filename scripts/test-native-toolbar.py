@@ -19,6 +19,7 @@ def tap(label):
 
 def start(language, field="text"):
     n.start(language,field=field)
+    n.command("configure", **{"native.suggest_clipboard_content": False}) # No clipboard fixture chip in the home-layout checks.
     n.command("key",code=-201) # Reset the fixture to the native alphabet layout.
     n.screen()
 
@@ -34,6 +35,14 @@ def run():
         assert all(grid[label]['y']-grid[label]['height']/2>=bottom for label in ['One-handed','Text editing','Floating','Keyboard size','Next language','Undo']),grid
         tap('Back to keyboard');assert 'Keyboard size' not in controls()
         print('PASS fixed toolbar, in-keyboard grid and Back',language,flush=True)
+        start(language);n.type_text('am' if language=='bn' else 'hel');n.screen()
+        before=n.inspect();assert before['labels'],before
+        assert 'Emoji' not in controls(),controls()
+        tap('Keyboard tools');assert 'Emoji' in controls() and 'Back to keyboard' in controls()
+        tap('Back to keyboard');assert 'Emoji' not in controls(),controls()
+        assert n.inspect()['labels']==before['labels'],n.inspect()
+        print('PASS context-aware tools restore composing candidates',language,flush=True)
+        start(language)
         tap('Keyboard tools');tap('Next language')
         assert n.inspect()['controls']['locale']==('en' if language=='bn' else 'bn')
         print('PASS tools language switching',language,flush=True)
@@ -57,4 +66,6 @@ def run():
     print('PASS standard Android preferences destination',flush=True)
     print('Native toolbar regressions passed.',flush=True)
 
-if __name__=='__main__':run()
+if __name__=='__main__':
+    try:run()
+    finally:n.command('configure')

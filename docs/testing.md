@@ -112,8 +112,8 @@ Real toolbar interactions:
 ANDROID_SERIAL=emulator-5554 python3 scripts/test-native-toolbar.py
 ```
 
-The eleven checks touch the seven fixed controls, the in-keyboard tools grid and Back,
-language switching, clipboard, comma/emoji hold, private theme destination, microphone
+The thirteen checks touch the seven fixed controls, the in-keyboard tools grid and Back,
+composing-candidate restoration, language switching, clipboard, comma/emoji hold, private theme destination, microphone
 placeholder and password guards in both languages. They also verify the standard
 Android preferences route. Debug probes only read control coordinates for these touches;
 they do not invoke the tested actions. Reset the fixture to its alphabet layout before
