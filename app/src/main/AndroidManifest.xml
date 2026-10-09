@@ -22,6 +22,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".app.ThemeActivity" android:exported="false" />
+
         <service
             android:name=".keyboard.ObadhInputMethodService"
             android:process=":keyboard"

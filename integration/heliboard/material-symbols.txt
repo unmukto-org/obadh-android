@@ -1,0 +1,4 @@
+Material Symbols rounded 24px, selected SVG paths in Android VectorDrawable format.
+Google material-design-icons revision 49d4db35df873165d6bd6ba09b063c7dafbac2f4
+https://github.com/google/material-design-icons/tree/49d4db35df873165d6bd6ba09b063c7dafbac2f4/symbols/android
+Apache-2.0; see MATERIAL-SYMBOLS-LICENSE. No icon font is bundled.

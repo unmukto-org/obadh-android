@@ -18,7 +18,7 @@ class ObadhPaletteTest {
         return (maxOf(x, y) + .05) / (minOf(x, y) + .05)
     }
     @Test fun smallLabelsStayReadableInBothAppearances() {
-        for (theme in ObadhColors.names.filterNot { it == "dynamic" }) for (night in listOf(false, true)) {
+        for (theme in listOf("default", "light", "dark")) for (night in listOf(false, true)) {
             val p = ObadhColors.palette(theme, night)
             for (background in listOf(p.keys, p.functional, p.background)) {
                 assertTrue("$theme night=$night labels need 4.5:1 contrast", contrast(p.text, background) >= 4.5)

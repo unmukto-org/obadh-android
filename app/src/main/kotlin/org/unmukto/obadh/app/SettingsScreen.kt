@@ -18,14 +18,16 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import org.unmukto.obadh.R
 import org.unmukto.obadh.settings.Haptics
 import org.unmukto.obadh.settings.KeyboardPreferences
 import org.unmukto.obadh.settings.KeyboardState
 
 internal enum class AppScreen(val title: String) {
-    Settings("Obadh"), Preferences("Preferences"), Appearance("Theme"), Languages("Languages"), Correction("Text correction"),
-    Gestures("Gestures"), Clipboard("Clipboard"), Emoji("Emoji"),
+    Settings("Obadh settings"), Preferences("Preferences"), Appearance("Theme"), Languages("Languages"), Correction("Corrections & suggestions"),
+    Gestures("Glide typing"), Clipboard("Clipboard"), Emoji("Emoji"),
     Shortcuts("Text shortcuts"), Privacy("Privacy"), About("About"), Advanced("Advanced"),
 }
 
@@ -34,7 +36,7 @@ internal enum class AppScreen(val title: String) {
 internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
-    SettingsScaffold("Obadh", actions = {
+    SettingsScaffold("Obadh settings", onBack = { (context as? android.app.Activity)?.finish() }, actions = {
         Box {
             IconButton(onClick = { menu = true }) { Symbol(R.drawable.ic_more_vert, "More options") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -59,17 +61,19 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
         }
-        CategoryRow("Languages", "বাংলা and English · QWERTY", R.drawable.ic_keyboard) { onOpen(AppScreen.Languages) }
-        CategoryRow("Theme", "Colors, key borders and light or dark mode", R.drawable.ic_settings) { onOpen(AppScreen.Appearance) }
-        CategoryRow("Preferences", "Sound, vibration and key previews", R.drawable.ic_settings) { onOpen(AppScreen.Preferences) }
-        CategoryRow("Text correction", "Autocorrection, spelling and punctuation", R.drawable.ic_spellcheck) { onOpen(AppScreen.Correction) }
-        CategoryRow("Gestures", "Switch languages, move the cursor and delete", R.drawable.ic_swipe) { onOpen(AppScreen.Gestures) }
-        CategoryRow("Clipboard", "Clipboard history and stored items", R.drawable.ic_content_paste) { onOpen(AppScreen.Clipboard) }
-        CategoryRow("Text shortcuts", "Your shortcuts and phrases", R.drawable.ic_short_text) { onOpen(AppScreen.Shortcuts) }
-        CategoryRow("Emoji", "Default search language", R.drawable.ic_sentiment_satisfied) { onOpen(AppScreen.Emoji) }
-        HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
-        CategoryRow("Privacy", "How your typing data is stored", R.drawable.ic_shield) { onOpen(AppScreen.Privacy) }
-        CategoryRow("About", "Obadh ${AppBuildInfo.version}", R.drawable.ic_info) { onOpen(AppScreen.About) }
+        CategoryRow("Languages", "বাংলা (Obadh phonetic), English (US) (QWERTY)", helium314.keyboard.latin.R.drawable.obadh_ic_translate) { onOpen(AppScreen.Languages) }
+        CategoryRow("Preferences", null, helium314.keyboard.latin.R.drawable.obadh_ic_tune) { onOpen(AppScreen.Preferences) }
+        CategoryRow("Theme", null, helium314.keyboard.latin.R.drawable.obadh_ic_palette) { onOpen(AppScreen.Appearance) }
+        CategoryRow("Corrections & suggestions", null, helium314.keyboard.latin.R.drawable.obadh_ic_spellcheck) { onOpen(AppScreen.Correction) }
+        CategoryRow("Glide typing", null, helium314.keyboard.latin.R.drawable.obadh_ic_swipe) { onOpen(AppScreen.Gestures) }
+        CategoryRow("Voice typing", "Available in the next release", helium314.keyboard.latin.R.drawable.obadh_ic_mic) {
+            android.widget.Toast.makeText(context, "Voice typing will be available in the next release", android.widget.Toast.LENGTH_SHORT).show()
+        }
+        CategoryRow("Clipboard", null, helium314.keyboard.latin.R.drawable.obadh_ic_content_paste) { onOpen(AppScreen.Clipboard) }
+        CategoryRow("Text shortcuts", null, helium314.keyboard.latin.R.drawable.obadh_ic_book) { onOpen(AppScreen.Shortcuts) }
+        CategoryRow("Emoji", null, helium314.keyboard.latin.R.drawable.obadh_ic_sentiment_satisfied) { onOpen(AppScreen.Emoji) }
+        CategoryRow("Privacy", null, helium314.keyboard.latin.R.drawable.obadh_ic_shield) { onOpen(AppScreen.Privacy) }
+        CategoryRow("About", "Obadh ${AppBuildInfo.version}", helium314.keyboard.latin.R.drawable.obadh_ic_info) { onOpen(AppScreen.About) }
     }
 }
 
@@ -79,10 +83,11 @@ fun Symbol(@DrawableRes resource: Int, description: String? = null) {
 }
 
 @Composable
-private fun CategoryRow(title: String, summary: String, @DrawableRes icon: Int, onClick: () -> Unit) {
+private fun CategoryRow(title: String, summary: String?, @DrawableRes icon: Int, onClick: () -> Unit) {
     PreferenceItem(
-        content = { Text(title) }, supportingContent = { Text(summary) },
+        content = { Text(title, fontSize = 20.sp) }, supportingContent = summary?.let { { Text(it) } },
         leadingContent = { Symbol(icon) }, onClick = onClick,
+        modifier = Modifier.padding(horizontal = 8.dp), minHeight = 80.dp,
     )
 }
 
@@ -150,6 +155,7 @@ fun ChoiceRow(title: String, options: List<String>, initial: Int, enabled: Boole
 @Composable
 internal fun KeyboardOptionsScreen(screen: AppScreen, prefs: KeyboardPreferences, onBack: () -> Unit) {
     val view = LocalView.current
+    val preferenceRevision = observePreferences()
     SettingsScaffold(screen.title, onBack) {
         when (screen) {
             AppScreen.Preferences -> {
@@ -236,17 +242,18 @@ fun PreferenceItem(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     supportingColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    minHeight: Dp = 72.dp,
 ) {
     Surface(modifier = modifier.fillMaxWidth(), color = containerColor, contentColor = contentColor) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 72.dp)
+            Modifier.fillMaxWidth().heightIn(min = minHeight)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (leadingContent != null) {
                 leadingContent()
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(24.dp))
             }
             Column(Modifier.weight(1f)) {
                 ProvideTextStyle(MaterialTheme.typography.bodyLarge, content)
@@ -263,4 +270,18 @@ fun PreferenceItem(
             }
         }
     }
+}
+
+/** A preference can update another row (emoji/globe); re-read the canonical values together. */
+@Composable
+private fun observePreferences(): Int {
+    val context = LocalContext.current
+    val preferences = remember(context) { context.getSharedPreferences("obadh_prefs", android.content.Context.MODE_PRIVATE) }
+    var revision by remember { mutableIntStateOf(0) }
+    DisposableEffect(preferences) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    return revision
 }

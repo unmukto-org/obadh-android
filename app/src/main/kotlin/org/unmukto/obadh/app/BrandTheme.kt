@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalResources
 
 /** Material You on Android 12+, with a complete Material palette on older devices. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -15,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 fun ObadhTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val resources = LocalResources.current
     val colors = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && dark -> dynamicDarkColorScheme(context)
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicLightColorScheme(context)
@@ -35,7 +39,11 @@ fun ObadhTheme(content: @Composable () -> Unit) {
             tertiaryContainer = Color(0xFFD3E4FF), onTertiaryContainer = Color(0xFF041C35),
         )
     }
-    MaterialExpressiveTheme(colorScheme = colors) {
-        Surface(Modifier.fillMaxSize(), color = colors.surface, content = content)
+    val nativeColors = if (Build.VERSION.SDK_INT >= 34) colors.copy(
+        surface = Color(resources.getColor(if (dark) android.R.color.system_surface_container_lowest_dark else android.R.color.system_surface_container_light, context.theme)),
+        surfaceContainerLow = Color(resources.getColor(if (dark) android.R.color.system_surface_container_low_dark else android.R.color.system_surface_container_low_light, context.theme)),
+    ) else colors
+    MaterialExpressiveTheme(colorScheme = nativeColors, typography = Typography()) {
+        Surface(Modifier.fillMaxSize(), color = nativeColors.surface, content = content)
     }
 }

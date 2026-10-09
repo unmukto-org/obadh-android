@@ -67,7 +67,8 @@ def main():
         "latin/dictionary/DictionaryFactory.kt", "keyboard/KeyboardActionListenerImpl.kt",
         "latin/SystemBroadcastReceiver.java", "latin/settings/Defaults.kt",
         "keyboard/KeyboardLayoutSet.kt", "keyboard/KeyboardTheme.kt", "keyboard/internal/KeyboardBuilder.kt", "keyboard/internal/KeyboardParams.java", "keyboard/internal/keyboard_parser/EmojiParser.kt",
-        "latin/suggestions/SuggestionStripLayoutHelper.java",
+        "latin/suggestions/SuggestionStripLayoutHelper.java", "latin/suggestions/SuggestionStripView.kt",
+        "keyboard/internal/KeyboardIconsSet.kt", "keyboard/KeyboardView.java", "keyboard/internal/keyboard_parser/floris/TextKeyData.kt",
         "latin/personalization/PersonalizationHelper.java", "latin/dictionary/ExpandableBinaryDictionary.java",
     ]
     def restore_source(relative):
@@ -176,6 +177,7 @@ def main():
         (main_dir / "java/helium314/keyboard" / unused).unlink(missing_ok=True)
     import runpy
     runpy.run_path(str(ROOT / "integration/heliboard/patches.py"))["apply"](main_dir, replace)
+    runpy.run_path(str(ROOT / "integration/heliboard/ui-patches.py"))["apply"](main_dir, replace)
 
     # Standalone candidate builds must not compile tests for removed language engines.
     for test in (HOST / "app/src/test").rglob("*.kt"):
@@ -262,6 +264,8 @@ def main():
     local_properties = ROOT / "local.properties"
     if local_properties.exists():
         shutil.copy2(local_properties, HOST / "local.properties")
+    # Owned resource overlay is tiny and replaces only the native UI seams above.
+    shutil.copytree(ROOT / "integration/heliboard/resources", main_dir / "res", dirs_exist_ok=True)
     print(f"Prepared {HOST} at {REVISION}; ARM64 only, English dictionary only")
     print(f"Build: ./gradlew -p {HOST} --no-daemon --max-workers=4 :app:assembleDebug")
 

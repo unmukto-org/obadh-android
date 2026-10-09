@@ -37,7 +37,7 @@ class KeyboardPreferences(context: Context) {
     var spaceLeavesSymbols: Boolean get() = flag("f_space_leaves_symbols"); set(v) = setFlag("f_space_leaves_symbols", v)
     var spaceSwipeLanguage: Boolean get() = flag("f_space_swipe_lang"); set(v) = setFlag("f_space_swipe_lang", v)
     var swipeToDelete: Boolean get() = flag("f_swipe_delete"); set(v) = setFlag("f_swipe_delete", v)
-    var longPressSymbols: Boolean get() = flag("f_long_press"); set(v) = setFlag("f_long_press", v)
+    var longPressSymbols: Boolean get() = prefs.getBoolean("f_long_press", false); set(v) = setFlag("f_long_press", v)
     var clipboardKeys: Boolean get() = flag("f_clip_keys"); set(v) = setFlag("f_clip_keys", v)
     var keyCallout: Boolean get() = flag("f_callout"); set(v) = setFlag("f_callout", v)
     var autoCapitalize: Boolean get() = flag("f_auto_caps"); set(v) = setFlag("f_auto_caps", v)
@@ -53,17 +53,27 @@ class KeyboardPreferences(context: Context) {
             it in helium314.keyboard.latin.obadh.ObadhColors.names && (it != "photo" || KeyboardPhoto.exists(appContext))
         } ?: "default"
         set(v) = prefs.edit().putString("keyboard_theme", v).apply()
+    /** One atomic selection, so the IME never renders a half-applied theme. */
+    fun applyTheme(theme: String, mode: Int, borders: Boolean) {
+        require(theme in helium314.keyboard.latin.obadh.ObadhColors.names)
+        prefs.edit().putString("keyboard_theme", theme).putInt("keyboard_theme_mode", mode.coerceIn(0, 2))
+            .putBoolean("keyboard_key_borders", borders).apply()
+    }
+
     var themeMode: Int
         get() = prefs.getInt("keyboard_theme_mode", 0).coerceIn(0, 2)
         set(v) = prefs.edit().putInt("keyboard_theme_mode", v.coerceIn(0, 2)).apply()
+    val photoId: String? get() = prefs.getString("keyboard_photo_id", null)
     var keyBorders: Boolean get() = flag("keyboard_key_borders"); set(v) = setFlag("keyboard_key_borders", v)
     var numberRow: Boolean
         get() = prefs.getBoolean("keyboard_number_row", false)
         set(v) = setFlag("keyboard_number_row", v)
-    var languageKey: Boolean get() = flag("keyboard_language_key"); set(v) = setFlag("keyboard_language_key", v)
+    var languageKey: Boolean
+        get() = flag("keyboard_language_key")
+        set(v) = prefs.edit().putBoolean("keyboard_language_key", v).apply { if(v) putBoolean("keyboard_emoji_key", false) }.apply()
     var emojiKey: Boolean
-        get() = prefs.getBoolean("keyboard_emoji_key", false)
-        set(v) = setFlag("keyboard_emoji_key", v)
+        get() = prefs.getBoolean("keyboard_emoji_key", false) && !languageKey
+        set(v) = prefs.edit().putBoolean("keyboard_emoji_key", v).apply { if(v) putBoolean("keyboard_language_key", false) }.apply()
     var keyboardHeight: Int
         get() = prefs.getInt("keyboard_height", 1).coerceIn(0, 2)
         set(v) = prefs.edit().putInt("keyboard_height", v.coerceIn(0, 2)).apply()

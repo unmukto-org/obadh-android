@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -32,19 +33,24 @@ fun SettingsScaffold(
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = Modifier.semantics { paneTitle = title }.imePadding(),
+        modifier = Modifier.semantics { paneTitle = title }.imePadding().nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
+            LargeTopAppBar(
+                title = { Text(title, Modifier.padding(start = if (scrollBehavior.state.collapsedFraction < .5f) 8.dp else 0.dp).offset(y = 12.dp * (1f - scrollBehavior.state.collapsedFraction))) },
                 navigationIcon = {
                     if (onBack != null) IconButton(onClick = onBack) {
                         Symbol(R.drawable.ic_arrow_back, "Back")
                     }
                 },
                 actions = actions,
+                scrollBehavior = scrollBehavior,
+                expandedHeight = 152.dp,
+                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface, scrolledContainerColor = MaterialTheme.colorScheme.surface, titleContentColor = MaterialTheme.colorScheme.onSurface, navigationIconContentColor = MaterialTheme.colorScheme.onSurface, actionIconContentColor = MaterialTheme.colorScheme.onSurface),
             )
         },
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbar) },
     ) { insets ->
         Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
