@@ -83,7 +83,7 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     val systemNight = isSystemInDarkTheme()
     fun openPreview(id: String) { previewBorders = prefs.keyBorders; preview = id }
     val selectedId = when { selectedTheme == "default" && selectedMode == 1 -> "light"; selectedTheme == "default" && selectedMode == 2 -> "dark"; else -> selectedTheme }
-    SettingsScaffold("Theme", onBack, snackbar = snackbar, contentMaxWidth = Dp.Infinity) {
+    SettingsScaffold("Theme", onBack, snackbar = snackbar, contentMaxWidth = Dp.Infinity, contentBehindNavigationBar = true) {
         Column(Modifier.padding(horizontal = 24.dp)) {
             ThemeHeading("My themes", height = if (grid.landscape) 64.dp else 60.dp)
             val entries = listOf<String?>(null) + photoState.photos.map { it.id }

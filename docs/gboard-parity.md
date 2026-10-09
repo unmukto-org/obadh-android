@@ -55,7 +55,10 @@ galleries were compared with the second Gboard AVD. It uses 24 dp side insets, 8
 tiles and 20 dp corners. Landscape uses wider 16:9 tiles, 16 dp gaps and the
 actual display-cutout safe inset. Groups show three rows initially; their
 expansion arrow disappears after expansion. The gallery fills the available
-tablet width while other settings retain a readable content width.
+tablet width while other settings retain a readable content width. Theme tiles
+scroll behind the transparent navigation area; scroll-end padding keeps the final
+row reachable above the system buttons. Both app entry points use the same
+edge-to-edge window policy.
 Default contains Dynamic Color, System Auto, Default and Default Dark. Selection
 opens a preview with a key-border switch and Cancel/Apply. System Auto shows both
 light/dark keyboards and explains following system settings. On the 393 dp phone,

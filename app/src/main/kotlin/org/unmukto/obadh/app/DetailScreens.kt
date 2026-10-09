@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -33,6 +34,7 @@ fun SettingsScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
     contentMaxWidth: Dp = 720.dp,
+    contentBehindNavigationBar: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -58,10 +60,15 @@ fun SettingsScaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbar) },
     ) { insets ->
-        Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
+        val direction = LocalLayoutDirection.current
+        val bodyInsets = if (contentBehindNavigationBar) PaddingValues(
+            start = insets.calculateStartPadding(direction), top = insets.calculateTopPadding(),
+            end = insets.calculateEndPadding(direction),
+        ) else insets
+        Box(Modifier.fillMaxSize().padding(bodyInsets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier.widthIn(max = contentMaxWidth).fillMaxWidth()
-                    .verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+                    .verticalScroll(rememberScrollState()).padding(bottom = 24.dp + if (contentBehindNavigationBar) insets.calculateBottomPadding() else 0.dp),
                 content = content,
             )
         }
