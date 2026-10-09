@@ -8,6 +8,10 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.widget.ImageView
+import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import java.lang.ref.WeakReference
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import helium314.keyboard.latin.common.ColorType
@@ -84,6 +88,19 @@ object ObadhColors {
                 if ((color == ColorType.FUNCTIONAL_KEY_TEXT || color == ColorType.SHIFT_KEY_ICON || color == ColorType.ACTION_KEY_ICON)) view.setColorFilter(get(color))
                 else base.setColor(view, color)
             }
+            override fun setBackground(view: View, color: ColorType) {
+                if (color == ColorType.MAIN_BACKGROUND && image != null) {
+                    // The IME frame includes the bottom navigation inset. Keep the gradient/photo
+                    // in the visible keyboard viewport, rather than stretching it beneath that bar.
+                    val background = when(image) {
+                        is StopsDrawable -> image.copy()
+                        is MeshDrawable -> image.copy()
+                        is CropDrawable -> image.copy()
+                        else -> image.constantState?.newDrawable()?.mutate() ?: image
+                    }
+                    view.background = ViewportDrawable(background, view, get(ColorType.NAVIGATION_BAR))
+                } else base.setBackground(view, color)
+            }
             override fun selectAndColorDrawable(attr: TypedArray, color: ColorType): Drawable {
                 if (color != ColorType.ACTION_KEY_BACKGROUND) return base.selectAndColorDrawable(attr, color)
                 return GradientDrawable().apply {
@@ -95,8 +112,24 @@ object ObadhColors {
         }
     }
 
+    private class ViewportDrawable(private val source: Drawable, view: View, navColor: Int) : Drawable() {
+        private val owner = WeakReference(view)
+        private val paint = Paint().apply { color = navColor }
+        override fun onBoundsChange(bounds: Rect) {
+            val view=owner.get()
+            val inset=if (view?.id == helium314.keyboard.latin.R.id.main_keyboard_frame && !helium314.keyboard.latin.settings.Settings.getValues().mIsFloatingKeyboard)
+                ViewCompat.getRootWindowInsets(view)?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0 else 0
+            source.setBounds(bounds.left,bounds.top,bounds.right,(bounds.bottom-inset).coerceAtLeast(bounds.top+1))
+        }
+        override fun draw(canvas: Canvas) { canvas.drawRect(bounds,paint);source.draw(canvas) }
+        override fun setAlpha(alpha: Int) { paint.alpha=alpha;source.alpha=alpha }
+        override fun setColorFilter(filter: ColorFilter?) { paint.colorFilter=filter;source.colorFilter=filter }
+        @Deprecated("Deprecated in Android") override fun getOpacity()=PixelFormat.OPAQUE
+    }
+
     private class StopsDrawable(private val colors: IntArray, private val positions: FloatArray) : Drawable() {
         private val paint = Paint(Paint.DITHER_FLAG)
+        fun copy() = StopsDrawable(colors, positions)
         override fun onBoundsChange(bounds: Rect) {
             paint.shader = LinearGradient(0f, bounds.top.toFloat(), 0f, bounds.bottom.toFloat(), colors, positions, Shader.TileMode.CLAMP)
         }
@@ -122,6 +155,7 @@ object ObadhColors {
 
     private class MeshDrawable(private val colors: IntArray) : Drawable() {
         private val paint = Paint(Paint.DITHER_FLAG or Paint.FILTER_BITMAP_FLAG)
+        fun copy() = MeshDrawable(colors)
         override fun onBoundsChange(bounds: Rect) { paint.shader = meshShader(colors, bounds.width().toFloat(), bounds.height().toFloat()) }
         override fun draw(canvas: Canvas) { canvas.drawRect(bounds, paint) }
         override fun setAlpha(alpha: Int) { paint.alpha = alpha }
@@ -131,6 +165,7 @@ object ObadhColors {
 
     /** Center-crop a photo at each new layout, including landscape and split tablet layouts. */
     private class CropDrawable(private val source: Drawable) : Drawable() {
+        fun copy() = CropDrawable(source.constantState?.newDrawable()?.mutate() ?: source)
         override fun draw(canvas: Canvas) {
             val scale = maxOf(bounds.width().toFloat() / source.intrinsicWidth, bounds.height().toFloat() / source.intrinsicHeight)
             val w = (source.intrinsicWidth * scale).toInt(); val h = (source.intrinsicHeight * scale).toInt()

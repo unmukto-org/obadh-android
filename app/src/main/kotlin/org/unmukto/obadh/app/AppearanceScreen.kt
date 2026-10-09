@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -84,9 +86,9 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
             ThemeHeading("My themes", height = 60.dp)
             val entries = listOf<String?>(null) + photoState.photos.map { it.id }
             entries.chunked(3).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemeGrid { tileWidth ->
                     row.forEach { id ->
-                        if (id == null) Box(Modifier.weight(1f).aspectRatio(4f / 3f).clip(RoundedCornerShape(20.dp))
+                        if (id == null) Box(Modifier.width(tileWidth).aspectRatio(4f / 3f).clip(RoundedCornerShape(20.dp))
                             .border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp))
                             .clickable(enabled = !saving && !loadingPhoto, role = Role.Button) { picker.launch("image/*") }
                             .semantics { contentDescription = "Create keyboard theme with my image" }, contentAlignment = Alignment.Center) {
@@ -99,10 +101,10 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                             val item = photoState.photos.first { it.id == id }
                             val thumbnail by produceState<Bitmap?>(null, item, photoState.catalogRevision) { value = org.unmukto.obadh.settings.PhotoThemes.preview(context, item, small = true) }
                             ThemeTile("photo", "Custom photo ${photoState.photos.indexOf(item)+1}", selectedId == "photo" && prefs.photoId == id,
-                                systemNight, thumbnail, Modifier.weight(1f)) { photoState.show(context,item) }
+                                systemNight, thumbnail, Modifier.width(tileWidth)) { photoState.show(context,item) }
                         }
                     }
-                    repeat(3-row.size) { Spacer(Modifier.weight(1f)) }
+                    repeat(3-row.size) { Spacer(Modifier.width(tileWidth)) }
                 }
                 if(entries.size>3) Spacer(Modifier.height(8.dp))
             }
@@ -128,13 +130,13 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     val pending = pendingPhoto
     if (pending != null) {
         PhotoThemeEditor(pending, saving,
-            onCancel = { if (!saving) photoState.pending = null },
-            onSave = { crop, brightness -> photoState.stage(context, pending, crop, brightness) },
+            onCancel = { if (!saving) photoState.cancelPreview() },
+            onSave = { crop, brightness -> photoState.stage(pending, crop, brightness) },
             initialCrop = photoState.current?.crop, initialBrightness = photoState.current?.brightness ?: .4f)
     }
     preview?.let { id ->
         val night = when(id) { "dark", "photo" -> true; "light" -> false; else -> systemNight }
-        ModalBottomSheet(onDismissRequest = { if (!saving) { preview = null; photoState.staged = null } }, dragHandle = null,
+        ModalBottomSheet(onDismissRequest = { if (!saving) { preview = null; photoState.cancelPreview() } }, dragHandle = null,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
             Column(Modifier.fillMaxWidth().widthIn(max = 720.dp).verticalScroll(rememberScrollState()).padding(24.dp)) {
                 if (id == "photo") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -146,7 +148,8 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                 }
                 val previewWidth = (configuration.screenHeightDp.dp - 224.dp - if (id == "photo") 48.dp else 0.dp).coerceAtLeast(100.dp) * (948f / 605f)
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    KeyboardThemePreview(id, night, previewBorders, if (id == "photo") photoState.staged ?: photo else null, Modifier.widthIn(max = previewWidth).fillMaxWidth())
+                    if (id == "default") SystemThemePreview(previewBorders, Modifier.widthIn(max = previewWidth).fillMaxWidth())
+                    else KeyboardThemePreview(id, night, previewBorders, if (id == "photo") photoState.staged ?: photo else null, Modifier.widthIn(max = previewWidth).fillMaxWidth())
                 }
                 Spacer(Modifier.height(24.dp))
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { previewBorders = !previewBorders }, verticalAlignment = Alignment.CenterVertically) {
@@ -155,7 +158,7 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(24.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    OutlinedButton(modifier = Modifier.width(91.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), enabled = !saving, onClick = { preview = null; photoState.staged = null }) { Text("Cancel", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.primary) }
+                    OutlinedButton(modifier = Modifier.width(91.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), enabled = !saving, onClick = { preview = null; photoState.cancelPreview() }) { Text("Cancel", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.primary) }
                     val actionPalette = themePalette("dynamic", systemNight)
                     Button(modifier = Modifier.width(88.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(actionPalette.accent), contentColor = Color(actionPalette.actionText)), enabled = !saving, onClick = {
                         if (id == "photo" && photoState.current != null) { photoState.apply(context, previewBorders); return@Button }
@@ -173,7 +176,7 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
 @Composable
 private fun ThemeHeading(title: String, expanded: Boolean? = null, height: androidx.compose.ui.unit.Dp = 48.dp, onExpand: () -> Unit = {}) {
     Row(Modifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+        Text(title, Modifier.weight(1f).offset(y = when (title) { "My themes" -> 3.dp; "Default" -> (-3).dp; else -> 0.dp }), fontSize = 14.sp, letterSpacing = .2.sp, color = MaterialTheme.colorScheme.primary)
         if (expanded != null) IconButton(onClick = onExpand, Modifier.size(48.dp)) {
             Box(Modifier.size(24.dp).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(androidx.compose.ui.res.painterResource(helium314.keyboard.latin.R.drawable.obadh_ic_expand_more), "${if (expanded) "Show less" else "Show more"} $title", Modifier.size(20.dp))
@@ -188,19 +191,48 @@ private fun ThemeSection(title: String, ids: List<String>, selectedId: String, n
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     ThemeHeading(title, if (ids.size > collapsedCount && !expanded) false else null) { expanded = !expanded }
     (if (expanded) ids else ids.take(collapsedCount)).chunked(3).forEach { row ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ThemeGrid { tileWidth ->
             row.forEach { id ->
                 val label = when(id) { "dynamic" -> "Dynamic Color"; "default" -> "System Auto"; "light" -> "Default"; "dark" -> "Default Dark"; else -> ObadhColors.catalog.first { it.id == id }.label }
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.width(tileWidth), horizontalAlignment = Alignment.CenterHorizontally) {
                     ThemeTile(id, label, selectedId == id, night, modifier = Modifier.fillMaxWidth()) { onSelect(id) }
-                    if (labels) Text(label, Modifier.padding(top = 3.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (labels) Text(label, Modifier.padding(top = 3.dp).offset(y = (-1).dp), style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, letterSpacing = 0.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            repeat(3 - row.size) { Spacer(Modifier.width(tileWidth)) }
         }
         Spacer(Modifier.height(8.dp))
     }
     Spacer(Modifier.height(12.dp))
+}
+
+/** System Auto previews both modes and explains the wallpaper-independent night behavior. */
+@Composable
+private fun SystemThemePreview(borders: Boolean, modifier: Modifier) {
+    BoxWithConstraints(modifier.aspectRatio(948f / 605f)) {
+        val tileWidth = maxWidth * (648f / 948f)
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                KeyboardThemePreview("light", false, borders, null, Modifier.width(tileWidth))
+                KeyboardThemePreview("dark", true, borders, null, Modifier.width(tileWidth))
+            }
+            Spacer(Modifier.height(10.dp))
+            Text("Appearance will follow system settings", Modifier.fillMaxWidth().height(24.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = 14.sp,
+                letterSpacing = 0.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+        }
+    }
+}
+
+/** Keep every tile on the same physical pixel grid, including fractional device densities. */
+@Composable
+private fun ThemeGrid(content: @Composable RowScope.(androidx.compose.ui.unit.Dp) -> Unit) {
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val tileWidth = with(density) { ((constraints.maxWidth - 2 * 8.dp.roundToPx()) / 3).toDp() }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { content(tileWidth) }
+    }
 }
 
 @Composable

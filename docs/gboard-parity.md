@@ -49,10 +49,11 @@ handling, popup keys and gesture machinery are retained.
 
 The gallery follows the reference flow: My themes, Default, Colors, Light gradient,
 and Dark gradient. No Google landscape photographs are included. It uses three
-columns, 24 dp side insets, 8 dp column gaps, 4:3 tiles and 20 dp corners. Groups
+columns on an equal physical-pixel grid, 24 dp side insets, 8 dp column gaps, 4:3 tiles and 20 dp corners. Groups
 show nine tiles initially; their expansion arrow disappears after expansion.
 Default contains Dynamic Color, System Auto, Default and Default Dark. Selection
-opens a preview with a key-border switch and Cancel/Apply. On the 393 dp phone,
+opens a preview with a key-border switch and Cancel/Apply. System Auto shows both
+light/dark keyboards and explains following system settings. On the 393 dp phone,
 the preview occupies the same measured 948 × 605 px rectangle at y=1141; controls
 remain accessible in landscape and at larger font sizes.
 
@@ -60,15 +61,16 @@ Public Android dynamic roles are used for both the preview and native keyboard,
 including `system_surface_container`, `system_surface_bright` and
 `system_secondary_container`; wallpaper/night changes invalidate the native colors.
 Gradient keys use 25% white. Photo letters/space use 30% white, function keys 5%
-white, and the toolbar a 30% black overlay. Two-dimensional gradients use tiny
+white, and the toolbar a 30% black overlay. Five two-dimensional gradients use tiny
 17×17 numerical color meshes; there are no downloaded theme images or icon fonts.
 The settings preview never starts a typing engine. Native photos/shaders are cached
-on layout, rather than decoded or allocated per key.
+on layout, rather than decoded or allocated per key. Each view owns its drawable
+bounds; the keyboard background excludes the bottom navigation inset.
 
 Photo creation uses the system picker followed by full-screen pan/pinch crop and
-brightness adjustment (40% initially). Done saves an original with stripped metadata
-and crop/brightness parameters to My themes. Cancel leaves the active theme unchanged;
-Apply writes one bounded private render for the IME. Existing photos can be edited
+brightness adjustment (40% initially). Done prepares an in-memory preview. Cancel discards the draft without storing an
+image or changing the active theme. Apply saves one metadata-stripped original with
+crop/brightness parameters to My themes and one bounded private render for the IME. Existing photos can be edited
 or deleted. Activity rotation retains the editor state without reopening the preview
 on top, and deleting the active photo falls back to System Auto. Gallery originals
 are only the photos a user explicitly saves; no asset/download cache is populated.
@@ -77,7 +79,9 @@ The home toolbar has fixed grid, emoji/media, clipboard, settings, theme and mic
 positions around the native suggestion strip. Suggestions, clipboard and editor
 completion chips retain their upstream behavior. Password fields hide the grid and
 microphone and disable sensitive tools. Additional local editing/layout tools are
-behind the grid, rather than a scrolling home toolbar. The combined comma/emoji key
+behind a four-column grid in the existing keyboard area, rather than a scrolling
+home toolbar. The grid/back control and primary tools remain usable above it,
+and short landscape windows scroll within that area. The combined comma/emoji key
 inserts punctuation on tap and opens emoji on hold. Official Material Symbols are
 pinned as individual licensed vectors; the microphone is a permission-free toast.
 

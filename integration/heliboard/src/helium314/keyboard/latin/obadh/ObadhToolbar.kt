@@ -12,9 +12,14 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
+import android.widget.ScrollView
+import android.view.Gravity
+import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.SuggestedWords
 import helium314.keyboard.latin.common.ColorType
@@ -31,7 +36,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
     private val density = context.resources.displayMetrics.density
     private fun dp(value: Int) = (value * density + .5f).toInt()
     private val colors = Settings.getValues().mColors
-    private val text = colors.get(ColorType.KEY_TEXT)
+    private val text = this@ObadhToolbar.colors.get(ColorType.KEY_TEXT)
     private val home = strip.findViewById<ViewGroup>(R.id.toolbar)
     private val container = strip.findViewById<View>(R.id.toolbar_container)
     private val candidates = strip.findViewById<View>(R.id.suggestions_strip)
@@ -45,7 +50,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
             strip.setBackgroundColor(0x4d000000)
         home.removeAllViews()
         // These five slots retain their positions. Unsupported media is visibly unavailable.
-        button("Emoji", R.drawable.obadh_ic_sticky_note_2) { send(getCodeForToolbarKey(ToolbarKey.EMOJI)) }
+        button("Emoji", R.drawable.obadh_ic_sticker) { send(getCodeForToolbarKey(ToolbarKey.EMOJI)) }
         button("GIFs unavailable", R.drawable.obadh_ic_gif, false) {}
         button("Clipboard", R.drawable.obadh_ic_assignment) { send(getCodeForToolbarKey(ToolbarKey.CLIPBOARD)) }
         button("Settings", R.drawable.obadh_ic_settings) { open("org.unmukto.obadh.app.MainActivity") }
@@ -57,7 +62,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         voice.setImageResource(R.drawable.obadh_ic_mic)
         voice.imageTintList = ColorStateList.valueOf(text)
         // The circle is 36dp inside a 48dp touch target, including at large font sizes.
-        voice.background = android.graphics.drawable.InsetDrawable(ripple(colors.get(ColorType.KEY_BACKGROUND)), dp(6))
+        voice.background = android.graphics.drawable.InsetDrawable(ripple(this@ObadhToolbar.colors.get(ColorType.KEY_BACKGROUND)), dp(6))
         voice.setOnClickListener {
             toast?.cancel()
             toast = Toast.makeText(context, "Voice typing will be available in the next release", Toast.LENGTH_SHORT).also { it.show() }
@@ -78,67 +83,109 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
             scaleType = android.widget.ImageView.ScaleType.CENTER
             isEnabled = enabled
             alpha = if (enabled) 1f else .38f
-            setOnClickListener { action() }
+            setOnClickListener { menu?.dismiss(); action() }
         })
     }
 
     fun update(words: SuggestedWords, external: Boolean) {
         val sensitive = Settings.getValues().mInputAttributes.mIsPasswordField
-        val showHome = !external && (words.isEmpty || words.isPunctuationSuggestions)
+        val showHome = menu?.isShowing == true || (!external && (words.isEmpty || words.isPunctuationSuggestions))
         container.isVisible = showHome
         candidates.isVisible = !showHome
         grid.isVisible = !sensitive
         voice.isVisible = !sensitive
         home.getChildAt(0).apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
         home.getChildAt(2).apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
-        if (!showHome) menu?.dismiss()
+        if (!showHome || sensitive || external) menu?.dismiss()
     }
 
-    private fun open(activity: String) {
+    private fun open(activity: String, action: String? = null) {
         menu?.dismiss()
-        context.startActivity(Intent().setClassName(context.packageName, activity).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(Intent(action).setClassName(context.packageName, activity).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    private fun setExpanded(expanded: Boolean) {
+        grid.setImageResource(if (expanded) R.drawable.obadh_ic_arrow_back else R.drawable.obadh_ic_tools)
+        grid.contentDescription = if (expanded) "Back to keyboard" else "Keyboard tools"
+        grid.imageTintList = ColorStateList.valueOf(if (expanded) this@ObadhToolbar.colors.get(ColorType.FUNCTIONAL_KEY_TEXT) else text)
+        grid.background = if (expanded) android.graphics.drawable.InsetDrawable(ripple(this@ObadhToolbar.colors.get(ColorType.FUNCTIONAL_KEY_BACKGROUND)), dp(7)) else ripple(Color.TRANSPARENT)
+        for (i in 0 until home.childCount) home.getChildAt(i).background = if (expanded) {
+            android.graphics.drawable.InsetDrawable(RippleDrawable(ColorStateList.valueOf((text and 0x00ffffff) or 0x22000000),
+                GradientDrawable().apply { cornerRadius=dp(12).toFloat();setColor(this@ObadhToolbar.colors.get(ColorType.KEY_BACKGROUND)) }, null), dp(3), dp(5), dp(3), dp(5))
+        } else ripple(Color.TRANSPARENT)
     }
 
     private fun showTools() {
         if (menu?.isShowing == true) { menu?.dismiss(); return }
+        val keyboard = strip.rootView.findViewById<View>(R.id.keyboard_view_wrapper) ?: return
+        if (keyboard.height <= 0) return
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            background = GradientDrawable().apply { setColor(this@ObadhToolbar.colors.get(ColorType.MAIN_BACKGROUND)); cornerRadius = dp(20).toFloat() }
+            setPadding(dp(20), 0, dp(20), dp(8))
+            setBackgroundColor(this@ObadhToolbar.colors.get(ColorType.MAIN_BACKGROUND))
         }
-        val tools = listOf(ToolbarKey.EMOJI to "Emoji", ToolbarKey.CLIPBOARD to "Clipboard", ToolbarKey.DPAD to "Text editing", ToolbarKey.ONE_HANDED to "One-handed",
-            ToolbarKey.FLOATING to "Floating", ToolbarKey.SPLIT to "Split", ToolbarKey.INCOGNITO to "Incognito", ToolbarKey.SETTINGS to "Settings",
-            ToolbarKey.UNDO to "Undo", ToolbarKey.REDO to "Redo", ToolbarKey.SELECT_ALL to "Select all", ToolbarKey.PASTE to "Paste")
+        root.addView(TextView(context).apply {
+            text="Keyboard tools";textSize=14f;setTextColor(this@ObadhToolbar.text);gravity=Gravity.CENTER
+            layoutParams=LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(32))
+        })
+        data class Tool(val label: String, val key: ToolbarKey? = null, val icon: Int? = null, val action: (() -> Unit)? = null)
+        val automatic = context.prefs().getString("obadh.tablet_layout", "automatic") == "automatic"
+        val tools = listOf(Tool("One-handed",ToolbarKey.ONE_HANDED),Tool("Text editing",ToolbarKey.DPAD,icon=R.drawable.obadh_ic_text_editing),
+            if (automatic) Tool("Split",ToolbarKey.SPLIT) else Tool("Incognito",ToolbarKey.INCOGNITO),Tool("Floating",ToolbarKey.FLOATING,icon=R.drawable.obadh_ic_keyboard),
+            Tool("Keyboard size",icon=R.drawable.obadh_ic_keyboard,action={ open("org.unmukto.obadh.app.MainActivity",Intent.ACTION_APPLICATION_PREFERENCES) }),
+            Tool("Next language",icon=R.drawable.obadh_ic_language,action={ send(KeyCode.LANGUAGE_SWITCH) }),Tool("Emoji",ToolbarKey.EMOJI),Tool("Undo",ToolbarKey.UNDO))
         tools.chunked(4).forEach { row ->
             root.addView(LinearLayout(context).apply {
-                row.forEach { (tool, title) ->
+                row.forEach { tool ->
                     addView(LinearLayout(context).apply {
-                        orientation = LinearLayout.VERTICAL
-                        gravity = android.view.Gravity.CENTER
-                        layoutParams = LinearLayout.LayoutParams(0, dp(68), 1f)
-                        background = ripple(Color.TRANSPARENT)
-                        contentDescription = title
-                        isFocusable = true
-                        addView(createToolbarKey(context, tool).apply {
-                            layoutParams = LinearLayout.LayoutParams(dp(28), dp(28))
-                            imageTintList = ColorStateList.valueOf(text)
-                            background = null
-                            isClickable = false
-                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                        layoutParams = LinearLayout.LayoutParams(0, dp(72), 1f)
+                        contentDescription = tool.label;isFocusable=true
+                        val icon = if (tool.icon != null) ImageButton(context).apply { setImageResource(tool.icon) } else createToolbarKey(context,tool.key!!)
+                        addView(icon.apply {
+                            layoutParams=LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(48)).apply { setMargins(dp(4),0,dp(4),0) }
+                            imageTintList=ColorStateList.valueOf(this@ObadhToolbar.text)
+                            background=RippleDrawable(ColorStateList.valueOf((text and 0x00ffffff) or 0x22000000),GradientDrawable().apply { cornerRadius=dp(12).toFloat();setColor(this@ObadhToolbar.colors.get(ColorType.KEY_BACKGROUND)) },null)
+                            isClickable=false;isFocusable=false;isDuplicateParentStateEnabled=true;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
                         })
-                        addView(TextView(context).apply { this.text = title; setTextColor(this@ObadhToolbar.text); textSize = 11f; gravity = android.view.Gravity.CENTER; importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO })
-                        setOnClickListener { menu?.dismiss(); if (tool == ToolbarKey.SETTINGS) open("org.unmukto.obadh.app.MainActivity") else send(getCodeForToolbarKey(tool)) }
+                        addView(TextView(context).apply {
+                            text=tool.label;setTextColor(this@ObadhToolbar.text);textSize=12f;gravity=Gravity.CENTER
+                            importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                        })
+                        setOnClickListener { menu?.dismiss();tool.action?.invoke() ?: tool.key?.let { send(getCodeForToolbarKey(it)) } }
                     })
                 }
             })
         }
-        menu = PopupWindow(root, strip.width, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
-            isOutsideTouchable = true
+        val scroll=ScrollView(context).apply { isFillViewport=true;addView(root);setBackgroundColor(this@ObadhToolbar.colors.get(ColorType.MAIN_BACKGROUND)) }
+        val position=IntArray(2);keyboard.getLocationOnScreen(position)
+        val nav = ViewCompat.getRootWindowInsets(keyboard)?.getInsets(WindowInsetsCompat.Type.navigationBars())
+        val width = keyboard.width.coerceAtLeast(dp(120)) // The IME window already fits side navigation insets.
+        val height = (keyboard.height - (nav?.bottom ?: 0)).coerceAtLeast(dp(80))
+        menu = PopupWindow(scroll, width, height, false).apply {
+            isOutsideTouchable=false;isClippingEnabled=true;setIsLaidOutInScreen(true)
             setBackgroundDrawable(ContextCompat.getDrawable(context, android.R.color.transparent))
-            elevation = dp(8).toFloat()
-            inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
-            showAsDropDown(strip, 0, -strip.height - dp(220))
+            inputMethodMode=PopupWindow.INPUT_METHOD_NOT_NEEDED
+            setOnDismissListener { menu=null;setExpanded(false) }
+            showAtLocation(strip,Gravity.TOP or Gravity.LEFT,position[0],position[1])
         }
+        setExpanded(true)
+    }
+
+    /** Read-only debug touch coordinates; stripped from release along with its sole caller. */
+    fun coordinatesForTests(): org.json.JSONArray {
+        val result=org.json.JSONArray()
+        fun collect(view: View) {
+            if (!view.isShown) return
+            view.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let { label ->
+                val p=IntArray(2);view.getLocationOnScreen(p)
+                result.put(org.json.JSONObject().put("label",label).put("x",p[0]+view.width/2).put("y",p[1]+view.height/2)
+                    .put("width",view.width).put("height",view.height).put("enabled",view.isEnabled))
+            }
+            if(view is ViewGroup) for(i in 0 until view.childCount) collect(view.getChildAt(i))
+        }
+        collect(strip);menu?.contentView?.let(::collect)
+        return result
     }
 
     fun close() { menu?.dismiss(); menu = null; toast?.cancel() }

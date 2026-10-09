@@ -36,7 +36,7 @@ import org.unmukto.obadh.settings.KeyboardPhoto
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** Full-screen crop/brightness sequence; Done saves My themes, and Apply activates the photo. */
+/** Full-screen crop/brightness sequence; Done prepares a preview; only Apply saves/activates the photo. */
 @Composable
 internal fun PhotoThemeEditor(bitmap: Bitmap, saving: Boolean, onCancel: () -> Unit, onSave: (KeyboardPhoto.Crop, Float) -> Unit, initialCrop: KeyboardPhoto.Crop? = null, initialBrightness: Float = .4f) {
     val aspect = 948f / 605f

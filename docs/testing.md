@@ -33,6 +33,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 python3 scripts/test-native-keyboard.py
 ```
 
+On a reused isolated QA AVD, use Privacy → Delete learned words before rerunning
+this suite: its deliberate literal-spelling test protects the fixture spelling across
+sessions. Do not clear a personal device to run automation.
+
 The 57 checks cover both languages, fast boundaries, correction policy, next-word
 prediction, personal OOV words in the actual strip, incognito/learning-off queries,
 shortcuts and pairs on/off, email/numeric fields, emoji selection,
@@ -97,10 +101,23 @@ ANDROID_SERIAL=emulator-5554 python3 scripts/test-native-photo.py
 ```
 
 On the isolated rooted QA AVD, this creates a tiny fixture, exercises the system picker,
-crop/brightness, real activity rotation, Done/Cancel, Apply, actual bilingual typing,
+crop/brightness, real activity rotation, Done/Cancel without saving a gallery image, Apply, actual bilingual typing,
 re-edit/back and deletion with active-theme fallback. It removes its own gallery theme
 and device photo. It does not delete existing themes. Always set `ANDROID_SERIAL`
 when the Gboard comparison emulator is also running.
+
+Real toolbar interactions:
+
+```sh
+ANDROID_SERIAL=emulator-5554 python3 scripts/test-native-toolbar.py
+```
+
+The eleven checks touch the seven fixed controls, the in-keyboard tools grid and Back,
+language switching, clipboard, comma/emoji hold, private theme destination, microphone
+placeholder and password guards in both languages. They also verify the standard
+Android preferences route. Debug probes only read control coordinates for these touches;
+they do not invoke the tested actions. Reset the fixture to its alphabet layout before
+starting a new editor because native utility panels intentionally retain their state.
 
 The debug `personalization_probe` command creates isolated C ABI handles, trains a
 synthetic OOV word and checks learned predictions, model-only incognito results,

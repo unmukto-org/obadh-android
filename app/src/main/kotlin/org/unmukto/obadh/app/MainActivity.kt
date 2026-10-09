@@ -1,6 +1,7 @@
 package org.unmukto.obadh.app
 
 import android.content.pm.ApplicationInfo
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -18,7 +19,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
-        val screen = if (debuggable) intent.getStringExtra("screen") else null
+        val screen = if (intent.action == Intent.ACTION_APPLICATION_PREFERENCES) "Preferences"
+            else if (debuggable) intent.getStringExtra("screen") else null
         setContent { ObadhTheme { RootScreen(startScreen = screen) } }
     }
 }

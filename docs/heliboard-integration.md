@@ -107,7 +107,9 @@ explicit Full/Split controls still pass through the same native layout machinery
 The toolbar split toggle is offered in Automatic mode; an explicit Full/Split choice
 is controlled from the shared Preferences page, avoiding a conflicting inactive toggle.
 
-Photo themes use one atomically replaced, metadata-stripped private JPEG. Decode,
+My themes stores one bounded, metadata-stripped source per explicitly saved photo,
+with numerical crop/brightness parameters. Only Apply creates the one atomically
+replaced private JPEG that the IME reads. Decode,
 orientation, bounded downsampling and dimming happen off the main thread. The IME
 uses the processed file and invalidates its background cache when its revision
 changes. Forced appearance and photo revisions mark the native theme for reload,

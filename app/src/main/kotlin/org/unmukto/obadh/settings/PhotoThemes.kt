@@ -47,8 +47,10 @@ object PhotoThemes {
         mutex.withLock {
             runCatching {
                 val theme=Theme(editing ?: UUID.randomUUID().toString().replace("-",""),crop,brightness)
-                val atomic=AtomicFile(source(context,theme.id)); val stream=atomic.startWrite()
-                try { check(bitmap.compress(Bitmap.CompressFormat.JPEG,85,stream));atomic.finishWrite(stream) } catch(e: Exception) { atomic.failWrite(stream);throw e }
+                if (!source(context,theme.id).isFile) {
+                    val atomic=AtomicFile(source(context,theme.id)); val stream=atomic.startWrite()
+                    try { check(bitmap.compress(Bitmap.CompressFormat.JPEG,85,stream));atomic.finishWrite(stream) } catch(e: Exception) { atomic.failWrite(stream);throw e }
+                }
                 val list=read(context).toMutableList(); val index=list.indexOfFirst { it.id==theme.id }
                 if(index<0) list.add(theme) else list[index]=theme
                 write(context,list)

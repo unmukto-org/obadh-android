@@ -57,11 +57,13 @@ def run():
             n.shell('settings','put','system','user_rotation',0);n.screen()
             a.choose('Done');a.choose('Cancel')
             assert active()==before,(before,active())
+            assert {r['id'] for r in records()}==old_ids,records()
+            print('PASS photo decode, brightness, rotation, Done and Cancel transaction',flush=True)
+            pick_fixture();a.choose('Next');a.choose('Done');a.choose('Apply')
             saved=records();created=next(r for r in saved if r['id'] not in old_ids)
             assert created['brightness']==float(.4) or abs(created['brightness']-.4)<.0001
             label='Custom photo '+str(next(i+1 for i,r in enumerate(saved) if r['id']==created['id']))
-            print('PASS photo decode, brightness, rotation, Done and Cancel transaction',flush=True)
-            a.choose(label);a.choose('Apply')
+
             assert active()['keyboard_photo_id']==created['id']
             for language in ('bn','en'):
                 n.start(language);controls=n.inspect()['controls']

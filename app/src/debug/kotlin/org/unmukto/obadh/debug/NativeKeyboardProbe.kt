@@ -52,6 +52,11 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
         if (ime.currentInputEditorInfo == null) return
         val handler = Handler(Looper.getMainLooper())
         when (intent.getStringExtra("command")) {
+            "toolbar_coordinates" -> {
+                val root=helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView.rootView
+                val strip=root.findViewById<helium314.keyboard.latin.suggestions.SuggestionStripView>(helium314.keyboard.latin.R.id.suggestion_strip_view)
+                android.util.Log.i("ObadhProbeToolbar",strip.obadhToolbarCoordinatesForTests().toString())
+            }
             "coordinates" -> {
                 val codes = intent.getStringExtra("codes")?.split(',')?.map(String::toInt)?.toIntArray()
                     ?: intent.getStringExtra("text").orEmpty().codePoints().toArray()
@@ -125,6 +130,8 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                 val settings = helium314.keyboard.latin.settings.Settings.getValues()
                 val controls = org.json.JSONObject()
                     .put("locale", settings.mLocale.language)
+                    .put("emoji_panel", helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().isShowingEmojiPalettes)
+                    .put("clipboard_panel", helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().isShowingClipboardHistory)
                     .put("night", ime.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK)
                     .put("smallest_width", ime.resources.configuration.smallestScreenWidthDp)
                     .put("split", settings.mIsSplitKeyboardEnabled)

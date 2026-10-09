@@ -15,3 +15,9 @@ def apply(main, replace):
     replace(base / "keyboard/KeyboardView.java", "                mColors.setColor(icon, ColorType.KEY_ICON); // normal key if not shifted", "                mColors.setColor(icon, ColorType.FUNCTIONAL_KEY_TEXT); // matches functional key foreground")
     replace(base / "keyboard/KeyboardView.java", "        } else if (key.getBackgroundType() != Key.BACKGROUND_TYPE_NORMAL) {\n            mColors.setColor(icon, ColorType.KEY_ICON);", "        } else if (key.getBackgroundType() != Key.BACKGROUND_TYPE_NORMAL) {\n            mColors.setColor(icon, key.hasFunctionalBackground() ? ColorType.FUNCTIONAL_KEY_TEXT : ColorType.KEY_ICON);")
     replace(base / "latin/suggestions/SuggestionStripView.kt", "        setToolbarButtonsActivatedStateOnPrefChange(pinnedKeys, key)\n        setToolbarButtonsActivatedStateOnPrefChange(toolbar, key)", "        // Fixed toolbar buttons do not use upstream pin/activation mutation.\n        // Candidate and external-suggestion state stays on the main thread.")
+
+    replace(base / "latin/suggestions/SuggestionStripView.kt", "    override fun onSizeChanged", "    override fun onWindowVisibilityChanged(visibility: Int) {\n        super.onWindowVisibilityChanged(visibility)\n        if (visibility != android.view.View.VISIBLE) obadhToolbar.close()\n    }\n\n    override fun onSizeChanged")
+
+    replace(base / "latin/suggestions/SuggestionStripView.kt", "            toolbarExpandKey.scaleX = (if (toolbarContainer.visibility != VISIBLE) 1f else -1f) * direction", "            toolbarExpandKey.scaleX = 1f // The fixed grid/back control is not an expansion arrow.")
+
+    replace(base / "latin/suggestions/SuggestionStripView.kt", "    fun updateVoiceKey() {}", "    fun obadhToolbarCoordinatesForTests() = obadhToolbar.coordinatesForTests()\n\n    fun updateVoiceKey() {}")

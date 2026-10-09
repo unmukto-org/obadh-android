@@ -21,12 +21,13 @@ class ThemePhotoState : ViewModel() {
     var catalogRevision by mutableIntStateOf(0)
     var previewRevision by mutableIntStateOf(0)
     var error by mutableStateOf<String?>(null)
+    private var draftSource: Bitmap? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     fun catalog(context: Context) { scope.launch { photos=PhotoThemes.list(context.applicationContext) } }
     fun load(context: Context, uri: Uri) {
         if (loading || saving) return
         scope.launch {
-            loading = true; current=null; staged=null
+            loading = true; current=null; staged=null; draftSource=null
             try {
                 pending = KeyboardPhoto.load(context.applicationContext, uri)
                 if (pending == null) error = "Couldn't read this image. Choose another photo."
@@ -38,7 +39,7 @@ class ThemePhotoState : ViewModel() {
         scope.launch {
             loading=true
             try {
-                current=theme; staged=PhotoThemes.preview(context.applicationContext,theme)
+                draftSource=null; current=theme; staged=PhotoThemes.preview(context.applicationContext,theme)
                 if(staged==null) error="Couldn't read this photo. Try another theme." else previewRevision++
             } finally { loading=false }
         }
@@ -48,19 +49,21 @@ class ThemePhotoState : ViewModel() {
         if(loading || saving) return
         scope.launch {
             loading=true
-            try { pending=PhotoThemes.original(context.applicationContext,theme); if(pending==null) error="Couldn't read this photo." } finally { loading=false }
+            try { pending=draftSource ?: PhotoThemes.original(context.applicationContext,theme); if(pending==null) error="Couldn't read this photo." } finally { loading=false }
         }
     }
-    fun stage(context: Context, bitmap: Bitmap, crop: KeyboardPhoto.Crop, brightness: Float) {
+    fun stage(bitmap: Bitmap, crop: KeyboardPhoto.Crop, brightness: Float) {
         if (saving) return
         scope.launch {
             saving = true
             try {
-                val saved=PhotoThemes.save(context.applicationContext,bitmap,crop,brightness,current?.id)
-                if(saved != null) {
-                    current=saved; pending=null; staged=PhotoThemes.preview(context.applicationContext,saved)
-                    photos=PhotoThemes.list(context.applicationContext); catalogRevision++; previewRevision++
-                } else error="Couldn't save this photo. Try again."
+                val preview=KeyboardPhoto.render(bitmap,crop,brightness)
+                if(preview != null) {
+                    draftSource=bitmap
+                    current=PhotoThemes.Theme(current?.id ?: java.util.UUID.randomUUID().toString().replace("-",""),crop,brightness)
+                    pending=null;staged=preview;previewRevision++
+                } else error="Couldn't prepare this photo. Try again."
+
             } finally { saving = false }
         }
     }
@@ -70,7 +73,13 @@ class ThemePhotoState : ViewModel() {
         scope.launch {
             saving = true
             try {
-                if (PhotoThemes.apply(context.applicationContext, theme, borders)) { staged=null; revision++ }
+                val source=draftSource
+                val saved=if(source==null) theme else PhotoThemes.save(context.applicationContext,source,theme.crop,theme.brightness,theme.id)
+                    ?: run { error="Couldn't save this photo. Try again.";return@launch }
+                if (PhotoThemes.apply(context.applicationContext, saved, borders)) {
+                    current=saved;draftSource=null;staged=null
+                    photos=PhotoThemes.list(context.applicationContext);catalogRevision++;revision++
+                }
                 else error = "Couldn't apply this photo. Try again."
             } finally { saving = false }
         }
@@ -81,10 +90,11 @@ class ThemePhotoState : ViewModel() {
         scope.launch {
             saving=true
             try {
-                if(PhotoThemes.remove(context.applicationContext,theme)) { current=null;staged=null;photos=PhotoThemes.list(context.applicationContext);catalogRevision++;revision++ }
+                if(PhotoThemes.remove(context.applicationContext,theme)) { current=null;staged=null;draftSource=null;photos=PhotoThemes.list(context.applicationContext);catalogRevision++;revision++ }
                 else error="Couldn't delete this photo. Try again."
             } finally { saving=false }
         }
     }
-    override fun onCleared() { scope.cancel(); pending = null; staged = null }
+    fun cancelPreview() { pending=null;staged=null;draftSource=null;current=null }
+    override fun onCleared() { scope.cancel(); cancelPreview() }
 }
