@@ -127,5 +127,9 @@ against the real generated artifacts, and a debug probe drives the actual native
 
 The combined Android application is GPL-3.0-only; see [LICENSE](LICENSE).
 HeliBoard/AOSP and icon notices remain in [third-party licenses](docs/third-party/heliboard).
-Obadh Engine remains MIT licensed. The optional Google swipe library is a separate,
+Obadh Engine remains MIT licensed. Its 0.9.5 emoticon mappings derive from
+[wooorm/emoticon 4.1.0](https://github.com/wooorm/emoticon/tree/5b43e4c3e6fe43601790cc888a5e655fa9c1ffc4)
+(MIT, copyright Titus Wormer). Both MIT notices ship in
+[the app's license assets](app/src/main/assets/licenses) and are readable from About → Obadh Engine.
+The optional Google swipe library is a separate,
 user-requested download and is not included in the APK or covered by the app's GPL.

@@ -7,6 +7,8 @@ import hashlib
 import shlex
 import subprocess
 import time
+import pathlib
+import re
 import xml.etree.ElementTree as ET
 
 PACKAGE = 'org.unmukto.obadh'
@@ -76,6 +78,21 @@ def inspect():
 def run():
     shell('ime', 'set', PACKAGE + '/.keyboard.ObadhInputMethodService')
     start()
+    dependency = (pathlib.Path(__file__).resolve().parent.parent / 'rust/obadh-jni/Cargo.toml').read_text()
+    version = re.search(r'obadh_engine = \{ version = "=?([\d.]+)"', dependency).group(1)
+    adb('logcat', '-c')
+    command('engine_release_probe', version=version)
+    deadline = time.monotonic() + 30
+    while True:
+        lines = adb('logcat', '-d', '-v', 'raw', '-s', 'ObadhEngineReleaseProbe:I', '*:S').splitlines()
+        result = next((json.loads(line) for line in reversed(lines) if line.startswith('{')), None)
+        if result is not None:
+            assert result.get('version') == version and result.get('abi') == 2, result
+            assert result.get('emoticon_literals_preserved'), result
+            print('PASS installed engine version, C ABI v2 and explicit emoticon alternatives', flush=True)
+            break
+        assert time.monotonic() < deadline, 'Engine release probe timed out'
+        time.sleep(.25)
     command('configure', **{'obadh.auto_insert': False})
     type_text('ami ')
     expect('আমি ', 'Bangla composition and delimiter')
@@ -88,6 +105,11 @@ def run():
     start()
     type_text('office.')
     expect('অফিস।', 'loanword on Bangla punctuation')
+    for roman, bangla in (('okay', 'ওকে'), ('amazon', 'অ্যামাজন'),
+                          ('widget', 'উইজেট'), ('workflow', 'ওয়ার্কফ্লো')):
+        start()
+        type_text(roman + ' ')
+        expect(bangla + ' ', 'engine 0.9.5 exact loanword ' + roman)
     start()
     type_text('manus ')
     expect('মানুস ', 'Bangla correction stays opt-in')

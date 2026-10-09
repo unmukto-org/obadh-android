@@ -6,6 +6,19 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 
 ## Unreleased
 
+## v0.2.1 — 2026-10-09
+
+- Upgraded the engine to 0.9.5 through the unchanged C ABI v2. Ship its matching
+  loanword model with a release commit/checksum pin, including `ok`/`okay` → `ওকে`.
+  App version/code changes refresh extracted models on existing installations.
+- Recognize the new emoticon candidate source; emoji alternatives stay explicit
+  choices and never enter automatic correction. Engine and emoticon mapping MIT
+  notices ship in the APK and are available from About → Obadh Engine.
+- Added optional KLIPY GIFs and stickers, separate toolbar controls, compact native
+  search, bounded thumbnail recents, recipient/privacy checks and theme-aware
+  phone/tablet layouts. Offline sticker packs are no longer bundled. Configured
+  local APKs still use KLIPY's testing environment pending production approval.
+
 - Measured default key boxes, glyph sizes and light/dark colors against installed
   Gboard on phone and tablet, portrait and landscape. Fixed tablet split activation,
   removed unrelated tablet alphabet extras and aligned functional keys.
@@ -14,8 +27,7 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
   private and asynchronous; native language picking follows the selected appearance.
 - Corrected Bangla personal predictions to use the session C ABI when editor context
   matches, with model-only incognito queries and an isolated real-model regression.
-- Kept voice typing out of scope. Documented GIF provider evaluation; no suitable
-  free/open production catalog is verified, so no unfinished online panel is exposed.
+- Kept voice typing out of scope; its toolbar button explains that it is planned.
 - Actual touch checks cover language switching, English glide, one-handed and floating
   typing. Both languages pass 24 Gboard geometry/theme configurations each; all 48
   JVM checks and 57 real-editor checks pass. Photo removal handles shrinking theme

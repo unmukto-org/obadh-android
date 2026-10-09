@@ -25,5 +25,6 @@ data class DetailedCorrection(
         const val ROMAN_REPAIR_EXACT = 8
         const val ENGLISH_LOANWORD_EXACT = 9
         const val ENGLISH_LOANWORD_FUZZY = 10
+        const val EMOTICON_EXACT = 11
     }
 }

@@ -79,6 +79,7 @@ fun SettingsScaffold(
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var details by rememberSaveable { mutableStateOf(false) }
+    var engineLicenses by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     SettingsScaffold("About", onBack, snackbar = snackbar) {
@@ -92,7 +93,7 @@ fun AboutScreen(onBack: () -> Unit) {
         }
         PreferenceItem(content = { Text("Version") }, supportingContent = { Text(AppBuildInfo.version) })
         PreferenceItem(content = { Text("Made by Unmukto") }, supportingContent = { Text("Obadh brings fast Bangla phonetic typing, corrections, suggestions and personal vocabulary to Android.") })
-        PreferenceItem(content = { Text("Obadh Engine") }, supportingContent = { Text("Our Bangla language engine powers transliteration, autocorrect, suggestions and Bangla emoji search, on your device.") })
+        PreferenceItem(content = { Text("Obadh Engine") }, supportingContent = { Text("Our Bangla language engine powers transliteration, autocorrect, suggestions and Bangla emoji search, on your device. Tap for licenses.") }, onClick = { engineLicenses = true })
         PreferenceHeading("Open-source acknowledgments")
         PreferenceItem(content = { Text("Android keyboard foundation") }, supportingContent = { Text("HeliBoard / AOSP (GPLv3), adapted for Obadh's unified Bangla and English keyboard.") })
         PreferenceNote("Optional English swipe typing uses a separately downloaded Google library. It is not part of the open-source app.")
@@ -116,6 +117,16 @@ fun AboutScreen(onBack: () -> Unit) {
                 scope.launch { snackbar.showSnackbar("Build details copied") }
             }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("Copy build details") }
         }
+    }
+    if (engineLicenses) {
+        val notices = remember(context) {
+            "Obadh Engine (MIT)\n\n" + context.assets.open("licenses/obadh-engine.txt").bufferedReader().use { it.readText() } +
+                "\n\nEmoticon mappings: wooorm/emoticon 4.1.0 (MIT)\n\n" +
+                context.assets.open("licenses/emoticons.txt").bufferedReader().use { it.readText() }
+        }
+        AlertDialog(onDismissRequest = { engineLicenses = false }, title = { Text("Engine licenses") },
+            text = { Text(notices, Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
+            confirmButton = { TextButton(onClick = { engineLicenses = false }) { Text("Close") } })
     }
 }
 

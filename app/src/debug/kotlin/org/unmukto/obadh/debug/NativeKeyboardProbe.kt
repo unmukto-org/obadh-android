@@ -80,6 +80,28 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
         if (ime.currentInputEditorInfo == null) return
         val handler = Handler(Looper.getMainLooper())
         when (intent.getStringExtra("command")) {
+            "engine_release_probe" -> {
+                val expectedVersion = intent.getStringExtra("version")
+                Thread({
+                    val result = runCatching {
+                        val version = org.unmukto.obadh.engine.EngineInfo.version()
+                        check(version == expectedVersion) { "Expected $expectedVersion, installed $version" }
+                        check(org.unmukto.obadh.engine.EngineInfo.abiVersion() == 2) { "Unexpected C ABI" }
+                        org.unmukto.obadh.engine.ObadhBridgeClient().use { client ->
+                            val models = client.configureModels(org.unmukto.obadh.settings.ModelInstaller.ensureInstalled(context))
+                            check(models.autocorrectAvailable && models.autosuggestAvailable) { "Models unavailable" }
+                            for ((literal, emoji) in listOf(":)" to "😃", ":-)" to "😃", ":D" to "😄", ":-D" to "😄")) {
+                                check(client.compositionSuggestions(literal, 2) == listOf(literal, emoji)) { "Composition alternatives for $literal" }
+                                val candidate = client.detailedCorrections(literal, 2).single()
+                                check(candidate.text == emoji && candidate.source == org.unmukto.obadh.engine.DetailedCorrection.Source.EMOTICON_EXACT) { "Detailed candidate for $literal" }
+                                check(!org.unmukto.obadh.engine.AutoInsertGate.shouldAutoInsert(0, candidate, false)) { "Emoji auto-insert for $literal" }
+                            }
+                        }
+                        org.json.JSONObject().put("version", version).put("abi", 2).put("emoticon_literals_preserved", true)
+                    }.getOrElse { org.json.JSONObject().put("error", it.toString()) }
+                    android.util.Log.i("ObadhEngineReleaseProbe", result.toString())
+                }, "Obadh engine release check").start()
+            }
             "toolbar_coordinates" -> {
                 val root=helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView.rootView
                 val strip=root.findViewById<helium314.keyboard.latin.suggestions.SuggestionStripView>(helium314.keyboard.latin.R.id.suggestion_strip_view)

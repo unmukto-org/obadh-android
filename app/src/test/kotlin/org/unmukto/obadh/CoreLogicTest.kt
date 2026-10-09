@@ -67,6 +67,17 @@ class CoreLogicTest {
         assertFalse(AutoInsertGate.shouldAutoInsert(5_000, c, false))
     }
 
+    @Test fun emoticonAlternativesNeverReplaceLiteralAutomatically() {
+        val emoji = DetailedCorrection("😃", DetailedCorrection.Source.EMOTICON_EXACT, 0, 0, Long.MAX_VALUE)
+        assertFalse(AutoInsertGate.shouldAutoInsert(0, emoji, false))
+        val composer = KeyboardComposer(FakeEngine())
+        composer.append(":)")
+        composer.mergeAutocorrectCandidates(listOf(emoji.text), composer.generation)
+        composer.resolveAutocorrectTarget(true, 0, listOf(emoji)) { false }
+        assertEquals("<:)>", composer.commitText)
+        assertEquals(listOf("<:)>", "😃"), composer.activeSuggestions.map { it.text })
+    }
+
     @Test fun appendOnlyRenderingInsertsTailWithoutDeleting() {
         val doc = FakeDocument()
         val ctl = TextCompositionController()

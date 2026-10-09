@@ -72,7 +72,9 @@ into one `cabi` call), declare it `external` in `ObadhNative.kt`, wrap it in
 
 Copies the autocorrect FSTs, the autosuggest n-gram and the three emoji
 artifacts from obadh-ios into `app/src/main/assets/ObadhModels` (git-ignored), so
-both platforms ship byte-identical data. At runtime the first launch copies them
+both platforms ship byte-identical data. The engine 0.9.5 loanword FST is additionally
+pinned by release commit and SHA-256 in `sync-models.sh`; an older iOS artifact is
+replaced with the verified 93 KB engine release artifact. At runtime the first launch copies them
 to `filesDir/models` (versioned by app version and code) because the engine opens
 paths and APK assets are not files. The APK **deflates** them (about 24 MB
 smaller than storing them raw), and the copy decompresses as it goes: about
@@ -108,13 +110,15 @@ engine-side change.
 
 1. Branch.
 2. Bump `obadh_engine` in `rust/obadh-jni/Cargo.toml`.
-3. Make sure obadh-ios has the matching data artifacts, then `./scripts/bootstrap.sh`.
-4. `./gradlew :app:testDebugUnitTest`, then install and check **Settings ›
-   Version** shows the new engine version.
+3. Update the loanword release commit/checksum in `scripts/sync-models.sh` and ensure
+   obadh-ios has matching remaining artifacts, then `./scripts/bootstrap.sh`.
+   Bump app version/code so installed apps extract the updated models.
+4. `./gradlew :app:testDebugUnitTest`, then install and check **About**
+   shows the new engine version through its C ABI. Verify a new loanword in a real editor.
 5. Commit.
 
-There is no fingerprint pin on Android yet, so step 4 does not catch a silent
-artifact swap. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-005).
+The loanword FST has a build-time checksum pin; the remaining model artifacts do
+not yet have independent Android pins. See [KNOWN-ISSUES.md](../KNOWN-ISSUES.md#ki-005).
 
 ## Device install
 
