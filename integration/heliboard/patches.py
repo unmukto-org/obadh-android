@@ -1,6 +1,10 @@
 """Small checked integration points, reapplied to every pinned upstream checkout."""
 def apply(main, replace):
     base = main / 'java/helium314/keyboard'
+    replace(base / 'latin/utils/JniUtils.java',
+        'if (!BuildConfig.BUILD_TYPE.equals("nouserlib") && userSuppliedLibrary != null)',
+        'if (!BuildConfig.BUILD_TYPE.equals("nouserlib") && userSuppliedLibrary != null\n'
+        '                && helium314.keyboard.latin.obadh.ObadhSwipeCompatibility.supportsDownloadedLibrary())')
     replace(base / 'event/CombinerChain.kt',
         '    private val mCombiners = ArrayList<Combiner>()',
         '    private val mCombiners = ArrayList<Combiner>()\n'

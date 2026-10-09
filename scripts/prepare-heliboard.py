@@ -63,7 +63,7 @@ def main():
         "latin/inputlogic/InputLogic.java", "latin/LatinIME.java", "latin/SuggestedWords.java",
         "latin/ClipboardHistoryManager.kt", "latin/database/ClipboardDao.kt",
         "keyboard/emoji/EmojiSearchActivity.kt", "latin/settings/SettingsValues.java",
-        "latin/utils/InputTypeUtils.java", "keyboard/KeyboardId.kt", "latin/utils/PopupKeysUtils.kt",
+        "latin/utils/InputTypeUtils.java", "latin/utils/JniUtils.java", "keyboard/KeyboardId.kt", "latin/utils/PopupKeysUtils.kt",
         "latin/dictionary/DictionaryFactory.kt", "keyboard/KeyboardActionListenerImpl.kt",
         "latin/SystemBroadcastReceiver.java", "latin/settings/Defaults.kt",
         "keyboard/KeyboardLayoutSet.kt", "keyboard/KeyboardTheme.kt", "keyboard/internal/KeyboardBuilder.kt", "keyboard/internal/KeyboardParams.java", "keyboard/internal/keyboard_parser/EmojiParser.kt",

@@ -222,3 +222,12 @@ builds the upstream Latin native library. The current combined APK is ARM64 only
 that both native libraries are present for every shipped ABI. Local release testing:
 `./gradlew --max-workers=4 :app:assembleRelease -PdebugSign`. The optional swipe binary
 is downloaded only on user request and is not included in the release APK.
+
+The combined optimized ARM64 APK measured on 9 October is about **22 MiB**
+(23.1 MB decimal). The app and native module pin the same existing NDK 27; this
+allows AGP to strip native symbols rather than packaging roughly 7 MB of debug
+information. Rust and English builds use 16 KB max/common-page-size flags.
+CI checks the packaged ELF and ZIP entries with `scripts/check-apk-native.py`;
+see [native packaging validation](testing.md#native-release-packaging).
+The pinned optional swipe decoder is offered only on compatible 4 KB-page devices,
+with an unavailable state elsewhere. It is never required for ordinary typing.

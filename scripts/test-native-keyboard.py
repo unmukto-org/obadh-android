@@ -52,6 +52,7 @@ def start(language='bn', field='text', initial=''):
         shell('input', 'tap', '350', '180')
         screen()
     assert 'mInputShown=true' in shell('dumpsys', 'input_method'), 'Editor IME did not become visible'
+    assert 'mCurMethodId=' + PACKAGE + '/.keyboard.ObadhInputMethodService' in shell('dumpsys', 'input_method'), 'Wrong IME is selected'
     command('language', language=language)
 
 

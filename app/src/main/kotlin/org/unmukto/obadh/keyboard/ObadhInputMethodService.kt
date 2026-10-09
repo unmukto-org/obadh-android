@@ -7,7 +7,8 @@ class ObadhInputMethodService : helium314.keyboard.latin.LatinIME() {
             org.unmukto.obadh.settings.NativePreferences.snapshot(this))
         helium314.keyboard.latin.utils.DeviceProtectedUtils.getSharedPreferences(this).edit()
             .putBoolean(helium314.keyboard.latin.settings.Settings.PREF_GESTURE_INPUT,
-                getSharedPreferences("swipe_download", MODE_PRIVATE).getBoolean("enabled", false)).apply()
+                getSharedPreferences("swipe_download", MODE_PRIVATE).getBoolean("enabled", false)
+                    && helium314.keyboard.latin.obadh.ObadhSwipeCompatibility.supportsDownloadedLibrary()).apply()
         NativeObadhFeatures.initialize(this)
         super.onCreate()
         NativeObadhFeatures.attach(this)

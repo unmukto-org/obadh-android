@@ -18,10 +18,15 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
   free/open production catalog is verified, so no unfinished online panel is exposed.
 - Actual touch checks cover language switching, English glide, one-handed and floating
   typing. Both languages pass 24 Gboard geometry/theme configurations each; all 48
-  JVM checks and 54 real-editor checks pass. Photo removal handles shrinking theme
+  JVM checks and 57 real-editor checks pass. Photo removal handles shrinking theme
   choices without a stale selection crash. Live appearance changes rebuild the cached
   native view; learning uses the editor’s existing context to avoid false word pairs.
 - Default Rust builds now target only the ARM64 APK ABI, saving unused build space.
+- Aligned Rust and English native builds for 16 KB pages, added packaged-library
+  LOAD/RELRO/ZIP safety checks to CI, and updated the AndroidX path dependency.
+  The older optional swipe decoder is withheld on incompatible page-size devices.
+  Pinning the app's existing NDK restores symbol stripping, reducing the combined
+  optimized APK from about 29 MiB to 22 MiB without removing typing features.
 
 - Optional English swipe typing: one native switch and download prompt in setup and
   Gestures, Android background transfer, progress/waiting/error states, cancellation

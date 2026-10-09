@@ -28,7 +28,7 @@ class SwipeDownloads(context: Context) {
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences("swipe_download", Context.MODE_PRIVATE)
     private val downloads = app.getSystemService(DownloadManager::class.java)
-    val enabled get() = prefs.getBoolean("enabled", false)
+    val enabled get() = prefs.getBoolean("enabled", false) && helium314.keyboard.latin.obadh.ObadhSwipeCompatibility.supportsDownloadedLibrary()
     fun setEnabled(value: Boolean) {
         synchronized(installLock) {
             prefs.edit().putBoolean("enabled", value).commit()
@@ -37,6 +37,7 @@ class SwipeDownloads(context: Context) {
     }
 
     fun status(): SwipeStatus {
+        if (Binaries.forDevice() == null) return SwipeStatus(SwipePhase.Failed, message = "Swipe typing isn't supported on this device yet.")
         if (prefs.getBoolean("installed", false) && installedFile(app).isFile) return SwipeStatus(SwipePhase.Ready)
         val id = prefs.getLong("id", -1)
         if (id < 0) return prefs.getString("error", null)?.let { SwipeStatus(SwipePhase.Failed, message = it) }
@@ -127,7 +128,8 @@ object Binaries {
         "x86" to "bd946d126c957b5a6dea3bafa07fa36a27950b30e2b684dffc60746d0a1c7ad8",
     )
     fun forAbi(abi: String) = hashes[abi]?.let { SwipeBinary(abi, it) }
-    fun forDevice() = Build.SUPPORTED_ABIS.firstNotNullOfOrNull(::forAbi)
+    fun forDevice() = if (helium314.keyboard.latin.obadh.ObadhSwipeCompatibility.supportsDownloadedLibrary())
+        Build.SUPPORTED_ABIS.firstNotNullOfOrNull(::forAbi) else null
 }
 
 class SwipeInstallWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -199,6 +201,7 @@ class KeyboardReloadReceiver : BroadcastReceiver() {
 /** Apply the change inside the IME process: SharedPreferences caches aren't cross-process. */
 class SwipePreferenceReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        context.prefs().edit().putBoolean(Settings.PREF_GESTURE_INPUT, intent.getBooleanExtra("enabled", false)).apply()
+        context.prefs().edit().putBoolean(Settings.PREF_GESTURE_INPUT, intent.getBooleanExtra("enabled", false)
+            && helium314.keyboard.latin.obadh.ObadhSwipeCompatibility.supportsDownloadedLibrary()).apply()
     }
 }

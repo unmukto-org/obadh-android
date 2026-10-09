@@ -11,6 +11,11 @@ android {
     defaultConfig {
         minSdk = 26
         ndk { abiFilters += "arm64-v8a" }
+        externalNativeBuild {
+            ndkBuild {
+                arguments += listOf("APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true", "APP_LDFLAGS=-Wl,-z,common-page-size=16384")
+            }
+        }
         buildConfigField("String", "APPLICATION_ID", "\"org.unmukto.obadh\"")
         buildConfigField("String", "VERSION_NAME", "\"0.2.0\"")
         buildConfigField("int", "VERSION_CODE", "2")

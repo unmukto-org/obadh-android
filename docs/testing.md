@@ -33,7 +33,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 python3 scripts/test-native-keyboard.py
 ```
 
-The script checks both languages, fast boundaries, correction policy, next-word
+The 57 checks cover both languages, fast boundaries, correction policy, next-word
 prediction, personal OOV words in the actual strip, incognito/learning-off queries,
 shortcuts and pairs on/off, email/numeric fields, emoji selection,
 double-space punctuation, cursor edits, return actions and language switches.
@@ -104,6 +104,24 @@ and does not change the user's personal dictionary.
 - Handler timings describe the emulator, not a hardware touch-to-photon guarantee.
 - Legacy preview tests describe the previous canvas layout and are reference coverage.
 - Engine model fingerprints are exposed through the C ABI but not yet pinned in CI.
+
+## Native release packaging
+
+```sh
+python3 scripts/test-apk-native.py
+python3 scripts/check-apk-native.py app/build/outputs/apk/release/app-release.apk
+```
+
+Four safety counterexamples check page-rounded RELRO protection. The actual APK
+check verifies ARM64-only ELF LOAD alignment, safe RELRO ranges, uncompressed native
+entries and 16 KB ZIP payload alignment without extracting another build tree.
+The Rust and English libraries use both max/common-page-size linker flags. AndroidX
+path has a partial RELRO page with its mutable data on a separate page; the check
+verifies no writable LOAD bytes outside RELRO are protected by Bionic's outward
+rounding. See [Bionic's implementation](https://android.googlesource.com/platform/bionic/+/refs/heads/main/linker/linker_phdr.cpp).
+These static checks do not replace runtime validation on a 16 KB kernel. The
+pinned optional decoder has an unsafe mutable tail and is not loaded or offered
+on devices with pages larger than 4 KB. Ordinary English and Bangla remain available.
 
 ## Device notes
 

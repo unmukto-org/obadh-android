@@ -19,6 +19,11 @@ import org.unmukto.obadh.swipe.*
 /** Shared setup/settings flow. Switching on requests the optional dependency once. */
 @Composable
 fun SwipeTypingPreference() {
+    if (Binaries.forDevice() == null) {
+        PreferenceItem(content = { Text("Swipe typing") },
+            supportingContent = { Text("Swipe typing isn't available on this device yet.") })
+        return
+    }
     val app = LocalContext.current.applicationContext
     val downloads = remember(app) { SwipeDownloads(app) }
     val scope = rememberCoroutineScope()

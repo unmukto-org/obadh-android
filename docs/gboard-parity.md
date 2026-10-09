@@ -52,7 +52,7 @@ handling, popup keys and gesture machinery are retained.
 | Light/dark, wallpaper colors, fixed palettes, photo theme, key borders | Shared across keyboard, panels and tools; bounded private photo processing |
 | Automatic tablet split, full/split choice, one-handed/floating, size | Native tools and adaptive geometry |
 | Correction, spelling, suggestions, learned words | Native English engine; Obadh Bangla C ABI, shared learning/privacy controls |
-| Glide typing | Optional verified background download; English only |
+| Glide typing | Optional verified background download; English only, compatible 4 KB-page devices |
 | Space gestures and language switching | Globe/long-space picker plus user-requested space-swipe switching; vertical space cursor movement |
 | Emoji, tones, recents, bilingual search and inline suggestions | Native panel with English/Bangla/Roman-Bangla search |
 | Clipboard/pins, editing toolbar, undo/redo, cursor navigation | Native tools; excludes private/sensitive collection |

@@ -17,6 +17,8 @@ for abi in "$@"; do
     *) echo "unsupported ABI: $abi" >&2; exit 2 ;;
   esac
 done
+# Both LOAD and RELRO boundaries must work on current 16 KB Android kernels.
+export RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384"
 cargo ndk "${target_args[@]}" -o "$here/app/src/main/jniLibs" build --release
 # cargo-ndk also copies the engine's own cdylib (obadh_engine has crate-type cdylib). Our JNI
 # library links the engine statically, so that copy is dead weight in every ABI of the APK.

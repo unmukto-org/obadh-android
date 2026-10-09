@@ -99,6 +99,11 @@ jobs:
       - name: Build the signed release APK
         run: ./gradlew --no-daemon :app:assembleRelease
 
+      - name: Verify native 16 KB memory and APK alignment
+        run: |
+          python3 scripts/test-apk-native.py
+          python3 scripts/check-apk-native.py app/build/outputs/apk/release/app-release.apk
+
       - name: Verify the signature and name the asset
         run: |
           apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner

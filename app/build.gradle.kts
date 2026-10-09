@@ -35,6 +35,7 @@ val keystoreProps = Properties().apply {
 }
 
 android {
+    ndkVersion = "27.0.12077973"
     namespace = "org.unmukto.obadh"
     compileSdk { version = release(37) }
 
@@ -103,6 +104,8 @@ dependencies {
     // Material 3 Expressive is currently public in the 1.5 beta channel.
     implementation("androidx.compose.material3:material3:1.5.0-beta01")
     implementation("androidx.compose.ui:ui")
+    // Override Compose's older native path iterator with the current stable AndroidX build.
+    implementation("androidx.graphics:graphics-path:1.1.0")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     testImplementation("junit:junit:4.13.2")
