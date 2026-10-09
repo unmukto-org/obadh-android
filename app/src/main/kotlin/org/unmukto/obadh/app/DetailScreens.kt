@@ -3,181 +3,166 @@ package org.unmukto.obadh.app
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.unmukto.obadh.R
-import org.unmukto.obadh.settings.ClipboardHistory
-import org.unmukto.obadh.settings.LearnedWordStore
-import org.unmukto.obadh.settings.PersonalAutosuggestStore
+import org.unmukto.obadh.settings.KeyboardDataCommands
+import org.unmukto.obadh.settings.KeyboardPreferences
 
-/** Inline-titled leaf screen with a back arrow, like a pushed iOS navigation page. */
+/** Shared Android toolbar, safe insets, scroll state and readable tablet width. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailScaffold(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) {
-            IconButton(onBack, Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-            }
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+fun SettingsScaffold(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+    snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Scaffold(
+        modifier = Modifier.semantics { paneTitle = title }.imePadding(),
+        topBar = {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    if (onBack != null) IconButton(onClick = onBack) {
+                        Symbol(R.drawable.ic_arrow_back, "Back")
+                    }
+                },
+                actions = actions,
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { insets ->
+        Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
+            Column(
+                Modifier.widthIn(max = 720.dp).fillMaxWidth()
+                    .verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+                content = content,
+            )
         }
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).widthIn(max = 620.dp)
-                .padding(horizontal = 16.dp).padding(bottom = 32.dp),
-            content = content,
-        )
     }
 }
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
-    var copied by remember { mutableStateOf(false) }
-    LaunchedEffect(copied) { if (copied) { delay(2000); copied = false } }
-
-    DetailScaffold("About", onBack) {
-        Column(Modifier.fillMaxWidth().padding(vertical = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            val shape = RoundedCornerShape(84.dp * 0.2237f)
-            Image(
-                painterResource(R.drawable.brand_icon), null,
-                Modifier.size(84.dp).shadow(10.dp, shape).clip(shape),
-            )
-            Spacer(Modifier.height(10.dp))
-            Text("Obadh", style = TextStyle(brush = Brand.wordmark(dark), fontSize = 30.sp, fontWeight = FontWeight.Bold))
-            Text("ভাষা হোক আরও উন্মুক্ত", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    var details by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    SettingsScaffold("About", onBack, snackbar = snackbar) {
+        Row(Modifier.padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(R.drawable.brand_icon), null, Modifier.size(64.dp))
+            Spacer(Modifier.width(20.dp))
+            Column {
+                Text("Obadh", style = MaterialTheme.typography.headlineSmall)
+                Text("Bangla keyboard", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Section {
-            ValueRow("Version", AppBuildInfo.version)
-            RowRule()
-            ValueRow("Engine Version", AppBuildInfo.engineVersion)
-            RowRule()
+        PreferenceItem(content = { Text("Version") }, supportingContent = { Text(AppBuildInfo.version) })
+        PreferenceItem(content = { Text("Open source") }, supportingContent = { Text("Made by Unmukto. Bangla powered by Obadh Engine. Android keyboard foundation: HeliBoard / AOSP (GPLv3).") })
+        PreferenceNote("Optional English swipe typing uses a separately downloaded Google library. It is not part of the open-source app.")
+        PreferenceItem(
+            content = { Text("Build details") },
+            supportingContent = { Text(if (details) "Tap to hide" else "Technical information for support") },
+            onClick = { details = !details },
+        )
+        if (details) {
+            ValueRow("Engine", AppBuildInfo.engineVersion)
             ValueRow("Build", AppBuildInfo.build)
-            RowRule()
-            ValueRow("Commit", AppBuildInfo.gitRevision.ifEmpty { "—" }, mono = true)
-            RowRule()
-            ValueRow("Built", AppBuildInfo.buildTime.ifEmpty { "—" }, mono = true)
-        }
-        Section {
-            Text(
-                if (copied) "✓  Copied" else "Copy Build Details",
-                Modifier.fillMaxWidth()
-                    .clickable(enabled = !copied) {
-                        (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                            .setPrimaryClip(ClipData.newPlainText("Obadh build", AppBuildInfo.summary))
-                        copied = true
-                    }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                fontSize = 16.sp, color = MaterialTheme.colorScheme.primary,
-            )
+            ValueRow("Revision", AppBuildInfo.gitRevision.ifEmpty { "Unavailable" })
+            ValueRow("Built", AppBuildInfo.buildTime.ifEmpty { "Unavailable" })
+            TextButton(onClick = {
+                (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                    .setPrimaryClip(ClipData.newPlainText("Obadh build", AppBuildInfo.summary))
+                scope.launch { snackbar.showSnackbar("Build details copied") }
+            }, modifier = Modifier.padding(horizontal = 8.dp)) { Text("Copy build details") }
         }
     }
 }
 
 @Composable
-private fun ValueRow(title: String, value: String, mono: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), fontSize = 16.sp)
-        Text(
-            value, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontFamily = if (mono) FontFamily.Monospace else null,
-        )
-    }
+private fun ValueRow(title: String, value: String) {
+    PreferenceItem(content = { Text(title) }, supportingContent = { Text(value) })
 }
 
 @Composable
 fun PrivacyScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var confirming by remember { mutableStateOf(false) }
-    var cleared by remember { mutableStateOf(false) }
-    var clipCleared by remember { mutableStateOf(false) }
-
-    DetailScaffold("Privacy", onBack) {
-        Spacer(Modifier.height(8.dp))
-        Section {
-            Paragraph(
-                "On your device",
-                "Transliteration, autocorrect, suggestions and emoji search all run inside the keyboard. Obadh asks for no network permission at all, so nothing you type can leave your device.",
-            )
-            RowRule()
-            Paragraph(
-                "What Obadh remembers",
-                "The emoji you use most recently, and the words you type, kept so suggestions improve as you write. Both are stored in Obadh's own private storage on this device.",
-            )
-            RowRule()
-            Paragraph(
-                "Android's warning",
-                "Android shows a generic message when you turn on any keyboard, because every keyboard can see what is typed into it. That is true of Obadh; it simply never sends it anywhere.",
-            )
-        }
-        Section(
-            footer = if (cleared) "Learned words cleared. Obadh starts fresh the next time you type."
-            else "Removes the words Obadh has learned from your typing. Suggestions from the built-in dictionary are unaffected.",
-        ) {
-            Text(
-                "Clear Learned Words",
-                Modifier.fillMaxWidth().clickable { confirming = true }.padding(horizontal = 16.dp, vertical = 14.dp),
-                fontSize = 16.sp, color = MaterialTheme.colorScheme.error,
-            )
-        }
-        Section(
-            footer = if (clipCleared) "Clipboard history cleared."
-            else "Removes the copied items the keyboard's clipboard panel has kept.",
-        ) {
-            Text(
-                "Clear Clipboard History",
-                Modifier.fillMaxWidth().clickable { ClipboardHistory(context).clear(); clipCleared = true }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                fontSize = 16.sp, color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-
-    if (confirming) {
-        AlertDialog(
-            onDismissRequest = { confirming = false },
-            title = { Text("Clear learned words?") },
-            text = { Text("Obadh will forget everything it has learned from your typing. This can't be undone.") },
-            confirmButton = {
-                TextButton({
-                    PersonalAutosuggestStore(context).clear()
-                    LearnedWordStore(context).clear()
-                    cleared = true
-                    confirming = false
-                }) { Text("Clear", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = { TextButton({ confirming = false }) { Text("Cancel") } },
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    SettingsScaffold("Privacy", onBack, snackbar = snackbar) {
+        PreferenceHeading("On-device processing")
+        PreferenceNote("Transliteration, autocorrect, suggestions and emoji search work on your device. Obadh does not send your typing to a server. Network access is used only for the optional swipe-typing library download you request.")
+        PreferenceHeading("Stored data")
+        PreferenceNote("Obadh stores learned words, recent emoji, your text shortcuts and clipboard history in its private storage. Clipboard collection excludes password fields and items marked sensitive.")
+        PreferenceHeading("Keyboard access")
+        PreferenceNote("Android warns that any keyboard can read what you type. Obadh uses this access to enter and correct text, with all processing on your device.")
+        HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        PreferenceItem(
+            content = { Text("Delete learned words", color = MaterialTheme.colorScheme.error) },
+            supportingContent = { Text("Reset personal suggestions. Built-in suggestions stay available.") },
+            onClick = { confirming = true },
         )
+    }
+    if (confirming) {
+        ConfirmDeletion("Delete learned words?", "Your personal typing history will be removed. This can't be undone.",
+            onDismiss = { confirming = false }, onConfirm = {
+                confirming = false
+                scope.launch {
+                    val done = KeyboardDataCommands.clear(context, clipboard = false)
+                    snackbar.showSnackbar(if (done) "Learned words deleted" else "Couldn't delete learned words. Try again.")
+                }
+            })
     }
 }
 
 @Composable
-private fun Paragraph(title: String, body: String) {
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-        Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(6.dp))
-        Text(body, fontSize = 14.sp, lineHeight = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun ClipboardScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
+    val context = LocalContext.current
+    var confirming by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    SettingsScaffold("Clipboard", onBack, snackbar = snackbar) {
+        PrefToggle("Clipboard history", "Keep copied text in the keyboard's clipboard panel", prefs.clipboardHistoryEnabled) { prefs.clipboardHistoryEnabled = it }
+        PreferenceNote("Saved items stay on this device. Turning history off stops collection; use Delete clipboard history to remove existing items.")
+        PreferenceItem(
+            content = { Text("Delete clipboard history", color = MaterialTheme.colorScheme.error) },
+            supportingContent = { Text("Remove all items stored by Obadh") },
+            onClick = { confirming = true },
+        )
     }
+    if (confirming) {
+        ConfirmDeletion("Delete clipboard history?", "All clipboard items stored by Obadh will be removed. This can't be undone.",
+            onDismiss = { confirming = false }, onConfirm = {
+                confirming = false
+                scope.launch {
+                    val done = KeyboardDataCommands.clear(context, clipboard = true)
+                    snackbar.showSnackbar(if (done) "Clipboard history deleted" else "Couldn't delete clipboard history. Try again.")
+                }
+            })
+    }
+}
+
+@Composable
+fun ConfirmDeletion(title: String, message: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

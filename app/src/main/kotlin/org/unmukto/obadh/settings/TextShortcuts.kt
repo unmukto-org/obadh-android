@@ -10,10 +10,11 @@ data class TextShortcut(val trigger: String, val expansion: String)
 /**
  * Personal text shortcuts: typing the trigger (`@@`, `eml`) then space or return replaces it with
  * the expansion (an email address, a phone number, a sign-off). Private SharedPreferences, never
- * sent anywhere. The app edits the list and the keyboard reads it, in the same process, so a
- * change applies at once.
+ * sent outside the app. Edits send an explicit snapshot to the keyboard process, so a
+ * change applies without relying on cross-process SharedPreferences caches.
  */
 class TextShortcuts(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs = context.applicationContext.getSharedPreferences("obadh_shortcuts", Context.MODE_PRIVATE)
     private var items: List<TextShortcut> = load()
     // Held in a field: SharedPreferences keeps listeners weakly.
@@ -48,6 +49,7 @@ class TextShortcuts(context: Context) {
         val arr = JSONArray()
         list.forEach { arr.put(JSONObject().put("t", it.trigger).put("e", it.expansion)) }
         prefs.edit().putString(KEY, arr.toString()).apply()
+        NativePreferences.send(appContext)
     }
 
     private fun load(): List<TextShortcut> {

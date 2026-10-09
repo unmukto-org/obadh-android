@@ -107,10 +107,7 @@ class KeyboardComposer(
 
     fun deleteBackward(): Boolean {
         if (!hasActiveInput) return false
-        var remove = 1
-        val trailingQs = romanBuffer.reversed().takeWhile { it == 'q' }.length
-        // qq is one chandrabindu unit; an odd trailing q is the unpaired fallback letter.
-        if (trailingQs > 0 && trailingQs % 2 == 0) remove = 2
+        val remove = RomanInputRules.deleteCount(romanBuffer)
         romanBuffer = romanBuffer.dropLast(remove)
         refreshDeterministic()
         return true
@@ -181,23 +178,7 @@ class KeyboardComposer(
          * Only t/T + a single q is the khanda-ta shortcut (`tq` -> t``). A following
          * qq belongs to the engine's chandrabindu rule: `tqq` stays `tqq`.
          */
-        fun engineInput(input: String): String {
-            val out = StringBuilder()
-            var i = 0
-            while (i < input.length) {
-                val c = input[i]
-                if ((c == 't' || c == 'T') && i + 1 < input.length && input[i + 1] == 'q' &&
-                    (i + 2 == input.length || input[i + 2] != 'q')
-                ) {
-                    out.append(c).append("``")
-                    i += 2
-                } else {
-                    out.append(c)
-                    i++
-                }
-            }
-            return out.toString()
-        }
+        fun engineInput(input: String): String = RomanInputRules.engineInput(input)
 
         fun mergeSuggestions(
             primary: List<KeyboardSuggestion>,

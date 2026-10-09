@@ -1,5 +1,12 @@
 # Known issues
 
+The entries below describe the legacy 0.1.0 canvas host. The current Android native
+host uses different layout and composition machinery; see
+[the integration guide](docs/heliboard-integration.md) and
+[actual editor tests](docs/testing.md). Real-model correction and JNI now have
+emulator coverage; fingerprint pins and physical-host/device diversity remain
+additional validation work.
+
 Updated: **2026-10-08**. Only open issues and what remains unverified belong here.
 Resolved work belongs in [CHANGELOG.md](CHANGELOG.md). Add dated evidence to the
 relevant issue, and remove an entry when its acceptance checks pass.

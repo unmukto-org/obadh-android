@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Obadh</string>
+    <string name="clipboard_provider_authority" translatable="false">org.unmukto.obadh.clipprovider</string>
 </resources>

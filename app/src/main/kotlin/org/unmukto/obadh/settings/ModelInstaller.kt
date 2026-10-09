@@ -1,6 +1,7 @@
 package org.unmukto.obadh.settings
 
 import android.content.Context
+import androidx.core.content.pm.PackageInfoCompat
 import java.io.File
 
 /**
@@ -32,7 +33,7 @@ object ModelInstaller {
         val dir = modelsDir(app)
         val stamp = File(dir, ".installed")
         val version = app.packageManager.getPackageInfo(app.packageName, 0).let {
-            "${it.versionName}:${it.longVersionCode}"
+            "${it.versionName}:${PackageInfoCompat.getLongVersionCode(it)}"
         }
         val complete = FILES.all { File(dir, it).exists() }
         if (complete && stamp.exists() && stamp.readText() == version) return dir

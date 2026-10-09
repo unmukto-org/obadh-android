@@ -4,5 +4,7 @@
         <!-- Debug builds only: renders the real keyboard view at a forced tablet width, so every
              layout family can be reviewed on a phone. Extras: sw (dp) and mode. -->
         <activity android:name=".debug.KeyboardPreviewActivity" android:exported="true" />
+        <activity android:name=".debug.NativeKeyboardProbeActivity" android:exported="true" />
+        <receiver android:name=".debug.NativeKeyboardProbeReceiver" android:process=":keyboard" android:exported="true" />
     </application>
 </manifest>

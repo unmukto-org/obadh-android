@@ -11,6 +11,13 @@ autosuggest as separable layers. This repository is the **Android deliverable**:
 a native keyboard (`InputMethodService`) for phones and tablets, built on that
 engine and on the same philosophy as [obadh-ios](../obadh-ios).
 
+The Android keyboard uses one native editor and gesture pipeline for Bangla and
+English. Obadh supplies Bangla transliteration, correction, prediction and learning
+through its C ABI; the Android foundation supplies English correction and optional
+swipe typing. Shared settings apply to both languages. Enable Swipe typing in setup
+or Gestures, then tap Download for the optional background transfer. See
+[the integration guide](docs/heliboard-integration.md).
+
 You type roman, it composes Bangla live.
 
 Letter-key shortcuts: `tq` → **ৎ**, `qq` → **ঁ**. For example, `sotq` → **সৎ**
@@ -22,10 +29,9 @@ and `baqq` → **বাঁ**.
 
 ## What it does
 
-- **Live transliteration as real text.** The word you are typing is ordinary
-  text in the field, not an Android composing span. The cursor moves freely,
-  mid-text editing just works, and switching keyboards mid-word keeps the word.
-  ([why](docs/text-composition.md))
+- **Live native composition.** Roman input renders Bangla immediately through the
+  engine. Android's composing region and editor transactions handle insertion,
+  deletion and cursor updates. Mid-word edits preserve surrounding text.
 - **Autocorrect that knows its place.** The ribbon shows the deterministic
   output first, then engine-ranked corrections. Optional auto-insert commits a
   correction on space only when a strict, measurable confidence gate passes, and
@@ -35,21 +41,16 @@ and `baqq` → **বাঁ**.
 - **Emoji, the way you actually say it.** Inline emoji suggestions for the word
   being typed (ভালোবাসা → ❤️), and a full emoji panel with categories, recents,
   skin tones, and English and Bangla search. ([the pipeline](docs/emoji.md))
-- **Bangla numerals and punctuation:** ০–৯ on the number page, `৳` and `।`
-  (dari) on the punctuation pages, quick double-space for dari, smart
-  punctuation.
-- **Phones and tablets, portrait and landscape.** Three tablet families chosen
-  from the device's smallest width, each with its own row structure, plus
-  landscape geometry for phones and tablets. ([the layouts](docs/layouts.md))
-- **Gestures that earn their keep.** Swipe the space bar to flip Bangla/English (the
-  bar shows the language and animates the swap); hold it for a cursor trackpad.
-  Swipe left on backspace to select and delete words. Hold X or C and slide to select
-  words, then lift to cut or copy; hold V to paste. Each gesture has a switch in
-  Settings. ([the details](docs/text-composition.md))
-- **Gboard-style chrome.** Outlined shift (filled when on, barred when locked) and
-  backspace icons, and an animated expand/collapse for the ribbon's tools row.
-- **No network.** The manifest declares no `INTERNET` permission, so nothing you
-  type can leave the device.
+- **Bangla numerals and punctuation:** ০–৯, `৳` and `।`, with double-space full
+  stops in the active language. Numeric, email and password fields retain literal
+  Android input behavior.
+- **Native gestures.** Swipe space to switch Bangla/English, move upward from space
+  for the cursor trackpad, or swipe backspace to delete. Hold X/C/V for native
+  cut/copy/paste popups. Each shared control has one setting.
+- **Android keyboard and Material settings.** Native keyboard layouts, previews,
+  toolbar, clipboard and emoji panel, plus organized Material preference screens.
+- **On-device typing.** Models, learning and clipboard remain private on the device.
+  Network access serves the explicitly requested optional swipe-library download.
 
 <p align="center">
   <img src="docs/assets/keyboard.png" alt="The Obadh keyboard with suggestions and an emoji" width="330">
@@ -83,13 +84,13 @@ page; allow installs from your browser or file manager, install, then turn Obadh
 The engine owns transliteration, correction ranking, and suggestion lookup; the
 Android layer owns touch, layout, input-connection mutation, haptics, and
 policy. They meet at a deliberately thin JNI layer over the engine's C ABI that
-moves UTF-8 buffers and packed records, nothing else. The keyboard itself is
-drawn from nothing on a `Canvas`: no stock Android keyboard widget is used.
+moves UTF-8 buffers and packed records, nothing else. The `:keyboard` module owns the native editor and keyboard views; `:engine` owns
+the shared bridge. The small checked adapter is described in the integration guide.
 
 | Doc | Covers |
 |---|---|
 | [architecture.md](docs/architecture.md) | Components, the JNI boundary, threading, the composer boundary, state and storage |
-| [text-composition.md](docs/text-composition.md) | Why not composing spans, exact deletion, touch routing, the ribbon, space and dari, backspace, language |
+| [text-composition.md](docs/text-composition.md) | Legacy composition reference; current native behavior links to the integration guide |
 | [autocorrect.md](docs/autocorrect.md) | The engine/client policy split and the auto-insert confidence gate |
 | [emoji.md](docs/emoji.md) | Data, inline suggestions, the panel, search, recents, skin tones |
 | [layouts.md](docs/layouts.md) | Phone, tablet families, landscape, secondary glyphs, the debug preview |
@@ -108,12 +109,14 @@ the docs here say so.
 
 ```
 app/src/main/kotlin/org/unmukto/obadh/
-  engine/      Bridge client, composer, composition controller, auto-insert gate
-  keyboard/    InputMethodService, key view, ribbon, layouts, theme
+  engine/      Composer and correction policy; legacy composition references
+  keyboard/    Native service adapter and bilingual feature runtime
   emoji/       Data stores, the panel view, recents, skin tones
   settings/    Preferences, learned words, model installer, install state
   app/         The containing app (Compose): setup, settings, about, privacy
-app/src/debug/ Debug-only keyboard preview (not in release builds)
+engine/src/     Shared Kotlin bridge to the engine C ABI
+integration/heliboard/ Pinned native-host preparation, extension seam and tests
+app/src/debug/ Debug-only native editor probe and legacy preview (excluded from release)
 app/src/test/  Unit tests (real artifacts, no device)
 rust/obadh-jni/ JNI shim over obadh_engine's cabi feature
 scripts/        Bootstrap, model sync, native build
@@ -123,7 +126,14 @@ docs/           The documents above
 ## Testing
 
 Behaviour is verified against the real thing where it can be: unit tests run
-against the real generated artifacts, and a debug preview renders the real
-keyboard view at any device width. What cannot be verified without a device
+against the real generated artifacts, and a debug probe drives the actual native IME and framework editor. What cannot be verified without a device
 (touch gestures, rotation, host-app quirks) is listed honestly in
 [KNOWN-ISSUES.md](KNOWN-ISSUES.md). [docs/testing.md](docs/testing.md) has the map.
+
+
+## License
+
+The combined Android application is GPL-3.0-only; see [LICENSE](LICENSE).
+HeliBoard/AOSP and icon notices remain in [third-party licenses](docs/third-party/heliboard).
+Obadh Engine remains MIT licensed. The optional Google swipe library is a separate,
+user-requested download and is not included in the APK or covered by the app's GPL.

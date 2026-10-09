@@ -14,8 +14,9 @@ enum class FieldKind(val forcesEnglish: Boolean = false) {
     PHONE;
 
     companion object {
-        fun of(info: EditorInfo?): FieldKind {
-            val type = info?.inputType ?: return TEXT
+        fun of(info: EditorInfo?): FieldKind = info?.let { ofInputType(it.inputType) } ?: TEXT
+
+        fun ofInputType(type: Int): FieldKind {
             val variation = type and InputType.TYPE_MASK_VARIATION
             return when (type and InputType.TYPE_MASK_CLASS) {
                 InputType.TYPE_CLASS_NUMBER ->

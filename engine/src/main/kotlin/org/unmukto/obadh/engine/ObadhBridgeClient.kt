@@ -21,6 +21,13 @@ class ObadhBridgeClient : BanglaTypingEngine {
     private var autocorrectHandle = 0L
     private var autosuggestHandle = 0L
 
+    /** Cheap startup path, independent of model I/O and suggestion handles. */
+    fun initializeTransliteration() {
+        check(ObadhNative.abiVersion() == ABI_VERSION) { "Bridge built against a different engine C ABI" }
+        engineLock.withLock { if (engineHandle == 0L) engineHandle = ObadhNative.engineNew() }
+        check(engineHandle != 0L) { "Obadh engine initialization failed" }
+    }
+
     fun configureModels(modelsDir: File): ModelConfiguration {
         check(ObadhNative.abiVersion() == ABI_VERSION) { "Bridge built against a different engine C ABI" }
         engineLock.withLock { if (engineHandle == 0L) engineHandle = ObadhNative.engineNew() }

@@ -43,12 +43,18 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
 
+      - name: Android SDK and pinned NDK
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0" "ndk;27.0.12077973"
+
       - name: Sync models and build the native library
         env:
           OBADH_MODELS_SRC: ${{ github.workspace }}/obadh-ios/Resources/ObadhModels
         run: |
           ./scripts/sync-models.sh
-          ./scripts/build-rust-android.sh
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.0.12077973" ./scripts/build-rust-android.sh
+
+      - name: Prepare the pinned native keyboard foundation
+        run: python3 scripts/prepare-heliboard.py
 
       - name: Unit tests
         run: ./gradlew --no-daemon :app:testDebugUnitTest

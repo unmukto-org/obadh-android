@@ -1,5 +1,7 @@
 # Autocorrect, auto-insert, and learning
 
+The active native suggestion adapter reuses this policy through `NativeObadhFeatures`. Its typed slot is first, automatic correction is centered, and literal spellings remain explicitly selectable. See [the native integration guide](heliboard-integration.md) for current ownership and validation.
+
 The [engine](https://github.com/nsssayom/obadh_engine) supplies *signals*; this
 client owns *policy*. That split is deliberate and shared with iOS: a
 data-dependent policy the engine's CI cannot test (it runs without the data

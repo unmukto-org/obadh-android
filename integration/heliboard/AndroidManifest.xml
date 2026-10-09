@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WRITE_USER_DICTIONARY" />
+    <application>
+        <service android:name="helium314.keyboard.latin.spellcheck.AndroidSpellCheckerService" android:label="@string/spell_checker_service_name" android:permission="android.permission.BIND_TEXT_SERVICE" android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.textservice.SpellCheckerService" />
+            </intent-filter>
+            <meta-data android:name="android.view.textservice.scs" android:resource="@xml/spellchecker" />
+        </service>
+        <activity android:name="helium314.keyboard.keyboard.emoji.EmojiSearchActivity" android:process=":keyboard" android:exported="false" android:theme="@style/TransparentActivityTheme" android:excludeFromRecents="true" android:noHistory="true" android:windowSoftInputMode="adjustResize|stateAlwaysVisible" android:configChanges="orientation|screenSize" />
+        <receiver android:name="helium314.keyboard.latin.SystemBroadcastReceiver" android:process=":keyboard" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_INITIALIZE" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name="helium314.keyboard.latin.DictionaryPackInstallBroadcastReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="helium314.keyboard.dictionarypack.aosp.UNKNOWN_CLIENT" />
+            </intent-filter>
+        </receiver>
+        <provider android:name="helium314.keyboard.latin.database.ClipboardContentProvider" android:authorities="@string/clipboard_provider_authority" android:enabled="true" android:grantUriPermissions="true" android:exported="false">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/clipboard_provider_path" />
+        </provider>
+    </application>
+    <queries>
+        <intent>
+            <action android:name="*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+</manifest>

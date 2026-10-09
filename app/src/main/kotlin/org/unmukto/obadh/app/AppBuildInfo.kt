@@ -1,7 +1,7 @@
 package org.unmukto.obadh.app
 
 import org.unmukto.obadh.BuildConfig
-import org.unmukto.obadh.engine.ObadhNative
+import org.unmukto.obadh.engine.EngineInfo
 
 /**
  * App identity from the build; engine identity from its own C ABI, so comparing the two
@@ -16,7 +16,7 @@ object AppBuildInfo {
 
     /** The linked engine's own semver, read without creating an engine or loading any model. */
     val engineVersion: String by lazy {
-        runCatching { String(ObadhNative.engineVersion(), Charsets.UTF_8).ifBlank { null } }.getOrNull() ?: "Unavailable"
+        runCatching { EngineInfo.version().ifBlank { null } }.getOrNull() ?: "Unavailable"
     }
 
     val summary: String

@@ -2,11 +2,36 @@
 
 ## Setup
 
+### Local command-line development on macOS
+
+```bash
+source scripts/dev-env.sh         # existing JDK 17 and ~/Library/Android/sdk
+./scripts/bootstrap.sh
+./gradlew :app:testDebugUnitTest :app:assembleDebug
+emulator -avd obadh-api35 -no-snapshot -no-boot-anim
+# In another shell:
+source scripts/dev-env.sh
+./gradlew :app:installDebug
+```
+
+The minimal SDK setup is command-line tools, `platform-tools`,
+`platforms;android-37.0`, `build-tools;36.0.0`, and `ndk;27.0.12077973`.
+For device testing, use one `system-images;android-35;default;arm64-v8a` image
+with the `emulator` package. The local `obadh-api35` AVD has snapshots disabled
+to avoid saving duplicate virtual-machine state. Android Studio, Google Play
+images, extra SDK platforms, and a separate Gradle installation are optional.
+Reuse the pinned Rust toolchain and the model
+files in the neighboring iOS checkout. Keep the shared Gradle dependency cache
+for subsequent builds; `cargo clean --manifest-path rust/obadh-jni/Cargo.toml`
+can reclaim native build intermediates when needed (the next native build will
+then recompile). The sourceable environment script applies only to the current
+shell and does not change your default Java installation.
+
 You need:
 
 - **JDK 17 or 21.** Android Studio's bundled JDK works
   (`/Applications/Android Studio.app/Contents/jbr/Contents/Home` on macOS).
-- **The Android SDK**, with platform 35 and an **NDK**. `ANDROID_HOME` should point
+- **The Android SDK**, with platform 37.0, build tools 36.0.0 and an **NDK**. `ANDROID_HOME` should point
   at the SDK, or put `sdk.dir=...` in `local.properties` (git-ignored).
 - **rustup.** The toolchain (Rust 1.89.0 with the three Android targets) is pinned
   in `rust/obadh-jni/rust-toolchain.toml` and installs itself on first use.
@@ -188,3 +213,12 @@ cannot be read back.
 
 Sideloading note: a debug build and a release build are signed with different keys, so
 Android will not install one over the other; uninstall first, which clears the settings.
+
+
+The combined native host requires `python3 scripts/prepare-heliboard.py`
+after building Rust and before Gradle. This prepares the immutable source pin without
+another Git history or SDK. `:engine` shares Obadh's existing JNI binaries; `:keyboard`
+builds the upstream Latin native library. The current combined APK is ARM64 only so
+that both native libraries are present for every shipped ABI. Local release testing:
+`./gradlew --max-workers=4 :app:assembleRelease -PdebugSign`. The optional swipe binary
+is downloaded only on user request and is not included in the release APK.

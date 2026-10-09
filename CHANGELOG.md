@@ -6,7 +6,29 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 
 ## Unreleased
 
-Nothing yet.
+- Optional English swipe typing: one native switch and download prompt in setup and
+  Gestures, Android background transfer, progress/waiting/error states, cancellation
+  and retry, pinned checksum verification and automatic activation. No file import.
+- Integrated Bangla correction, loanwords, prediction, personal learning, protected
+  spellings, shortcuts and bilingual emoji into the native editor. One settings
+  snapshot controls both languages, including pairs, field handling and gestures.
+- Model loading, suggestion queries, emoji search and coalesced learning saves run
+  away from the input thread. Stale results are generation-checked; deletion uses
+  acknowledged commands to the process that owns the data.
+- Real-editor emulator regressions cover both languages, fast boundaries, literal
+  fields, cursor edits, shortcut/pair switches, emoji and return actions.
+
+### Changed
+- Replaced the iOS-inspired app chrome with Material 3 Expressive: Android toolbars,
+  dynamic color, standard preference switches and radio dialogs, and Material Symbols.
+- Settings now opens a category index. Custom typing controls live under Advanced
+  in the overflow menu; build diagnostics are disclosed on demand in About.
+- Setup is one page with the two required Android actions and a typing field.
+  Removed the animated welcome, completion page and simulated system settings.
+- Text shortcuts use a full-screen editor with duplicate validation and unsaved-change
+  handling. Deleting clipboard history now asks for confirmation.
+- Updated Compose, the Kotlin compiler, AGP and Gradle for the public Expressive
+  theme API (`material3:1.5.0-beta01`). Compile SDK is 37.0; target SDK remains 35.
 
 ## v0.1.0 — 2026-10-08
 

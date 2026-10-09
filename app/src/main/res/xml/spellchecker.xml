@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2011 The Android Open Source Project; modified.
+     SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only -->
+<spell-checker xmlns:android="http://schemas.android.com/apk/res/android"
+    android:label="@string/spell_checker_service_name"
+    android:settingsActivity="org.unmukto.obadh.app.MainActivity">
+    <subtype android:label="@string/subtype_generic" android:subtypeLocale="en_US" />
+</spell-checker>

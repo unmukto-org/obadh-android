@@ -7,6 +7,10 @@ import android.content.SharedPreferences
 class KeyboardPreferences(context: Context) {
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+    private val nativeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        NativePreferences.send(context.applicationContext)
+    }
+    init { prefs.registerOnSharedPreferenceChangeListener(nativeListener) }
 
     /** 0 off, 1 light, 2 medium, 3 strong. Falls back to the old on/off switch when never set. */
     var hapticStrength: Int
@@ -41,6 +45,7 @@ class KeyboardPreferences(context: Context) {
     var smartFields: Boolean get() = flag("f_smart_fields"); set(v) = setFlag("f_smart_fields", v)
     var returnActionKey: Boolean get() = flag("f_return_action"); set(v) = setFlag("f_return_action", v)
     var englishSpelling: Boolean get() = flag("f_spelling"); set(v) = setFlag("f_spelling", v)
+    var englishAutoCorrection: Boolean get() = flag("english_autocorrect"); set(v) = setFlag("english_autocorrect", v)
 
     var keySoundEnabled: Boolean
         get() = prefs.getBoolean(KEY_SOUND, false)

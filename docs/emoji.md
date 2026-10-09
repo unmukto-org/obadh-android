@@ -1,5 +1,7 @@
 # Emoji: suggestions, search, and the data pipeline
 
+The active native emoji panel and search use `NativeObadhFeatures` for bilingual results and remembered variants; legacy panel/view details below are retained as reference. See [the native integration guide](heliboard-integration.md) for current ownership and validation.
+
 The emoji runtime is the most portable part of the iOS codebase: the build
 pipeline, the ranking, and the binary formats have no iOS dependency. Android
 reuses the **same artifacts byte for byte** (`scripts/sync-models.sh` copies them

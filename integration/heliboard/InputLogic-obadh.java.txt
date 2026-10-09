@@ -1,0 +1,103 @@
+    /** Obadh policy runs before combining; all editor changes use native cached transactions. */
+    private InputTransaction handleObadhInput(final SettingsValues settings, final Event event,
+            final CapsMode caps, final LatinIME.UIHandler handler) {
+        final var obadh = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();
+        if (obadh == null || mConnection.hasSelection() || mWordComposer.isCursorFrontOrMiddleOfComposingWord()) return null;
+        final int cp = event.getCodePoint();
+        String expansion = null;
+        String trigger = mWordComposer.getObadhRoman();
+        if (trigger.isEmpty()) trigger = mWordComposer.getTypedWord();
+        int delete = 0;
+        if (cp == Constants.CODE_SPACE || cp == Constants.CODE_ENTER) {
+            if (trigger.isEmpty()) {
+                final var before = mConnection.getTextBeforeCursor(32, 0);
+                trigger = before == null ? "" : before.toString();
+                int lastSpace = trigger.length() - 1;
+                while (lastSpace >= 0 && !Character.isWhitespace(trigger.charAt(lastSpace))) lastSpace--;
+                trigger = trigger.substring(lastSpace + 1);
+                delete = trigger.length();
+            }
+            expansion = obadh.shortcut(trigger, settings);
+        }
+        final boolean pairs = obadh.pairsEnabled(settings);
+        final String openers = "([{\"\'";
+        final String closers = ")]}\"\'";
+        final boolean pairKey = openers.indexOf(cp) >= 0 || closers.indexOf(cp) >= 0 || event.getKeyCode() == KeyCode.DELETE;
+        if (expansion == null && (!pairs || !pairKey)) return null;
+        final String before = pairs && event.getKeyCode() == KeyCode.DELETE && !mWordComposer.isComposingWord()
+                ? String.valueOf((char)mConnection.getCodePointBeforeCursor()) : "";
+        final String after = pairs && pairKey ? String.valueOf(mConnection.getTextAfterCursor(1, 0)) : "";
+        final int pairIndex = pairs ? openers.indexOf(cp) : -1;
+        final int deletePair = before.isEmpty() ? -1 : openers.indexOf(before);
+        final boolean canPair = pairIndex >= 0 && (cp != 39 || (!mWordComposer.isComposingWord() && !Character.isLetterOrDigit(mConnection.getCodePointBeforeCursor()))) && (after.isEmpty() || Character.isWhitespace(after.charAt(0)) || closers.contains(after));
+        final boolean skipCloser = pairs && closers.indexOf(cp) >= 0 && after.equals(String.valueOf((char)cp));
+        final boolean removePair = deletePair >= 0 && after.equals(String.valueOf(closers.charAt(deletePair)));
+        if (expansion == null && !canPair && !skipCloser && !removePair) return null;
+        final InputTransaction transaction = new InputTransaction(settings, event, SystemClock.uptimeMillis(),
+                mSpaceState, getActualCapsMode(settings, caps));
+        mConnection.beginBatchEdit();
+        try {
+            if (expansion != null) {
+                if (delete > 0) mConnection.deleteTextBeforeCursor(delete);
+                mConnection.commitText(expansion, 1);
+                resetComposingState(true);
+                mSpaceState = SpaceState.NONE;
+                if (cp == Constants.CODE_ENTER) {
+                    handleNonFunctionalEvent(event, transaction, handler);
+                } else mConnection.commitText(" ", 1);
+            } else {
+                if (mWordComposer.isComposingWord()) {
+                    if (settings.mAutoCorrectEnabled || !mWordComposer.getObadhRoman().isEmpty())
+                        commitCurrentAutoCorrection(settings, LastComposedWord.NOT_A_SEPARATOR, handler);
+                    else commitTyped(settings, LastComposedWord.NOT_A_SEPARATOR);
+                }
+                final int cursor = mConnection.getExpectedSelectionEnd();
+                if (skipCloser) mConnection.setSelection(cursor + 1, cursor + 1);
+                else if (canPair) {
+                    mConnection.commitText(String.valueOf((char)cp) + closers.charAt(pairIndex), 1);
+                    mConnection.setSelection(cursor + 1, cursor + 1);
+                } else if (removePair) {
+                    mConnection.setSelection(cursor - 1, cursor + 1);
+                    mConnection.commitText("", 1);
+                }
+                resetComposingState(true);
+                mSpaceState = SpaceState.NONE;
+            }
+        } finally { mConnection.endBatchEdit(); }
+        transaction.setDidAffectContents();
+        transaction.setRequiresUpdateSuggestions();
+        transaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
+        handler.postUpdateSuggestionStrip(SuggestedWords.INPUT_STYLE_TYPING);
+        return transaction;
+    }
+
+    private boolean mObadhCommitQuery;
+    private final java.util.concurrent.atomic.AtomicLong mObadhSuggestionRequest = new java.util.concurrent.atomic.AtomicLong();
+
+    /** Snapshot on the editor thread; FST queries run on the existing suggestion worker. */
+    private void updateObadhSuggestionsAsync(final SettingsValues settings, final int inputStyle) {
+        final Keyboard keyboard = KeyboardSwitcher.getInstance().getKeyboard();
+        if (keyboard == null) return;
+        mWordComposer.adviseCapitalizedModeBeforeFetchingSuggestions(
+                getActualCapsMode(settings, KeyboardSwitcher.getInstance().getKeyboardCapsMode()));
+        final WordComposer snapshot = mWordComposer.copy();
+        final NgramContext context = getNgramContextFromNthPreviousWordForSuggestion(
+                settings.mSpacingAndPunctuations, snapshot.isComposingWord() ? 2 : 1);
+        final long request = mObadhSuggestionRequest.incrementAndGet();
+        mInputLogicHandler.getSuggestedWords(() -> {
+            if (request != mObadhSuggestionRequest.get()) return;
+            try {
+                final SuggestedWords words = mSuggest.getSuggestedWords(snapshot, context, keyboard,
+                        settings.mSettingsValuesForSuggestion, settings.mAutoCorrectEnabled,
+                        inputStyle, SuggestedWords.NOT_A_SEQUENCE_NUMBER);
+                mLatinIME.mHandler.post(() -> {
+                    if (words != null && request == mObadhSuggestionRequest.get()
+                            && snapshot.getObadhGeneration() == mWordComposer.getObadhGeneration()
+                            && acceptsObadhSuggestions(words)) {
+                        if (!(words.mInputStyle == SuggestedWords.INPUT_STYLE_BEGINNING_OF_SENTENCE_PREDICTION
+                                && mLatinIME.tryShowClipboardSuggestion())) mSuggestionStripViewAccessor.setSuggestions(words);
+                    }
+                });
+            } catch (Exception error) { Log.e(TAG, "Obadh suggestions unavailable", error); }
+        });
+    }

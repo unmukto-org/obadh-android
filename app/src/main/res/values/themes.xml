@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Window background shows before Compose draws: charcoal avoids a white flash in dark mode. -->
-    <style name="Theme.Obadh" parent="android:Theme.Material.NoActionBar">
+    <!-- Match system appearance before Compose draws, including framework test editors. -->
+    <style name="Theme.Obadh.Base" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/obadh_window_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+    <style name="Theme.Obadh" parent="Theme.Obadh.Base" />
 </resources>

@@ -24,7 +24,7 @@ class LearnedWordStore(context: Context) {
     @Synchronized
     fun clear() {
         cache.clear()
-        prefs.edit().remove(KEY).apply()
+        check(prefs.edit().remove(KEY).commit()) { "Couldn't delete protected spellings" }
     }
 
     private companion object {

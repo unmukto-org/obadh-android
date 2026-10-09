@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:settingsActivity="org.unmukto.obadh.app.MainActivity"
-    android:supportsSwitchingToNextInputMethod="true" />
+<?xml version='1.0' encoding='utf-8'?>
+<input-method xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:settingsActivity="org.unmukto.obadh.app.MainActivity" android:isDefault="@bool/im_is_default" android:supportsSwitchingToNextInputMethod="true" android:supportsInlineSuggestions="true" tools:targetApi="r">
+    <subtype android:icon="@drawable/ic_ime_switcher" android:label="@string/subtype_en_US" android:subtypeId="0xc9194f98" android:imeSubtypeLocale="en_US" android:languageTag="en-US" android:imeSubtypeMode="keyboard" android:imeSubtypeExtraValue="TrySuppressingImeSwitcher,AsciiCapable,SupportTouchPositionCorrection,EmojiCapable" android:isAsciiCapable="true" />
+    <subtype android:icon="@drawable/ic_ime_switcher" android:label="@string/subtype_khipro_bn" android:subtypeId="0xa2144c0e" android:imeSubtypeLocale="bn_BD" android:languageTag="bn-BD" android:imeSubtypeMode="keyboard" android:imeSubtypeExtraValue="KeyboardLayoutSet=MAIN:qwerty,CombiningRules=bn_obadh,EmojiCapable" android:isAsciiCapable="true" />
+</input-method>

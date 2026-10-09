@@ -1,5 +1,7 @@
 # Text composition and input behavior
 
+The active keyboard now uses Android composing regions through the shared native editor, rather than the legacy direct-text controller below. See [the native integration guide](heliboard-integration.md) for current ownership and validation.
+
 The decisions here were mostly forced by how Android treats input methods, and
 several mirror [the iOS decisions](../../obadh-ios/docs/text-composition.md).
 

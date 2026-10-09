@@ -6,9 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.*
+import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.platform.LocalContext
 import org.unmukto.obadh.settings.KeyboardPreferences
 
@@ -16,53 +17,44 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Debug builds can jump straight to a screen or onboarding step for review, since
-        // leaf screens sit behind taps: `am start ... --es screen about --es step setup`.
         val debuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         val screen = if (debuggable) intent.getStringExtra("screen") else null
-        val step = if (debuggable) intent.getStringExtra("step") else null
-        setContent { ObadhTheme { RootScreen(startScreen = screen, startStep = step) } }
+        setContent { ObadhTheme { RootScreen(startScreen = screen) } }
     }
 }
 
-private enum class Route { Settings, Privacy, About, Shortcuts }
-
 @Composable
-fun RootScreen(startScreen: String?, startStep: String?) {
+fun RootScreen(startScreen: String?) {
     val context = LocalContext.current
     val prefs = remember { KeyboardPreferences(context) }
     val keyboard by rememberKeyboardState()
-    var finished by remember { mutableStateOf(prefs.setupCompleted || startScreen != null) }
-    var route by rememberSaveable {
-        mutableStateOf(Route.entries.firstOrNull { it.name.equals(startScreen, true) } ?: Route.Settings)
+    var finished by rememberSaveable {
+        mutableStateOf(startScreen != "setup" && (prefs.setupCompleted || startScreen != null))
     }
-
+    var route by rememberSaveable {
+        mutableStateOf(AppScreen.entries.firstOrNull { it.name.equals(startScreen, true) } ?: AppScreen.Settings)
+    }
+    val screenState = rememberSaveableStateHolder()
     if (!finished) {
-        OnboardingScreen(keyboard, prefs, startStep) {
+        OnboardingScreen(keyboard, prefs) {
             prefs.onboardingStep = null
             prefs.setupCompleted = true
             finished = true
         }
         return
     }
-
-    BackHandler(enabled = route != Route.Settings) { route = Route.Settings }
-    AnimatedContent(
-        targetState = route,
-        transitionSpec = {
-            if (targetState == Route.Settings) {
-                (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
-            } else {
-                (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
+    val back = { route = AppScreen.Settings }
+    BackHandler(enabled = route != AppScreen.Settings, onBack = back)
+    Crossfade(targetState = route, label = "settings page") { current ->
+        screenState.SaveableStateProvider(current) {
+            when (current) {
+                AppScreen.Settings -> SettingsScreen(keyboard) { route = it }
+                AppScreen.Privacy -> PrivacyScreen(back)
+                AppScreen.About -> AboutScreen(back)
+                AppScreen.Shortcuts -> ShortcutsScreen(prefs, back)
+                AppScreen.Clipboard -> ClipboardScreen(prefs, back)
+                else -> KeyboardOptionsScreen(current, prefs, back)
             }
-        },
-        label = "route",
-    ) { current ->
-        when (current) {
-            Route.Settings -> SettingsScreen(keyboard, prefs, { route = Route.Privacy }, { route = Route.About }, { route = Route.Shortcuts })
-            Route.Privacy -> PrivacyScreen { route = Route.Settings }
-            Route.About -> AboutScreen { route = Route.Settings }
-            Route.Shortcuts -> ShortcutsScreen { route = Route.Settings }
         }
     }
 }

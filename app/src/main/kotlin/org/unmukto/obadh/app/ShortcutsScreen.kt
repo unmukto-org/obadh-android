@@ -1,172 +1,136 @@
 package org.unmukto.obadh.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.window.Dialog
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import org.unmukto.obadh.R
+import org.unmukto.obadh.settings.KeyboardPreferences
 import org.unmukto.obadh.settings.TextShortcut
 import org.unmukto.obadh.settings.TextShortcuts
 
+/** Native list and full-screen editor; adding a shortcut is a standard toolbar action. */
 @Composable
-private fun FieldLabel(text: String) {
-    Text(
-        text, Modifier.padding(start = 4.dp, bottom = 6.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun ShortcutField(
-    value: String, onChange: (String) -> Unit, placeholder: String, keyboard: KeyboardOptions,
-    monospace: Boolean, singleLine: Boolean,
-) {
-    TextField(
-        value, onChange, Modifier.fillMaxWidth(),
-        placeholder = { Text(placeholder, fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default) },
-        textStyle = LocalTextStyle.current.copy(fontSize = 16.sp, fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default),
-        singleLine = singleLine, maxLines = if (singleLine) 1 else 4, keyboardOptions = keyboard,
-        shape = RoundedCornerShape(14.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-            cursorColor = Brand.Teal,
-        ),
-    )
-}
-
-/** Add, edit and remove personal text shortcuts (trigger → expansion). */
-@Composable
-fun ShortcutsScreen(onBack: () -> Unit) {
+fun ShortcutsScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
     val context = LocalContext.current
     val store = remember { TextShortcuts(context) }
     var items by remember { mutableStateOf(store.all()) }
-    // null = closed, "" = adding, otherwise the trigger being edited.
-    var editing by remember { mutableStateOf<String?>(null) }
-
-    DetailScaffold("Text Shortcuts", onBack) {
-        Spacer(Modifier.height(8.dp))
-        Section(footer = "Type the shortcut, then space or return. It works in Bangla and English mode, and for symbols such as @@. Shortcuts are case-sensitive and stay on this device.") {
-            Text(
-                "Add Shortcut",
-                Modifier.fillMaxWidth().clickable { editing = "" }.padding(horizontal = 16.dp, vertical = 14.dp),
-                fontSize = 16.sp, color = MaterialTheme.colorScheme.primary,
+    var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    val original = editing
+    if (original != null) {
+        key(original) {
+            ShortcutEditor(
+                existing = items.firstOrNull { it.trigger == original }, items = items,
+                onBack = { editing = null },
+                onSave = { shortcut ->
+                    val saved = store.put(shortcut, replacing = original.takeIf { it.isNotEmpty() })
+                    if (saved) { items = store.all(); editing = null }
+                    saved
+                },
+                onDelete = { store.remove(original); items = store.all(); editing = null },
             )
         }
-        if (items.isNotEmpty()) {
-            Section {
-                items.forEachIndexed { i, item ->
-                    if (i > 0) RowRule()
-                    Row(
-                        Modifier.fillMaxWidth().clickable { editing = item.trigger }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(item.trigger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace)
-                        Spacer(Modifier.width(14.dp))
-                        Text(
-                            item.expansion.replace('\n', ' '), Modifier.weight(1f), fontSize = 15.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
+        return
+    }
+    SettingsScaffold("Text shortcuts", onBack, actions = {
+        IconButton(onClick = { editing = "" }) { Symbol(R.drawable.ic_add, "Add shortcut") }
+    }) {
+        PrefToggle("Use text shortcuts", "Expand a shortcut when you press space or return", prefs.textShortcutsEnabled) { prefs.textShortcutsEnabled = it }
+        PreferenceNote("Shortcuts work in Bangla and English. They are case-sensitive and stay on this device.")
+        if (items.isEmpty()) {
+            Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("No shortcuts yet", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                Text("Save a phrase you often type, like your email address.", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+                FilledTonalButton(onClick = { editing = "" }) { Text("Add shortcut") }
+            }
+        } else {
+            PreferenceHeading("Your shortcuts")
+            items.forEach { item ->
+                PreferenceItem(
+                    content = { Text(item.trigger) },
+                    supportingContent = { Text(item.expansion.replace('\n', ' '), maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    onClick = { editing = item.trigger },
+                )
             }
         }
     }
+}
 
-    editing?.let { original ->
-        val existing = items.firstOrNull { it.trigger == original }
-        var trigger by remember(original) { mutableStateOf(existing?.trigger ?: "") }
-        var expansion by remember(original) { mutableStateOf(existing?.expansion ?: "") }
-        val valid = trigger.isNotEmpty() && trigger.none { it.isWhitespace() } && expansion.isNotEmpty()
-        Dialog(onDismissRequest = { editing = null }) {
-            Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-                    .background(MaterialTheme.colorScheme.surface).padding(24.dp),
-            ) {
-                Text(if (existing == null) "New Shortcut" else "Edit Shortcut", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Type the shortcut, then space, and it becomes the phrase.",
-                    fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShortcutEditor(
+    existing: TextShortcut?, items: List<TextShortcut>, onBack: () -> Unit,
+    onSave: (TextShortcut) -> Boolean, onDelete: () -> Unit,
+) {
+    var trigger by rememberSaveable { mutableStateOf(existing?.trigger ?: "") }
+    var expansion by rememberSaveable { mutableStateOf(existing?.expansion ?: "") }
+    var deleting by rememberSaveable { mutableStateOf(false) }
+    var saveFailed by rememberSaveable { mutableStateOf(false) }
+    var discard by rememberSaveable { mutableStateOf(false) }
+    val duplicate = items.any { it.trigger == trigger && it.trigger != existing?.trigger }
+    val full = existing == null && items.size >= TextShortcuts.MAX_ITEMS
+    val valid = trigger.isNotBlank() && expansion.isNotBlank() && !duplicate && !full
+    val changed = trigger != (existing?.trigger ?: "") || expansion != (existing?.expansion ?: "")
+    val back = { if (changed) discard = true else onBack() }
+    BackHandler(onBack = back)
+    Scaffold(
+        modifier = Modifier.imePadding(),
+        topBar = {
+            TopAppBar(
+                title = { Text(if (existing == null) "Add shortcut" else "Edit shortcut") },
+                navigationIcon = { IconButton(onClick = back) { Symbol(R.drawable.ic_arrow_back, "Back") } },
+                actions = {
+                    TextButton(enabled = valid, onClick = { saveFailed = !onSave(TextShortcut(trigger, expansion)) }) { Text("Save") }
+                },
+            )
+        },
+    ) { insets ->
+        Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                OutlinedTextField(
+                    value = expansion, onValueChange = { expansion = it.take(TextShortcuts.MAX_EXPANSION); saveFailed = false },
+                    label = { Text("Phrase") }, placeholder = { Text("name@example.com") },
+                    modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5,
                 )
                 Spacer(Modifier.height(20.dp))
-                FieldLabel("Shortcut")
-                ShortcutField(
-                    trigger, { trigger = it.filterNot { c -> c.isWhitespace() }.take(TextShortcuts.MAX_TRIGGER) },
-                    "@@", KeyboardOptions(keyboardType = KeyboardType.Ascii), monospace = true, singleLine = true,
+                OutlinedTextField(
+                    value = trigger, onValueChange = {
+                        trigger = it.filterNot(Char::isWhitespace).take(TextShortcuts.MAX_TRIGGER)
+                        saveFailed = false
+                    },
+                    label = { Text("Shortcut") }, placeholder = { Text("@@") },
+                    supportingText = { Text(if (duplicate) "This shortcut already exists" else "Type this, then space or return, to insert the phrase") },
+                    isError = duplicate, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii), modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(14.dp))
-                FieldLabel("Phrase")
-                ShortcutField(
-                    expansion, { expansion = it.take(TextShortcuts.MAX_EXPANSION) },
-                    "name@example.com", KeyboardOptions.Default, monospace = false, singleLine = false,
-                )
-                if (valid) {
-                    Spacer(Modifier.height(14.dp))
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .background(Brand.Teal.copy(alpha = 0.12f)).padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(trigger, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Brand.Teal)
-                        Text("  \u2192  ", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            expansion.replace('\n', ' '), Modifier.weight(1f), fontSize = 14.sp,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                if (full || saveFailed) {
+                    Text("You can save up to ${TextShortcuts.MAX_ITEMS} shortcuts. Delete one before adding another.",
+                        Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
-                Spacer(Modifier.height(22.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (existing != null) {
-                        Text(
-                            "Delete",
-                            Modifier.clip(CircleShape)
-                                .clickable { store.remove(existing.trigger); items = store.all(); editing = null }
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            color = MaterialTheme.colorScheme.error, fontSize = 15.sp, fontWeight = FontWeight.Medium,
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        "Cancel",
-                        Modifier.clip(CircleShape).clickable { editing = null }.padding(horizontal = 16.dp, vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.Medium,
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Box(
-                        Modifier.clip(CircleShape)
-                            .then(if (valid) Modifier.background(Brand.action) else Modifier.background(MaterialTheme.colorScheme.surfaceVariant))
-                            .clickable(enabled = valid) {
-                                if (store.put(TextShortcut(trigger, expansion), replacing = existing?.trigger)) items = store.all()
-                                editing = null
-                            }
-                            .padding(horizontal = 22.dp, vertical = 10.dp),
-                    ) {
-                        Text(
-                            "Save", fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                            color = if (valid) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        )
-                    }
+                if (existing != null) {
+                    Spacer(Modifier.height(24.dp))
+                    TextButton(onClick = { deleting = true }) { Text("Delete shortcut", color = MaterialTheme.colorScheme.error) }
                 }
             }
         }
     }
+    if (deleting) ConfirmDeletion("Delete shortcut?", "The shortcut and its phrase will be removed.", { deleting = false }, onDelete)
+    if (discard) AlertDialog(
+        onDismissRequest = { discard = false }, title = { Text("Discard changes?") },
+        text = { Text("Your changes haven't been saved.") },
+        confirmButton = { TextButton(onClick = onBack) { Text("Discard") } },
+        dismissButton = { TextButton(onClick = { discard = false }) { Text("Keep editing") } },
+    )
 }
