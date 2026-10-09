@@ -91,13 +91,17 @@ fun AboutScreen(onBack: () -> Unit) {
             }
         }
         PreferenceItem(content = { Text("Version") }, supportingContent = { Text(AppBuildInfo.version) })
-        PreferenceItem(content = { Text("Open source") }, supportingContent = { Text("Made by Unmukto. Bangla powered by Obadh Engine. Android keyboard foundation: HeliBoard / AOSP (GPLv3).") })
+        PreferenceItem(content = { Text("Made by Unmukto") }, supportingContent = { Text("Obadh brings fast Bangla phonetic typing, corrections, suggestions and personal vocabulary to Android.") })
+        PreferenceItem(content = { Text("Obadh Engine") }, supportingContent = { Text("Our Bangla language engine powers transliteration, autocorrect, suggestions and Bangla emoji search, on your device.") })
+        PreferenceHeading("Open-source acknowledgments")
+        PreferenceItem(content = { Text("Android keyboard foundation") }, supportingContent = { Text("HeliBoard / AOSP (GPLv3), adapted for Obadh's unified Bangla and English keyboard.") })
         PreferenceNote("Optional English swipe typing uses a separately downloaded Google library. It is not part of the open-source app.")
         PreferenceItem(
             content = { Text("Build details") },
             supportingContent = { Text(if (details) "Tap to hide" else "Technical information for support") },
             onClick = { details = !details },
         )
+        org.unmukto.obadh.stickers.StickerCredits()
         if (details) {
             ValueRow("Engine", AppBuildInfo.engineVersion)
             ValueRow("Build", AppBuildInfo.build)
@@ -125,9 +129,9 @@ fun PrivacyScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     SettingsScaffold("Privacy", onBack, snackbar = snackbar) {
         PreferenceHeading("On-device processing")
-        PreferenceNote("Transliteration, autocorrect, suggestions and emoji search work on your device. Obadh does not send your typing to a server. Network access is used only for the optional swipe-typing library download you request.")
+        PreferenceNote("Transliteration, autocorrect, suggestions and emoji search work on your device. Obadh does not send your typing to a server. Network access is used only for optional swipe-typing and sticker-pack downloads you request. Sticker search also stays on your device.")
         PreferenceHeading("Stored data")
-        PreferenceNote("Obadh stores learned words, recent emoji, your text shortcuts, clipboard history and an optional resized keyboard photo in its private storage. Clipboard collection excludes password fields, incognito mode and items marked sensitive.")
+        PreferenceNote("Obadh stores learned words, recent emoji, your text shortcuts, clipboard history sticker favorites and recents, downloaded sticker packs, and an optional resized keyboard photo in its private storage. Clipboard collection excludes password fields, incognito mode and items marked sensitive.")
         PreferenceHeading("Keyboard access")
         PreferenceNote("Android warns that any keyboard can read what you type. Obadh uses this access to enter and correct text, with all processing on your device.")
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))

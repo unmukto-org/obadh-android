@@ -299,3 +299,23 @@ def apply(main, replace):
         '                    commitCurrentAutoCorrection(inputTransaction.getSettingsValues(), LastComposedWord.NOT_A_SEPARATOR, handler);\n'
         '                else commitTyped(inputTransaction.getSettingsValues(), LastComposedWord.NOT_A_SEPARATOR);\n'
         '            }')
+
+    # A single host transaction prepares rich content, preserving literal Bangla composition.
+    replace(logic, '    public void finishInput() {',
+        '    public void prepareObadhContentInput() {\n'
+        '        mObadhSuggestionRequest.incrementAndGet();\n'
+        '        finishInput();\n'
+        '        resetEntireInputState(mConnection.getExpectedSelectionStart(), mConnection.getExpectedSelectionEnd(), true);\n'
+        '    }\n'
+        '    public void finishInput() {')
+    replace(base / 'latin/LatinIME.java', '    public void reloadObadhSettings() {',
+        '    public void prepareObadhContentInput() {\n'
+        '        mHandler.cancelUpdateSuggestionStrip();\n'
+        '        mInputLogic.prepareObadhContentInput();\n'
+        '    }\n'
+        '    public void reloadObadhSettings() {')
+
+    replace(base / 'latin/LatinIME.java', '        if (TRACE) Debug.startMethodTracing("/data/trace/latinime");',
+        '        final var obadh = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();\n'
+        '        if (obadh != null) obadh.inputViewStarted();\n'
+        '        if (TRACE) Debug.startMethodTracing("/data/trace/latinime");')

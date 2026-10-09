@@ -71,6 +71,7 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
         }
         CategoryRow("Clipboard", null, helium314.keyboard.latin.R.drawable.obadh_ic_content_paste) { onOpen(AppScreen.Clipboard) }
         CategoryRow("Text shortcuts", null, helium314.keyboard.latin.R.drawable.obadh_ic_book) { onOpen(AppScreen.Shortcuts) }
+        CategoryRow("Stickers", null, helium314.keyboard.latin.R.drawable.obadh_ic_sticker) { org.unmukto.obadh.stickers.StickerController.openManager(context) }
         CategoryRow("Emoji", null, helium314.keyboard.latin.R.drawable.obadh_ic_sentiment_satisfied) { onOpen(AppScreen.Emoji) }
         CategoryRow("Privacy", null, helium314.keyboard.latin.R.drawable.obadh_ic_shield) { onOpen(AppScreen.Privacy) }
         CategoryRow("About", "Obadh ${AppBuildInfo.version}", helium314.keyboard.latin.R.drawable.obadh_ic_info) { onOpen(AppScreen.About) }

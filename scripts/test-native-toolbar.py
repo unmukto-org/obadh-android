@@ -27,8 +27,8 @@ def run():
     n.shell('ime','set',n.PACKAGE+'/.keyboard.ObadhInputMethodService')
     for language in ('bn','en'):
         start(language);home=controls()
-        assert list(home)==['Keyboard tools','Emoji','GIFs unavailable','Clipboard','Settings','Theme','Voice typing'],home
-        assert not home['GIFs unavailable']['enabled']
+        assert list(home)==['Keyboard tools','Emoji','Stickers','Clipboard','Settings','Theme','Voice typing'],home
+        assert home['Stickers']['enabled'] # Browsing explains unsupported editor capabilities.
         tap('Keyboard tools');grid=controls()
         assert 'Back to keyboard' in grid and 'Keyboard size' in grid and 'Next language' in grid,grid
         bottom=grid['Back to keyboard']['y']+grid['Back to keyboard']['height']/2
@@ -58,7 +58,7 @@ def run():
         print('PASS private theme destination and microphone placeholder',language,flush=True)
         start(language,field='password');private=controls()
         assert 'Keyboard tools' not in private and 'Voice typing' not in private,private
-        assert not private['Clipboard']['enabled'] and not private['Emoji']['enabled'],private
+        assert not private['Clipboard']['enabled'] and not private['Emoji']['enabled'] and not private['Stickers']['enabled'],private
         print('PASS sensitive-field toolbar guards',language,flush=True)
     start('bn');tap('Keyboard tools');tap('Keyboard size')
     assert any(x.get('text')=='Preferences' for x in n.screen().iter('node'))

@@ -50,9 +50,9 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         if (context.prefs().getString(Settings.PREF_THEME_COLORS, "") == "obadh_photo")
             strip.setBackgroundColor(0x4d000000)
         home.removeAllViews()
-        // These five slots retain their positions. Unsupported media is visibly unavailable.
-        button("Emoji", R.drawable.obadh_ic_sticker) { send(getCodeForToolbarKey(ToolbarKey.EMOJI)) }
-        button("GIFs unavailable", R.drawable.obadh_ic_gif, false) {}
+        // Fixed Gboard-style home controls; stickers negotiate capabilities with the editor.
+        button("Emoji", R.drawable.obadh_ic_sentiment_satisfied) { send(getCodeForToolbarKey(ToolbarKey.EMOJI)) }
+        button("Stickers", R.drawable.obadh_ic_sticker) { showStickers() }
         button("Clipboard", R.drawable.obadh_ic_assignment) { send(getCodeForToolbarKey(ToolbarKey.CLIPBOARD)) }
         button("Settings", R.drawable.obadh_ic_settings) { open("org.unmukto.obadh.app.MainActivity") }
         button("Theme", R.drawable.obadh_ic_palette) { open("org.unmukto.obadh.app.ThemeActivity") }
@@ -97,6 +97,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         grid.isVisible = !sensitive
         voice.isVisible = !sensitive
         home.getChildAt(0).apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
+        home.getChildAt(1).apply { isEnabled = !sensitive; alpha = if (ObadhExtensions.current?.stickersSupported == true) 1f else .38f }
         home.getChildAt(2).apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
         if (!showHome || sensitive || external) menu?.dismiss()
     }
@@ -117,6 +118,12 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
             android.graphics.drawable.InsetDrawable(RippleDrawable(ColorStateList.valueOf((text and 0x00ffffff) or 0x22000000),
                 GradientDrawable().apply { cornerRadius=dp(12).toFloat();setColor(this@ObadhToolbar.colors.get(ColorType.KEY_BACKGROUND)) }, null), dp(3), dp(5), dp(3), dp(5))
         } else ripple(Color.TRANSPARENT)
+    }
+
+    private fun showStickers() {
+        menu?.dismiss()
+        menu = ObadhExtensions.current?.showStickers(strip) { menu=null;setExpanded(false) }
+        if (menu != null) setExpanded(true)
     }
 
     private fun showTools() {

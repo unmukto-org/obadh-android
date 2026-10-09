@@ -1,0 +1,5 @@
+Blobfox
+Artwork: Volpeon (formerly Feuerfuchs)
+Source: https://volpeon.ink/emojis/blobfox/
+License: Apache-2.0
+Converted by Unmukto for Obadh: bounded transparent PNGs and WebP thumbnails; animated sources use their first frame. Artwork licenses remain separate from application/code licenses.

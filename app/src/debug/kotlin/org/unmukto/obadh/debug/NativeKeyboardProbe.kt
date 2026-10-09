@@ -20,7 +20,27 @@ import org.unmukto.obadh.settings.NativePreferences
 class NativeKeyboardProbeActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
-        val field = EditText(this).apply {
+        val field = object : EditText(this) {
+            override fun onCreateInputConnection(info: android.view.inputmethod.EditorInfo): android.view.inputmethod.InputConnection? {
+                val connection=super.onCreateInputConnection(info) ?: return null
+                val mode=intent.getStringExtra("field")
+                if(mode !in listOf("sticker","reject_sticker","gif_only")) return connection
+                info.contentMimeTypes=arrayOf(if(mode=="gif_only") "image/gif" else "image/png")
+                return object : android.view.inputmethod.InputConnectionWrapper(connection,false) {
+                    override fun commitContent(content: android.view.inputmethod.InputContentInfo,flags: Int,options: Bundle?): Boolean {
+                        if(mode=="reject_sticker") { android.util.Log.i("ObadhStickerReceipt","rejected");return false }
+                        return runCatching {
+                            content.requestPermission()
+                            val bytes=contentResolver.openInputStream(content.contentUri)!!.use { it.readBytes() }
+                            check(content.description.hasMimeType("image/png"))
+                            check(org.unmukto.obadh.stickers.StickerSafety.validPng(bytes))
+                            android.util.Log.i("ObadhStickerReceipt",org.json.JSONObject().put("bytes",bytes.size).put("flags",flags).put("uri",content.contentUri.toString()).put("hash",org.unmukto.obadh.stickers.StickerSafety.digest(bytes)).toString())
+                            content.releasePermission();true
+                        }.getOrElse { android.util.Log.e("ObadhStickerReceipt","failed",it);false }
+                    }
+                }
+            }
+        }.apply {
             id = android.R.id.edit
             inputType = when (intent.getStringExtra("field")) {
                 "password" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD

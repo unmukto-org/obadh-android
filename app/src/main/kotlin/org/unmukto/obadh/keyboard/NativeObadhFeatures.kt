@@ -120,6 +120,10 @@ object NativeObadhFeatures : ObadhExtension {
     override fun shortcut(trigger: String, settings: SettingsValues): String? =
         if (options.shortcutsEnabled && !literal(settings)) options.shortcuts[trigger] else null
 
+    override val stickersSupported get() = org.unmukto.obadh.stickers.StickerController.supported()
+    override fun showStickers(anchor: android.view.View, onDismiss: () -> Unit) = org.unmukto.obadh.stickers.StickerController.show(anchor, onDismiss)
+
+    override fun inputViewStarted() { activeIme?.let(org.unmukto.obadh.stickers.StickerController::returned) }
     override fun startInput() { worker.execute { engine.clearAutosuggestSession() } }
 
     override fun suggestions(composer: WordComposer, context: NgramContext, settings: SettingsValues,

@@ -111,7 +111,7 @@ pinned as individual licensed vectors; the microphone is a permission-free toast
 | Clipboard/pins, editing toolbar, undo/redo, cursor navigation | Native tools; excludes private/sensitive collection |
 | Text shortcuts and paired punctuation | Shared editor transactions for both languages |
 | Voice typing | Microphone in the reference position; next-release toast, no backend or microphone permission |
-| GIFs/stickers, cloud translation, Google account/AI services | Not represented as working local features; GIF provider evaluation is documented separately |
+| Online GIFs, cloud translation, Google account/AI services | Not represented as working local features; GIF provider evaluation is documented separately |
 
 This is a measured approximation of the observed release, not pixel equality of
 every Google screen or a promise to reproduce proprietary services. Custom themes,
@@ -119,3 +119,5 @@ large text, number row, nondefault keyboard size and floating/one-handed modes
 intentionally alter geometry. Emulated profiles do not certify physical device
 fonts, touch-to-photon latency, vendor insets, Android 17 runtime or every host app.
 Repeat the harness and interaction checklist on physical devices before store release.
+
+Stickers now use a native themed local picker, two default packs, optional verified GitHub downloads and local search. See [stickers](stickers.md) for editor compatibility, licensing and lifecycle policy.

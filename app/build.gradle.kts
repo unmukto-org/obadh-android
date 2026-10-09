@@ -97,6 +97,7 @@ kotlin {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(project(":keyboard"))
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)

@@ -14,6 +14,27 @@ class ObadhInputMethodService : helium314.keyboard.latin.LatinIME() {
         NativeObadhFeatures.attach(this)
         NativeDataMigration.run(this)
     }
+    override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
+        org.unmukto.obadh.stickers.StickerController.invalidate()
+        super.onStartInput(info, restarting)
+        org.unmukto.obadh.stickers.StickerController.restoreInput(this,info)
+    }
+    override fun onFinishInputView(finishingInput: Boolean) {
+        org.unmukto.obadh.stickers.StickerController.invalidate()
+        super.onFinishInputView(finishingInput)
+    }
+    override fun onWindowShown() {
+        super.onWindowShown()
+        org.unmukto.obadh.stickers.StickerController.returned(this)
+    }
+    override fun onWindowHidden() {
+        org.unmukto.obadh.stickers.StickerController.invalidate()
+        super.onWindowHidden()
+    }
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        org.unmukto.obadh.stickers.trimStickerMemory()
+    }
     override fun onTextInput(rawText: String?) {
         rawText?.let(NativeObadhFeatures::recordEmoji)
         super.onTextInput(rawText)
