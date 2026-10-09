@@ -51,7 +51,6 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
             strip.setBackgroundColor(0x4d000000)
         home.removeAllViews()
         // Fixed Gboard-style home controls; stickers negotiate capabilities with the editor.
-        button("Emoji", R.drawable.obadh_ic_sentiment_satisfied) { send(getCodeForToolbarKey(ToolbarKey.EMOJI)) }
         button("Stickers", R.drawable.obadh_ic_sticker) { showStickers() }
         button("Clipboard", R.drawable.obadh_ic_assignment) { send(getCodeForToolbarKey(ToolbarKey.CLIPBOARD)) }
         button("Settings", R.drawable.obadh_ic_settings) { open("org.unmukto.obadh.app.MainActivity") }
@@ -78,6 +77,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         home.addView(ImageButton(context).apply {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
             contentDescription = label
+            tag = label
             setImageResource(icon)
             imageTintList = ColorStateList.valueOf(text)
             background = ripple(Color.TRANSPARENT)
@@ -96,9 +96,8 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         candidates.isVisible = !showHome
         grid.isVisible = !sensitive
         voice.isVisible = !sensitive
-        home.getChildAt(0).apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
-        home.getChildAt(1).apply { isEnabled = !sensitive; alpha = if (ObadhExtensions.current?.stickersSupported == true) 1f else .38f }
-        home.getChildAt(2).apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
+        home.findViewWithTag<View>("Stickers").apply { isEnabled = !sensitive; alpha = if (ObadhExtensions.current?.stickersSupported == true && !sensitive) 1f else .38f }
+        home.findViewWithTag<View>("Clipboard").apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
         if (!showHome || sensitive || external) menu?.dismiss()
     }
 
@@ -144,7 +143,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         val tools = listOf(Tool("One-handed",ToolbarKey.ONE_HANDED,icon=R.drawable.obadh_ic_mobile_hand),Tool("Text editing",ToolbarKey.DPAD,icon=R.drawable.obadh_ic_text_editing),
             if (automatic) Tool("Split",ToolbarKey.SPLIT) else Tool("Incognito",ToolbarKey.INCOGNITO),Tool("Floating",ToolbarKey.FLOATING,icon=R.drawable.obadh_ic_keyboard),
             Tool("Keyboard size",icon=R.drawable.obadh_ic_resize,action={ open("org.unmukto.obadh.app.MainActivity",Intent.ACTION_APPLICATION_PREFERENCES) }),
-            Tool("Next language",icon=R.drawable.obadh_ic_language,action={ send(KeyCode.LANGUAGE_SWITCH) }),Tool("Emoji",ToolbarKey.EMOJI),Tool("Undo",ToolbarKey.UNDO))
+            Tool("Next language",icon=R.drawable.obadh_ic_language,action={ send(KeyCode.LANGUAGE_SWITCH) }),Tool("Undo",ToolbarKey.UNDO))
         tools.chunked(4).forEach { row ->
             root.addView(LinearLayout(context).apply {
                 row.forEach { tool ->
@@ -166,6 +165,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
                         setOnClickListener { menu?.dismiss();tool.action?.invoke() ?: tool.key?.let { send(getCodeForToolbarKey(it)) } }
                     })
                 }
+                repeat(4-row.size) { addView(View(context),LinearLayout.LayoutParams(0,dp(72),1f)) }
             })
         }
         val scroll=ScrollView(context).apply { isFillViewport=true;addView(root);setBackgroundColor(this@ObadhToolbar.colors.get(ColorType.MAIN_BACKGROUND)) }

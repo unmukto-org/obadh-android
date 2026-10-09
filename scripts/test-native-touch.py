@@ -13,8 +13,8 @@ n = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(n)
 
 
-def positions(codes):
-    n.command('coordinates', codes=','.join(map(str, codes)))
+def positions(codes, surface='main'):
+    n.command('coordinates', codes=','.join(map(str, codes)),surface=surface)
     lines = n.adb('logcat', '-d', '-s', 'ObadhProbeCoordinates:I', '-v', 'raw').splitlines()
     layout = json.loads(next(line for line in reversed(lines) if line.startswith('{')))
     x, y = layout['origin']

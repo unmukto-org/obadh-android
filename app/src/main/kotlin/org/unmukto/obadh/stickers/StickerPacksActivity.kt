@@ -68,7 +68,7 @@ private fun PackRow(pack: StickerPack) {
     PreferenceItem(content={ Text(pack.title) },supportingContent={ Text("$description\n${pack.artist} · ${pack.license}") },trailingContent={
         if(!pack.bundled) TextButton(enabled=!removing,onClick={
             when {
-                busy -> StickerDownloads.cancel(context,pack.id)
+                busy -> scope.launch { StickerDownloads.cancel(context,pack.id) }
                 installed -> confirm=true
                 else -> StickerDownloads.start(context,pack)
             }

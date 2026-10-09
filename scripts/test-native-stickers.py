@@ -15,6 +15,12 @@ def touch_node(description):
 
 def picker(language='en',field='sticker'):
     t.start(language,field=field);t.tap('Stickers');n.screen()
+    # Catalog and thumbnails intentionally load outside the UI/input thread.
+    # Accessibility idleness of the original app doesn't wait for the IME popup.
+    deadline=time.monotonic()+5
+    while 'Fox, Blobfox, sticker' not in t.controls():
+        assert time.monotonic()<deadline,'Sticker catalog did not become visible'
+        time.sleep(.1)
 
 def run():
     n.shell('ime','set',n.PACKAGE+'/.keyboard.ObadhInputMethodService')
@@ -31,7 +37,7 @@ def run():
         print('PASS',language,'literal composition preserved across rich-content insertion and resumed typing',flush=True)
     for field in ('text','gif_only'):
         picker(field=field);cells=t.controls();assert not cells['Fox, Blobfox, sticker']['enabled']
-        assert any(x.get('text')=="This app doesn't accept keyboard stickers" for x in n.screen().iter('node'))
+        assert "This app doesn't accept keyboard stickers" in t.controls()
         print('PASS unsupported editor',field,flush=True)
     picker(field='reject_sticker');n.adb('logcat','-c');t.tap('Fox, Blobfox, sticker');assert 'Search stickers' in t.controls()
     assert 'rejected' in n.adb('logcat','-d','-v','raw','-s','ObadhStickerReceipt:I','*:S')
@@ -49,9 +55,9 @@ def run():
     print('PASS empty-search and Back preserve original editor',flush=True)
     n.command('configure',**{'native.always_incognito_mode': True});picker();n.command('configure',**{'native.always_incognito_mode': True});t.tap('Stickers') if 'Search stickers' not in t.controls() else None
     assert 'Recent' not in t.controls();print('PASS incognito hides recents',flush=True)
-    n.command('configure');t.start('bn')
+    n.command('configure',**{'native.always_incognito_mode':False});t.start('bn')
     print('Native sticker regressions passed.',flush=True)
 
 if __name__=='__main__':
     try:run()
-    finally:n.command('configure')
+    finally:n.command('configure',**{'native.always_incognito_mode':False})

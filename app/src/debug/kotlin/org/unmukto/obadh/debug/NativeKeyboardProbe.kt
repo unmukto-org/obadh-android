@@ -80,9 +80,11 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
             "coordinates" -> {
                 val codes = intent.getStringExtra("codes")?.split(',')?.map(String::toInt)?.toIntArray()
                     ?: intent.getStringExtra("text").orEmpty().codePoints().toArray()
-                val coordinates = ime.getCoordinatesForCurrentKeyboard(codes)
+                val main=helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView
+                val view=if(intent.getStringExtra("surface")=="emoji") main.rootView.findViewById<helium314.keyboard.keyboard.MainKeyboardView>(helium314.keyboard.latin.R.id.bottom_row_keyboard) else main
+                val coordinates = requireNotNull(view.keyboard).getCoordinates(codes)
                 val origin = IntArray(2)
-                helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView.getLocationOnScreen(origin)
+                view.getLocationOnScreen(origin)
                 android.util.Log.i("ObadhProbeCoordinates", org.json.JSONObject()
                     .put("codes", org.json.JSONArray(codes.toList()))
                     .put("coordinates", org.json.JSONArray(coordinates.toList()))

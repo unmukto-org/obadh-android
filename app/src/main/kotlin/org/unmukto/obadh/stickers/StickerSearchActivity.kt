@@ -28,7 +28,6 @@ class StickerSearchActivity : Activity() {
     private var alive=true
     private var queryGeneration=0
     private var selected=false
-    private var imeWasVisible=false
     private lateinit var field: EditText
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -69,9 +68,10 @@ class StickerSearchActivity : Activity() {
         ViewCompat.setOnApplyWindowInsetsListener(root) { _,insets ->
             val system=insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime=insets.getInsets(WindowInsetsCompat.Type.ime())
-            val visible=insets.isVisible(WindowInsetsCompat.Type.ime())
-            if(imeWasVisible && !visible && !selected && !isChangingConfigurations && hasWindowFocus()) finish()
-            if(visible) imeWasVisible=true
+            // IME insets can briefly disappear while Android changes editor/layout.
+            // Keep the private search editor alive: only explicit navigation may
+            // return focus to the recipient. System Back uses Android's normal
+            // hide-keyboard, then leave-activity behavior.
             root.setPadding(system.left,system.top,system.right,maxOf(system.bottom,ime.bottom))
             val available=(resources.displayMetrics.heightPixels-system.top-maxOf(system.bottom,ime.bottom)-root.dp(120)).coerceAtLeast(root.dp(64))
             list.layoutParams.height=minOf(root.dp(180),available)

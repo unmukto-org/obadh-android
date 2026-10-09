@@ -20,7 +20,11 @@ object StickerDownloads {
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL,30,TimeUnit.SECONDS).build())
     }
-    fun cancel(context: Context, id: String) = synchronized(installLock) { WorkManager.getInstance(context).cancelUniqueWork(name(id)) }
+    suspend fun cancel(context: Context, id: String) = withContext(Dispatchers.IO) {
+        // Wait for WorkManager to mark the worker stopped before releasing the publication
+        // lock. Merely scheduling cancellation lets a verified archive win the race.
+        synchronized(installLock) { WorkManager.getInstance(context).cancelUniqueWork(name(id)).result.get() }
+    }
     suspend fun remove(context: Context, pack: StickerPack) = withContext(Dispatchers.IO) {
         if (!pack.bundled) synchronized(installLock) { pack.directory(context).deleteRecursively() }
     }
@@ -32,6 +36,9 @@ class StickerInstallWorker(context: Context, parameters: WorkerParameters) : Cor
             ?: return@withContext Result.failure(workDataOf("error" to "Pack unavailable. Update Obadh and try again."))
         if (pack.available(applicationContext)) return@withContext Result.success()
         val root = File(applicationContext.filesDir,"sticker-packs").apply { mkdirs() }
+        // Unique work owns one pack at a time. Reclaim staging files left by process death
+        // or an interrupted retry before creating this attempt's private directory.
+        root.listFiles()?.filter { it.name.startsWith(".stage-${pack.id}-") }?.forEach { it.deleteRecursively() }
         val stage = File(root,".stage-${pack.id}-$id").apply { mkdirs() }
         val archive = File(stage,"download.zip")
         var connection: HttpURLConnection? = null

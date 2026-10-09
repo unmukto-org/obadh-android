@@ -27,7 +27,7 @@ def run():
     n.shell('ime','set',n.PACKAGE+'/.keyboard.ObadhInputMethodService')
     for language in ('bn','en'):
         start(language);home=controls()
-        assert list(home)==['Keyboard tools','Emoji','Stickers','Clipboard','Settings','Theme','Voice typing'],home
+        assert list(home)==['Keyboard tools','Stickers','Clipboard','Settings','Theme','Voice typing'],home
         assert home['Stickers']['enabled'] # Browsing explains unsupported editor capabilities.
         tap('Keyboard tools');grid=controls()
         assert 'Back to keyboard' in grid and 'Keyboard size' in grid and 'Next language' in grid,grid
@@ -37,15 +37,27 @@ def run():
         print('PASS fixed toolbar, in-keyboard grid and Back',language,flush=True)
         start(language);n.type_text('am' if language=='bn' else 'hel');n.screen()
         before=n.inspect();assert before['labels'],before
-        assert 'Emoji' not in controls(),controls()
-        tap('Keyboard tools');assert 'Emoji' in controls() and 'Back to keyboard' in controls()
-        tap('Back to keyboard');assert 'Emoji' not in controls(),controls()
+        assert 'Stickers' not in controls(),controls()
+        tap('Keyboard tools');assert 'Stickers' in controls() and 'Back to keyboard' in controls()
+        tap('Back to keyboard');assert 'Stickers' not in controls(),controls()
         assert n.inspect()['labels']==before['labels'],n.inspect()
         print('PASS context-aware tools restore composing candidates',language,flush=True)
         start(language)
         tap('Keyboard tools');tap('Next language')
         assert n.inspect()['controls']['locale']==('en' if language=='bn' else 'bn')
         print('PASS tools language switching',language,flush=True)
+        start(language);before=controls();tap('Keyboard tools');assert 'Emoji' not in controls();tap('Back to keyboard')
+        x,y=a.touch.positions([44])[44];n.shell('input','swipe',x,y,x,y,800);n.screen()
+        assert n.inspect()['controls']['emoji_panel']
+        a.touch.tap(a.touch.positions([-201],surface='emoji')[-201]);n.screen()
+        after=controls()
+        assert not n.inspect()['controls']['emoji_panel']
+        assert list(after)==list(before),(before,after)
+        assert all(after[label]['width']==before[label]['width'] and after[label]['x']==before[label]['x'] for label in before),(before,after)
+        tap('Keyboard tools');menu=controls();assert 'One-handed' in menu
+        assert 'Emoji' not in menu,menu
+        tap('Back to keyboard')
+        print('PASS comma Emoji → actual ABC restores identical toolbar; no duplicate Emoji shortcut',language,flush=True)
         start(language);tap('Clipboard');assert n.inspect()['controls']['clipboard_panel']
         start(language);a.touch.tap(a.touch.positions([44])[44]);assert n.text()==',',n.inspect()
         start(language);x,y=a.touch.positions([44])[44];n.shell('input','swipe',x,y,x,y,800);n.screen()
@@ -58,7 +70,7 @@ def run():
         print('PASS private theme destination and microphone placeholder',language,flush=True)
         start(language,field='password');private=controls()
         assert 'Keyboard tools' not in private and 'Voice typing' not in private,private
-        assert not private['Clipboard']['enabled'] and not private['Emoji']['enabled'] and not private['Stickers']['enabled'],private
+        assert not private['Clipboard']['enabled'] and not private['Stickers']['enabled'],private
         print('PASS sensitive-field toolbar guards',language,flush=True)
     start('bn');tap('Keyboard tools');tap('Keyboard size')
     assert any(x.get('text')=='Preferences' for x in n.screen().iter('node'))

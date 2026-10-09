@@ -121,6 +121,7 @@ internal object StickerPanel {
             list.scrollToPosition(0)
             if(adapter.items.isEmpty()) message.text=if(id=="favorites") "Long-press a sticker to add it here" else "Your recent stickers will appear here"
             else message.text="This app doesn't accept keyboard stickers"
+            message.contentDescription=message.text
             message.visibility=if(adapter.items.isEmpty() || !adapter.enabled) View.VISIBLE else View.GONE
             for(i in 0 until tabs.childCount) tabs.getChildAt(i).alpha=if(tabs.getChildAt(i).tag==id) 1f else .6f
         }
@@ -133,7 +134,7 @@ internal object StickerPanel {
                     val categories=buildList { add("all" to "All");if(!incognito)add("recent" to "Recent");add("favorites" to "Favorites");packs.forEach { add(it.id to it.title) } }
                     categories.forEach { (id,title) -> tabs.addView(label(title) { display(id) }.apply { tag=id },LinearLayout.LayoutParams(-2,root.dp(36)).apply { setMargins(root.dp(3),0,root.dp(3),0) }) }
                     display(selected)
-                }.onFailure { message.text="Couldn't load stickers. Try reopening the keyboard." }
+                }.onFailure { message.text="Couldn't load stickers. Try reopening the keyboard.";message.contentDescription=message.text;message.visibility=View.VISIBLE }
             }
         }
         val position=IntArray(2);keyboard.getLocationOnScreen(position)
