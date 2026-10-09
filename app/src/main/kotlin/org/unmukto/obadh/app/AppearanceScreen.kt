@@ -158,9 +158,9 @@ internal fun AppearanceScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(24.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    OutlinedButton(modifier = Modifier.width(91.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), enabled = !saving, onClick = { preview = null; photoState.cancelPreview() }) { Text("Cancel", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.primary) }
+                    OutlinedButton(modifier = Modifier.widthIn(min = 91.dp).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 16.dp), enabled = !saving, onClick = { preview = null; photoState.cancelPreview() }) { Text("Cancel", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.primary) }
                     val actionPalette = themePalette("dynamic", systemNight)
-                    Button(modifier = Modifier.width(88.dp).height(48.dp), contentPadding = PaddingValues(horizontal = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(actionPalette.accent), contentColor = Color(actionPalette.actionText)), enabled = !saving, onClick = {
+                    Button(modifier = Modifier.widthIn(min = 88.dp).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(actionPalette.accent), contentColor = Color(actionPalette.actionText)), enabled = !saving, onClick = {
                         if (id == "photo" && photoState.current != null) { photoState.apply(context, previewBorders); return@Button }
                         val theme = when (id) { "light", "dark" -> "default"; else -> id }
                         val mode = when(id) { "light" -> 1; "dark", "photo" -> 2; else -> 0 }
@@ -209,15 +209,15 @@ private fun ThemeSection(title: String, ids: List<String>, selectedId: String, n
 /** System Auto previews both modes and explains the wallpaper-independent night behavior. */
 @Composable
 private fun SystemThemePreview(borders: Boolean, modifier: Modifier) {
-    BoxWithConstraints(modifier.aspectRatio(948f / 605f)) {
+    BoxWithConstraints(modifier) {
         val tileWidth = maxWidth * (648f / 948f)
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
+        Column(Modifier.fillMaxWidth().heightIn(min = maxWidth * (605f / 948f)), verticalArrangement = Arrangement.Bottom) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 KeyboardThemePreview("light", false, borders, null, Modifier.width(tileWidth))
                 KeyboardThemePreview("dark", true, borders, null, Modifier.width(tileWidth))
             }
             Spacer(Modifier.height(10.dp))
-            Text("Appearance will follow system settings", Modifier.fillMaxWidth().height(24.dp),
+            Text("Appearance will follow system settings", Modifier.fillMaxWidth().heightIn(min = 24.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = 14.sp,
                 letterSpacing = 0.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(4.dp))

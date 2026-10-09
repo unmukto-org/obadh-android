@@ -55,7 +55,9 @@ Default contains Dynamic Color, System Auto, Default and Default Dark. Selection
 opens a preview with a key-border switch and Cancel/Apply. System Auto shows both
 light/dark keyboards and explains following system settings. On the 393 dp phone,
 the preview occupies the same measured 948 × 605 px rectangle at y=1141; controls
-remain accessible in landscape and at larger font sizes.
+remain accessible in landscape and at larger font sizes. The selector was also
+reviewed after genuine rotation and at 200% system font scale; explanatory text
+wraps and action buttons grow without clipping their labels.
 
 Public Android dynamic roles are used for both the preview and native keyboard,
 including `system_surface_container`, `system_surface_bright` and
