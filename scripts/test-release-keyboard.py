@@ -31,14 +31,19 @@ def editor():
     return next(x for x in m.nodes() if x.get('package') == HOST and x.get('resource-id') == 'android:id/edit')
 
 
-def start(language):
+def start(language, types):
     n.shell('am', 'start', '-n', n.PACKAGE + '/.app.MainActivity')
-    n.shell('am', 'start', '-n', ACTIVITY, '-f', '0x10008000', '--es', 'types', 'image/gif,image/webp')
+    n.shell('am', 'start', '-n', ACTIVITY, '-f', '0x10008000', '--es', 'types', types)
     x0, y0, x1, y1 = m.bounds(editor())
-    n.shell('input', 'tap', (x0+x1)//2, (y0+y1)//2)
-    n.screen()
-    state = n.shell('dumpsys', 'input_method')
-    assert 'mCurMethodId=' + n.PACKAGE + '/.keyboard.ObadhInputMethodService' in state and 'mInputShown=true' in state
+    for _ in range(3):
+        n.shell('input', 'tap', (x0+x1)//2, (y0+y1)//2)
+        n.screen()
+        state = n.shell('dumpsys', 'input_method')
+        if ('mCurMethodId=' + n.PACKAGE + '/.keyboard.ObadhInputMethodService' in state
+                and 'mInputShown=true' in state and 'mInputViewStarted=true' in state):
+            break
+    else:
+        raise AssertionError('Updated Obadh IME did not finish binding to the recipient editor')
     x, y = KEYS['32']
     n.shell('input', 'swipe', x, y, x, y, 800)
     prefix = 'বাংলা' if language == 'bn' else 'English'
@@ -66,9 +71,12 @@ def expect(value):
 
 
 def share(kind, expected_mime, text):
-    if not any(x.get('content-desc') == kind for x in m.nodes()):
-        m.tap('Keyboard tools')
-    m.tap(kind)
+    # Android's shell hierarchy may omit the IME window. Use recorded coordinates
+    # for actual native toolbar touches too, rather than relying on debug callbacks.
+    for label in ('Keyboard tools', kind):
+        control = KEYS['_toolbar'][label]
+        n.shell('input', 'tap', control['x'], control['y'])
+        n.screen()
     if any(x.get('text') == 'Enable' for x in m.nodes()):
         m.tap('Enable')
     row = m.wait_rows(kind)[0]
@@ -99,13 +107,13 @@ def run():
     host = re.search(r'package:'+re.escape(HOST)+r' uid:(\d+)', packages)
     assert app and host and app[1] != host[1]
     n.shell('ime', 'set', n.PACKAGE + '/.keyboard.ObadhInputMethodService')
-    start('bn')
+    start('bn', 'image/webp')
     for roman in ('ami', 'bhalo', 'achi'):
         glide(roman)
     expect('আমি ভালো আছি')
     print('PASS optimized Bangla continuous word glide', flush=True)
     share('Stickers', 'image/webp', 'আমি ভালো আছি')
-    start('en')
+    start('en', 'image/gif')
     glide('world')
     expect('world')
     print('PASS optimized English native glide', flush=True)
@@ -123,6 +131,7 @@ if __name__ == '__main__':
         n.command('key', code=-201)
         n.screen()
         values = m.t.a.touch.positions(list(range(ord('a'), ord('z')+1)) + [32, -7, -227])
+        values['_toolbar'] = m.t.controls()
         GEOMETRY.parent.mkdir(parents=True, exist_ok=True)
         GEOMETRY.write_text(json.dumps(values)+'\n')
         print('Recorded current debug renderer coordinates for touch-only release smoke')

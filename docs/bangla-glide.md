@@ -93,8 +93,8 @@ matching SHA-256; the fixture reselects Obadh because Android chooses a fallback
 IME when its selected service is deliberately force-stopped.
 
 2026-10-09: all word/boundary/field/layout cases passed on the existing Android 15
-ARM64 AVD. Across 25 debug decode-and-mapping samples, median was 833 µs, p95
-1,156 µs and maximum 1,255 µs, all on `InputLogicHandler`. These are decoder
+ARM64 AVD. Across 26 debug decode-and-mapping samples, median was 770 µs, p95
+1,138 µs and maximum 1,204 µs, all on `InputLogicHandler`. These are decoder
 measurements on an emulator, not an end-to-end physical-device latency guarantee.
 The model contributes 1,049,443 compressed bytes to the APK, plus one 2,441,868-byte
 private extracted copy for native access. No new emulator image was installed.
@@ -120,6 +120,14 @@ recipient UID/task. It verifies continuous Bangla/English word glide plus GIF an
 WebP sticker decoding, read-only seekable delivery and return to the same editor
 without changing the text. No messages are sent. It requires the existing opted-in
 swipe decoder and a privately configured KLIPY testing build; no API key is committed.
+
+The optimized 0.2.3 APK built from `d558f7a` passed this smoke test on 2026-10-09:
+continuous Bangla phrase glide, unchanged English glide, animated WebP sticker and
+GIF imports across recipient UIDs, with the original editor task and text preserved.
+The recipient advertises each tested MIME type separately so compact WebP cannot
+silently substitute for the GIF test. Actual Samsung Messages and Messenger phone
+imports remain to be retested; emulator results do not establish those app-specific
+results or carrier delivery.
 
 This is a phonetic word-glide vocabulary, not a trained Bangla gesture language
 model with contextual n-grams or exhaustive spelling coverage. Arbitrary names,
