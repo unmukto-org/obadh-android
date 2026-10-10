@@ -6,6 +6,20 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 
 ## Unreleased
 
+## v0.2.2 — 2026-10-09
+
+- Fixed GIF/sticker selection returning to Obadh settings instead of the original
+  chat. The private picker now owns a separate transient task and removes that
+  task when closed, preserving the recipient's activity and draft. Allow a
+  bounded reconnection grace period without dropping selections when Android
+  or the receiving app takes longer than five seconds to restore input.
+- Media delivery now provides seekable read-only Android file descriptors over
+  its bounded RAM buffer. Chat importers can seek, reopen and decode attachments
+  without `ESPIPE`; original animations remain off disk.
+- Added an independent recipient APK with a separate UID/task, asynchronous
+  importing, URI permission checks and native image decoding. The earlier
+  same-APK editor fixture did not cover cross-app task routing or seekable reads.
+
 ## v0.2.1 — 2026-10-09
 
 - Upgraded the engine to 0.9.5 through the unchanged C ABI v2. Ship its matching

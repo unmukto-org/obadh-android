@@ -334,7 +334,12 @@ class MediaSearchActivity : ComponentActivity() {
         if(::adapter.isInitialized)adapter.playing=false
         request?.cancel();prepare?.cancel();super.onStop()
     }
-    override fun finish() { if(!chosen)MediaController.cancel(token);super.finish() }
+    override fun finish() {
+        if(!chosen)MediaController.cancel(token)
+        // This activity owns an isolated transient task. Removing it restores the
+        // actual caller, even while Obadh settings is open in another task.
+        super.finishAndRemoveTask()
+    }
     override fun onDestroy() {
         alive=false;scope.cancel();if(::adapter.isInitialized)adapter.dispose();if(::grid.isInitialized)grid.adapter=null
         if(!isChangingConfigurations && !chosen)MediaController.cancel(token)

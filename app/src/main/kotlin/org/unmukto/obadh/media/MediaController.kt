@@ -21,6 +21,7 @@ import java.util.UUID
 /** One private search session; no provider work runs on the IME typing/model executors. */
 object MediaController {
     const val SEARCH_OPTIONS="obadh.media.search"
+    private const val HANDOFF_TIMEOUT=30_000L
     private data class Target(val pkg: String?,val id: Int,val name: String?,val type: Int) {
         companion object { fun of(info: EditorInfo)=Target(info.packageName,info.fieldId,info.fieldName,info.inputType) }
     }
@@ -50,7 +51,8 @@ object MediaController {
         val session=Session(UUID.randomUUID().toString(),kind,EditorInfoCompat.getContentMimeTypes(info).toList(),SystemClock.elapsedRealtime()+10*60*1000)
         val next=Owned(session,Target.of(info));owner=next;returnOwner=next;pending=null
         ime.prepareObadhContentInput()
-        ime.startActivity(Intent(ime,MediaSearchActivity::class.java).putExtra("token",session.token).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        ime.startActivity(Intent(ime,MediaSearchActivity::class.java).putExtra("token",session.token)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS))
     }
     fun session(token: String): Session?=owner?.session?.takeIf { it.token==token && it.expires>SystemClock.elapsedRealtime() }
     fun canRequest(token: String): Boolean {
@@ -61,8 +63,10 @@ object MediaController {
     fun choose(token: String,item: MediaItem,file: MediaFile,bytes: ByteArray,query: String): Boolean {
         val current=owner?.takeIf { session(token)!=null && canRequest(token) } ?: return false
         if(!MediaSafety.accepts(current.session.types,file.mime) || bytes.size !in 1..MediaSafety.MAX_MEDIA)return false
-        current.leaving=true;pending=Choice(current,item,file,bytes,query,SystemClock.elapsedRealtime()+5000);owner=null
-        main.postDelayed({ if(pending?.owner===current)pending=null },5000)
+        // Reconnection can be delayed by the receiving app or Android. Deliver
+        // immediately when ready; allow a bounded grace period for the same field.
+        current.leaving=true;pending=Choice(current,item,file,bytes,query,SystemClock.elapsedRealtime()+HANDOFF_TIMEOUT);owner=null
+        main.postDelayed({ if(pending?.owner===current)pending=null },HANDOFF_TIMEOUT)
         return true
     }
     fun cancel(token: String) { if(owner?.session?.token==token) { owner?.leaving=true;owner=null } }

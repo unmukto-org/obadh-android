@@ -24,7 +24,8 @@
 
         <provider android:name=".media.MediaContentProvider" android:process=":keyboard" android:authorities="${applicationId}.media" android:exported="false" android:grantUriPermissions="true" />
         <activity android:name=".media.MediaSettingsActivity" android:process=":keyboard" android:exported="false" />
-        <activity android:name=".media.MediaSearchActivity" android:process=":keyboard" android:exported="false" android:theme="@style/Theme.Obadh.MediaSearch" android:excludeFromRecents="true" android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
+        <!-- A picker opened by the IME must never reuse the Obadh settings task. -->
+        <activity android:name=".media.MediaSearchActivity" android:process=":keyboard" android:exported="false" android:taskAffinity="" android:theme="@style/Theme.Obadh.MediaSearch" android:excludeFromRecents="true" android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
         <activity android:name=".app.ThemeActivity" android:exported="false" />
 
         <service

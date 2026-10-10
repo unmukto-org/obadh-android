@@ -7,10 +7,18 @@ import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Process
+import android.os.ProxyFileDescriptorCallback
 import android.os.SystemClock
+import android.os.storage.StorageManager
 import android.provider.OpenableColumns
+import android.system.ErrnoException
+import android.system.OsConstants
 import java.io.FileNotFoundException
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 /** A short-lived delivery buffer, not a reusable original-media cache. Never writes to disk. */
 object MediaDelivery {
@@ -28,11 +36,13 @@ object MediaDelivery {
     }
     private fun token(uri: Uri)=uri.pathSegments.takeIf { it.size==3 && it[0]=="media" }?.get(1)
     @Synchronized fun get(uri: Uri): Entry? { prune();return entries[token(uri)]?.takeIf { it.name==uri.lastPathSegment } }
-    @Synchronized fun opened(uri: Uri): ByteArray? {
-        val entry=get(uri) ?: return null
-        // A recipient may open for metadata, a preview and the actual attachment.
-        // Keep the delivery buffer available until its short expiry, never for recents.
-        return entry.bytes
+    @Synchronized fun read(uri: Uri,offset: Long,size: Int,buffer: ByteArray): Int {
+        val bytes=get(uri)?.bytes ?: throw ErrnoException("media read",OsConstants.ENOENT)
+        if(offset<0 || size<0 || size>buffer.size)throw ErrnoException("media read",OsConstants.EINVAL)
+        if(offset>=bytes.size || size==0)return 0
+        val from=offset.toInt();val count=minOf(size,bytes.size-from)
+        bytes.copyInto(buffer,0,from,from+count)
+        return count
     }
     @Synchronized fun discard(uri: Uri) { entries.remove(token(uri)) }
     @Synchronized fun expire() { prune() }
@@ -40,6 +50,10 @@ object MediaDelivery {
 
 /** Android enforces the temporary read grant. The URI contains no source URL or API key. */
 class MediaContentProvider : ContentProvider() {
+    private val openFiles=AtomicInteger()
+    private val ioHandler by lazy {
+        Handler(HandlerThread("Obadh media delivery",Process.THREAD_PRIORITY_BACKGROUND).apply { start() }.looper)
+    }
     override fun onCreate()=true
     override fun getType(uri: Uri)=MediaDelivery.get(uri)?.mime
     override fun query(uri: Uri,projection: Array<out String>?,selection: String?,args: Array<out String>?,sort: String?): Cursor? {
@@ -53,10 +67,22 @@ class MediaContentProvider : ContentProvider() {
     }
     override fun openFile(uri: Uri,mode: String): ParcelFileDescriptor {
         if(mode!="r")throw FileNotFoundException("Read-only media")
-        val mime=MediaDelivery.get(uri)?.mime ?: throw FileNotFoundException("Media delivery expired")
-        val bytes=MediaDelivery.opened(uri) ?: throw FileNotFoundException("Media delivery expired. Select the item again.")
-        return openPipeHelper(uri,mime,null,bytes) { output,_,_,_,value ->
-            runCatching { ParcelFileDescriptor.AutoCloseOutputStream(output).use { if(value!=null)it.write(value) } }
+        MediaDelivery.get(uri) ?: throw FileNotFoundException("Media delivery expired. Select the item again.")
+        if(openFiles.incrementAndGet()>32) { openFiles.decrementAndGet();throw FileNotFoundException("Too many open media files") }
+        try {
+            // Chat importers and image decoders seek/reopen content; a pipe fails
+            // with ESPIPE. Public API 26 proxies a seekable, read-only descriptor
+            // to our bounded memory buffer without persisting original media.
+            return requireNotNull(context).getSystemService(StorageManager::class.java).openProxyFileDescriptor(
+                ParcelFileDescriptor.MODE_READ_ONLY,object: ProxyFileDescriptorCallback() {
+                    override fun onGetSize(): Long=MediaDelivery.get(uri)?.size?.toLong()
+                        ?: throw ErrnoException("media size",OsConstants.ENOENT)
+                    override fun onRead(offset: Long,size: Int,data: ByteArray)=MediaDelivery.read(uri,offset,size,data)
+                    override fun onRelease() { openFiles.decrementAndGet() }
+                },ioHandler)
+        } catch(e: Exception) {
+            openFiles.decrementAndGet()
+            throw FileNotFoundException("Unable to open media delivery").apply { initCause(e) }
         }
     }
     override fun insert(uri: Uri,values: ContentValues?): Uri?=throw UnsupportedOperationException()

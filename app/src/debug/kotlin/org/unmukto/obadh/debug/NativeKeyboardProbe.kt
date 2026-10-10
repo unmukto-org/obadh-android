@@ -103,8 +103,9 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                 }, "Obadh engine release check").start()
             }
             "toolbar_coordinates" -> {
-                val root=helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView.rootView
-                val strip=root.findViewById<helium314.keyboard.latin.suggestions.SuggestionStripView>(helium314.keyboard.latin.R.id.suggestion_strip_view)
+                val main=helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView ?: return
+                val root=main.rootView
+                val strip=root.findViewById<helium314.keyboard.latin.suggestions.SuggestionStripView>(helium314.keyboard.latin.R.id.suggestion_strip_view) ?: return
                 android.util.Log.i("ObadhProbeToolbar",strip.obadhToolbarCoordinatesForTests().toString())
             }
             "coordinates" -> {
