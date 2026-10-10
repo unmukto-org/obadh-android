@@ -304,6 +304,12 @@ def apply(main, replace):
         '                else commitTyped(inputTransaction.getSettingsValues(), LastComposedWord.NOT_A_SEPARATOR);\n'
         '            }')
 
+    # Subtype changes stay in the same editor; retain its pending gesture word boundary.
+    replace(logic,
+        '        finishInput();\n        startInput(combiningSpec, settingsValues);',
+        '        final boolean preserveGestureSpace = mSpaceState == SpaceState.PHANTOM;\n'
+        '        finishInput();\n        startInput(combiningSpec, settingsValues);\n'
+        '        if (preserveGestureSpace) mSpaceState = SpaceState.PHANTOM;')
     # A single host transaction prepares rich content, preserving literal Bangla composition.
     replace(logic, '    public void finishInput() {',
         '    public void prepareObadhContentInput() {\n'

@@ -19,6 +19,10 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 - Keep Roman gesture search keys out of previews and committed text. Model
   extraction/verification and native decoding run away from the input thread;
   switching swipe off/on reuses the installed optional library.
+- Verified actual Bangla gestures, aliases, bilingual word boundaries, field guards,
+  incognito, whole-word deletion and phone/tablet portrait/landscape layouts, including
+  floating/one-handed modes. Add CI provenance checks so future engine/model bumps
+  cannot silently retain a stale derived glide asset.
 
 ## v0.2.2 — 2026-10-09
 

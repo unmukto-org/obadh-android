@@ -13,6 +13,9 @@ spec = importlib.util.spec_from_file_location('touch', Path(__file__).with_name(
 t = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(t)
 n = t.n
+appearance_spec = importlib.util.spec_from_file_location('appearance', Path(__file__).with_name('test-native-appearance.py'))
+appearance = importlib.util.module_from_spec(appearance_spec)
+appearance_spec.loader.exec_module(appearance)
 
 
 def run():
@@ -80,6 +83,19 @@ def run():
         n.command('key', code=32)
         n.expect('আমি world তুমি ', 'Globe/space swipe switching preserves bilingual glide text')
 
+        # Exercise the real app switch and its private cross-process receiver.
+        n.shell('am', 'start', '-n', n.PACKAGE + '/.app.MainActivity', '-f', '0x10008000', '--es', 'screen', 'Gestures')
+        appearance.choose('Swipe typing')
+        for language in ('bn', 'en'):
+            n.start(language)
+            assert not n.inspect()['controls']['gesture'], n.inspect()
+        n.shell('am', 'start', '-n', n.PACKAGE + '/.app.MainActivity', '-f', '0x10008000', '--es', 'screen', 'Gestures')
+        appearance.choose('Swipe typing')
+        assert not any(x.get('text') == 'Download swipe typing?' for x in n.screen().iter('node'))
+        n.start('bn')
+        t.glide('ami')
+        n.expect('আমি', 'Shared switch off/on reuses decoder without restart or download')
+
         for field in ('password', 'email'):
             n.start('bn', field=field)
             assert not n.inspect()['controls']['bangla_gesture'], n.inspect()
@@ -132,6 +148,22 @@ def run():
         samples = sorted(int(value) for value, _ in rows)
         print(f'Bangla decode + mapping: n={len(samples)} p50={samples[len(samples)//2]}us '
               f'p95={samples[min(len(samples)-1,len(samples)*95//100)]}us max={samples[-1]}us; all off main thread', flush=True)
+
+        # Damage only the derived cache in the explicitly selected QA emulator.
+        # Cold reopening must verify and repair it from the bundled signed asset.
+        cached = n.shell('run-as', n.PACKAGE, 'ls', 'files/ObadhGesture').splitlines()
+        files = [x for x in cached if re.fullmatch(r'[0-9a-f]{16}\.dict', x)]
+        assert len(files) == 1, cached
+        n.shell('am', 'force-stop', n.PACKAGE)
+        n.shell('run-as', n.PACKAGE, 'sh', '-c', 'printf bad > files/ObadhGesture/' + files[0])
+        # Android may choose a fallback IME when its selected service is force-stopped.
+        n.shell('ime', 'set', n.PACKAGE + '/.keyboard.ObadhInputMethodService')
+        n.start('bn')
+        t.glide('ami')
+        n.expect('আমি', 'Cold startup repairs corrupt derived cache')
+        metadata = json.loads((Path(__file__).resolve().parent.parent / 'app/src/main/assets/ObadhGesture/metadata.json').read_text())
+        actual = n.shell('run-as', n.PACKAGE, 'sha256sum', 'files/ObadhGesture/' + files[0]).split()[0]
+        assert actual == metadata['sha256'], actual
     finally:
         n.shell('wm', 'size', size.group(1) if size else 'reset')
         n.shell('wm', 'density', density.group(1) if density else 'reset')

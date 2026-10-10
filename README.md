@@ -13,8 +13,9 @@ engine and on the same philosophy as [obadh-ios](../obadh-ios).
 
 The Android keyboard uses one native editor and gesture pipeline for Bangla and
 English. Obadh supplies Bangla transliteration, correction, prediction and learning
-through its C ABI; the Android foundation supplies English correction and optional
-swipe typing. Shared settings apply to both languages. Enable Swipe typing in setup
+through its C ABI and derives the Bangla phonetic glide vocabulary from those same
+models. The Android foundation supplies English correction and the optional swipe
+decoder. Shared settings apply to both languages. Enable Swipe typing in setup
 or Gestures, then tap Download for the optional background transfer. See
 [the integration guide](docs/heliboard-integration.md).
 
@@ -40,6 +41,9 @@ and `baqq` → **বাঁ**.
 - **Bangla numerals and punctuation:** ০–৯, `৳` and `।`, with double-space full
   stops in the active language. Numeric, email and password fields retain literal
   Android input behavior.
+- **Bangla and English glide typing.** One optional decoder and switch. Glide the
+  phonetic spelling (`ami` → `আমি`, `valo` → `ভালো`) in Bangla; English keeps its
+  native decoder. [Bangla glide architecture and vocabulary](docs/bangla-glide.md).
 - **Native gestures.** Swipe space to switch Bangla/English, move upward from space
   for the cursor trackpad, or swipe backspace to delete. Hold X/C/V for native
   cut/copy/paste popups. Each shared control has one setting.

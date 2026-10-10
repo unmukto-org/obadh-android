@@ -17,7 +17,9 @@ service. The decoder uses Latin key geometry internally. The outer dictionary
 locale and every emitted candidate remain Bangla. Roman search keys are mapped
 to Bengali shortcut targets before preview, suggestions or editor insertion.
 The foundation's validity check recognizes those mapped words, instead of
-incorrectly searching for them as Roman keys.
+incorrectly searching for them as Roman keys. Language changes preserve the
+gesture's pending automatic space, so alternating Bangla and English swipe words
+does not join them together.
 
 Tap transliteration, correction, personal learning, prediction and field policy
 remain in Obadh's existing engine C ABI v2. The adapter returns no tap candidates.
@@ -44,6 +46,7 @@ cargo run --release --locked --features gesture-tools --bin gesture-lexicon -- \
   ../../app/src/main/assets/ObadhModels/autocorrect/bn.fst ../../build/bangla-gesture.tsv
 cd ../..
 python3 scripts/encode-bangla-gesture.py build/bangla-gesture.tsv
+python3 scripts/check-bangla-gesture.py
 ```
 
 The optional host-only Rust tool reads the same Bangla FST already used by Obadh.
@@ -53,6 +56,9 @@ and `y`/`z` alternatives undergo that same check. Case folding describes gesture
 geometry; original verified Bengali targets resolve phonetic case ambiguities by
 word frequency. This tool is excluded from default Android Rust builds and changes
 no runtime JNI or engine ABI.
+
+CI checks the engine pin, source-FST hash, size and asset checksum. An engine or
+model update cannot silently retain an incompatible derived gesture vocabulary.
 
 The current model selects 60,000 frequency-ranked words (frequency ≥ 20, at most
 24 Bengali code points), with 66,494 spellings on 63,845 lowercase paths. The
@@ -75,7 +81,18 @@ native dictionary, real continuous touch paths, Bengali-only candidates, aliases
 word spacing, tap/glide transitions, punctuation, whole-word backspace, bilingual
 globe/space switching, protected fields, incognito, one-handed/floating layouts,
 phone/tablet portrait/landscape geometry and unchanged English decoding. It
-restores viewport/settings and uses the existing QA AVD.
+restores the viewport and canonical native configuration, and uses the existing QA
+AVD. The actual app switch was tested off/on across both languages without a new
+download/restart. A corrupt derived cache was repaired on cold startup with a
+matching SHA-256; the fixture reselects Obadh because Android chooses a fallback
+IME when its selected service is deliberately force-stopped.
+
+2026-10-09: all word/boundary/field/layout cases passed on the existing Android 15
+ARM64 AVD. Across 25 debug decode-and-mapping samples, median was 833 µs, p95
+1,156 µs and maximum 1,255 µs, all on `InputLogicHandler`. These are decoder
+measurements on an emulator, not an end-to-end physical-device latency guarantee.
+The model contributes 1,049,443 compressed bytes to the APK, plus one 2,441,868-byte
+private extracted copy for native access. No new emulator image was installed.
 
 This is a phonetic word-glide vocabulary, not a trained Bangla gesture language
 model with contextual n-grams or exhaustive spelling coverage. Arbitrary names,

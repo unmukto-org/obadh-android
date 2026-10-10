@@ -91,6 +91,11 @@ fn inverse(word: &str, consonants: &HashMap<String, String>) -> Option<String> {
     Some(roman)
 }
 fn main() {
+    assert_eq!(
+        cabi::obadh_abi_version(),
+        2,
+        "Review gesture tooling for a changed engine ABI"
+    );
     let args: Vec<String> = env::args().collect();
     assert_eq!(args.len(), 3, "gesture-lexicon <bn.fst> <output.tsv>");
     let engine = cabi::obadh_engine_new();

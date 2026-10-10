@@ -61,6 +61,9 @@ jobs:
       - name: Prepare the pinned native keyboard foundation
         run: python3 scripts/prepare-heliboard.py
 
+      - name: Check Bangla gesture model provenance
+        run: python3 scripts/check-bangla-gesture.py
+
       - name: Unit tests
         run: ./gradlew --no-daemon :app:testDebugUnitTest :keyboard:testDebugUnitTest :app:lintDebug
 
