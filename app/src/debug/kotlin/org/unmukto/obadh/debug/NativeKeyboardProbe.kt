@@ -102,6 +102,18 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                     android.util.Log.i("ObadhEngineReleaseProbe", result.toString())
                 }, "Obadh engine release check").start()
             }
+            "gesture_dictionary" -> {
+                Thread({
+                    val directory=java.io.File(context.filesDir,"ObadhGesture")
+                    val file=directory.listFiles()?.firstOrNull { it.extension=="dict" } ?: return@Thread
+                    val dictionary=helium314.keyboard.latin.dictionary.ReadOnlyBinaryDictionary(file.absolutePath,0,file.length(),false,java.util.Locale.US,"main")
+                    try {
+                        val result=org.json.JSONObject().put("valid",dictionary.isValidDictionary)
+                        for(word in listOf("ami","tumi","bhalo","valo","kemon"))result.put(word,org.json.JSONObject().put("frequency",dictionary.getFrequency(word)).put("targets",org.json.JSONArray(dictionary.getWordProperty(word,false)?.mShortcutTargets?.map { it.mWord }.orEmpty())))
+                        android.util.Log.i("ObadhGestureProbe",result.toString())
+                    } finally { dictionary.close() }
+                },"Obadh gesture check").start()
+            }
             "toolbar_coordinates" -> {
                 val main=helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().mainKeyboardView ?: return
                 val root=main.rootView
@@ -183,6 +195,8 @@ class NativeKeyboardProbeReceiver : BroadcastReceiver() {
                 val settings = helium314.keyboard.latin.settings.Settings.getValues()
                 val controls = org.json.JSONObject()
                     .put("locale", settings.mLocale.language)
+                    .put("gesture", settings.mGestureInputEnabled)
+                    .put("bangla_gesture", NativeObadhFeatures.banglaGestureAllowed(settings))
                     .put("emoji_panel", helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().isShowingEmojiPalettes)
                     .put("clipboard_panel", helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().isShowingClipboardHistory)
                     .put("night", ime.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK)

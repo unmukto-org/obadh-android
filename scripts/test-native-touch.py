@@ -36,6 +36,22 @@ def choose(label):
     n.screen()
 
 
+def glide(roman):
+    """Continuous real touch path using the active renderer's resized key centers."""
+    keys = positions(list(map(ord, roman)))
+    points = [keys[ord(c)] for c in roman]
+    n.shell('input', 'motionevent', 'DOWN', *points[0])
+    try:
+        for a, b in zip(points, points[1:]):
+            for fraction in (.25, .5, .75, 1):
+                n.shell('input', 'motionevent', 'MOVE',
+                        round(a[0] + (b[0] - a[0]) * fraction),
+                        round(a[1] + (b[1] - a[1]) * fraction))
+    finally:
+        n.shell('input', 'motionevent', 'UP', *points[-1])
+    n.screen()
+
+
 def run():
     n.shell('ime', 'set', n.PACKAGE + '/.keyboard.ObadhInputMethodService')
     n.start('bn')
@@ -67,17 +83,7 @@ def run():
 
     # Decoder must already have been downloaded with the app's opt-in switch.
     n.start('en')
-    keys = positions(list(map(ord, 'world')))
-    points = [keys[ord(c)] for c in 'world']
-    n.shell('input','motionevent','DOWN',*points[0])
-    try:
-        for a,b in zip(points,points[1:]):
-            for t in (.25,.5,.75,1):
-                p=(round(a[0]+(b[0]-a[0])*t),round(a[1]+(b[1]-a[1])*t))
-                n.shell('input','motionevent','MOVE',*p)
-    finally:
-        n.shell('input','motionevent','UP',*points[-1])
-    n.screen()
+    glide('world')
     word=n.text().strip().lower()
     assert word == 'world', (word,n.inspect())
     print('PASS actual English glide gesture enters world', flush=True)

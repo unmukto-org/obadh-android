@@ -178,6 +178,7 @@ dependencies = [
 name = "obadh_jni"
 version = "0.1.0"
 dependencies = [
+ "fst",
  "jni",
  "obadh_engine",
 ]

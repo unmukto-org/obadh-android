@@ -6,6 +6,20 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 
 ## Unreleased
 
+## v0.2.3 — 2026-10-09
+
+- Added Bangla phonetic swipe typing using the existing optional native decoder,
+  with one shared switch for Bangla and English. Glide `ami` → `আমি`, `bhalo` or
+  `valo` → `ভালো`; the same toolbar, suggestions, language switching, gesture
+  trail and editor transactions serve both languages.
+- Derive a compact read-only gesture vocabulary from Obadh's own Bangla model,
+  validating every phonetic spelling through engine C ABI v2. Runtime tap typing,
+  correction, learning and protected-field handling retain the existing engine.
+  No additional keyboard engine, language download or training corpus ships.
+- Keep Roman gesture search keys out of previews and committed text. Model
+  extraction/verification and native decoding run away from the input thread;
+  switching swipe off/on reuses the installed optional library.
+
 ## v0.2.2 — 2026-10-09
 
 - Fixed GIF/sticker selection returning to Obadh settings instead of the original

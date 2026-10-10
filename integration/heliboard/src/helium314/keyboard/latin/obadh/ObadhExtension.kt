@@ -6,6 +6,8 @@ import helium314.keyboard.latin.settings.SettingsValues
 
 /** Narrow host contract. The app owns Obadh models and policy; the host owns editor transactions. */
 interface ObadhExtension {
+    /** Called by the foundation dictionary loader, never by the input thread. */
+    fun mainDictionary(context: android.content.Context, locale: java.util.Locale): helium314.keyboard.latin.dictionary.Dictionary? = null
     val onlineMediaAvailable: Boolean get() = false
     val onlineMediaAllowed: Boolean get() = false
     val onlineMediaSupported: Boolean get() = false

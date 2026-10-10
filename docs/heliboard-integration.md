@@ -117,7 +117,7 @@ so the existing view cannot retain stale colors or images. It never reads the so
 picker URI during typing. No photo service or
 additional image library is used.
 
-## Optional English swipe typing
+## Optional Bangla and English swipe typing
 
 The same Material switch appears in setup and Gestures. Enabling it without an
 installed decoder opens Download/Cancel. DownloadManager owns the background
@@ -132,6 +132,11 @@ The Google decoder is not included in the APK. Its source is pinned to OpenBoard
 commit `46fdf2b550035ca69299ce312fa158e7ade36967`; no redistribution grant has been
 verified for bundling. The ARM64 file is 1,112,352 bytes. Typing and learning stay
 on-device; network permission serves this explicit optional download.
+
+Bangla reuses this decoder through an app-owned phonetic dictionary derived from
+Obadh's existing FST and verified through its C ABI. The checked factory seam
+leaves upstream English unchanged. See [Bangla glide](bangla-glide.md) for model
+provenance, regeneration, editor integration, device limitations and validation.
 
 ## Build and upstream updates
 
@@ -174,7 +179,7 @@ double-space punctuation, cursor edits, return actions and language changes.
 Unit coverage includes six combiner checks and the real Obadh artifacts. Swipe
 verification tests cover corruption, size bounds, cancellation and partial cleanup.
 Manual emulator checks cover download waiting/cancellation/retry, process death,
-release activation and a real English glide gesture. Physical-device and diverse
+release activation and real English/Bangla glide gestures. Physical-device and diverse
 host-editor testing remain additional release coverage.
 
 Explicit tablet layout choices carry a small revision in the canonical preference

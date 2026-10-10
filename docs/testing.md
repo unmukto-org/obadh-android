@@ -65,6 +65,12 @@ word glide, plus typing/restoration in one-handed and floating modes for both
 languages. The optional swipe decoder must already be installed via the app's
 switch. Touch fixtures use the same debug editor and do not add an emulator image.
 
+`ANDROID_SERIAL=emulator-5554 python3 scripts/test-bangla-glide.py` additionally
+checks actual Bangla native decoding, phonetic aliases, continuous spacing,
+tap/glide transitions, punctuation, whole-word deletion, bilingual switching,
+protected fields, incognito and resized phone/tablet layouts in both orientations.
+See [Bangla glide](bangla-glide.md) for model regeneration and accuracy limits.
+
 ## Gboard geometry and theme comparison
 
 The real installed Gboard and Obadh are measured with actual touch input on one
@@ -211,7 +217,7 @@ dialog; Cancel must leave the switch off. With connectivity disabled, Download m
 show waiting and allow cancellation. Return to Home and kill the background settings
 process (not Android's force-stop, which suppresses receivers), then restore network.
 The transfer must finish and install without bringing settings to the foreground.
-After completion, English word glide must enter a word; toggling off/on must reuse
+After completion, English and Bangla word glide must enter words; toggling off/on must reuse
 the installed library. Check retry UI for a removed/failed download, and run
 `SwipeLibraryVerifierTest` for corruption, oversized data and interruption cleanup.
 Repeat download and typing in the optimized release: debug verification alone does

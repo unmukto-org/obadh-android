@@ -40,7 +40,7 @@ fun SwipeTypingPreference() {
             }
         }
     }
-    ToggleRow("Swipe typing", enabled || status.busy, "Slide across letters to write English words") { checked ->
+    ToggleRow("Swipe typing", enabled || status.busy, "Slide across letters to write Bangla and English words. For Bangla, swipe the phonetic spelling.") { checked ->
         if (!checked) {
             enabled = false
             scope.launch(Dispatchers.IO) { downloads.cancel(); downloads.setEnabled(false) }
@@ -72,7 +72,7 @@ fun SwipeTypingPreference() {
         AlertDialog(
             onDismissRequest = { confirm = false },
             title = { Text("Download swipe typing?") },
-            text = { Text("English swipe typing needs Google's optional library (about 1 MB). Android will download it in the background and Obadh will verify it before use.") },
+            text = { Text("Bangla and English swipe typing need Google's optional library (about 1 MB). Android will download it in the background and Obadh will verify it before use.") },
             confirmButton = { TextButton(onClick = {
                 confirm = false
                 scope.launch(Dispatchers.IO) { downloads.start() }

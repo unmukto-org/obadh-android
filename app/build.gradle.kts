@@ -59,8 +59,8 @@ android {
         applicationId = "org.unmukto.obadh"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.2.3"
         // Provenance shown in About: lets you tell what is actually installed.
         buildConfigField("String", "GIT_REVISION", "\"${gitRevision()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${buildTimeUtc()}\"")

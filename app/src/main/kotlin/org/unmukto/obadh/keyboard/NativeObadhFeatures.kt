@@ -100,6 +100,12 @@ object NativeObadhFeatures : ObadhExtension {
             (options.smartFields && field.forcesEnglish)
     }
 
+    fun isBanglaLexiconWord(word: String) = modelsReady && engine.isLexiconWord(word)
+    fun banglaGestureAllowed(settings: SettingsValues) = settings.mGestureInputEnabled &&
+        settings.mLocale.language == "bn" && !literal(settings)
+    override fun mainDictionary(context: Context, locale: java.util.Locale) =
+        org.unmukto.obadh.swipe.BanglaGestureDictionary.load(context, locale)
+
     override fun combiningSpec(spec: String?, settings: SettingsValues) = if (literal(settings)) "" else spec.orEmpty()
     override fun pairsEnabled(settings: SettingsValues) = options.pairs && !literal(settings)
     override val clipboardKeys get() = options.clipboardKeys

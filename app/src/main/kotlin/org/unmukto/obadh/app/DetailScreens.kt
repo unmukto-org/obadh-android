@@ -96,7 +96,7 @@ fun AboutScreen(onBack: () -> Unit) {
         PreferenceItem(content = { Text("Obadh Engine") }, supportingContent = { Text("Our Bangla language engine powers transliteration, autocorrect, suggestions and Bangla emoji search, on your device. Tap for licenses.") }, onClick = { engineLicenses = true })
         PreferenceHeading("Open-source acknowledgments")
         PreferenceItem(content = { Text("Android keyboard foundation") }, supportingContent = { Text("HeliBoard / AOSP (GPLv3), adapted for Obadh's unified Bangla and English keyboard.") })
-        PreferenceNote("Optional English swipe typing uses a separately downloaded Google library. It is not part of the open-source app.")
+        PreferenceNote("Optional swipe typing uses a separately downloaded Google decoder. Obadh supplies its own Bangla phonetic vocabulary. The decoder is not part of the open-source app.")
         PreferenceItem(
             content = { Text("Build details") },
             supportingContent = { Text(if (details) "Tap to hide" else "Technical information for support") },

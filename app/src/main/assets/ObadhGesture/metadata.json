@@ -1,0 +1,12 @@
+{
+  "format": 202,
+  "revision": 1,
+  "engine": "0.9.5",
+  "abi": 2,
+  "words": 60000,
+  "spellings": 66494,
+  "paths": 63845,
+  "bytes": 2441868,
+  "sha256": "0427aca942f88456b83c8fc37c68ca24ee892a3620d1ebe51f31bd12b5673858",
+  "source_fst_sha256": "8d38937763ed96ea8ed291fa6097899a324620f58bd89625d1f6609f1b634766"
+}

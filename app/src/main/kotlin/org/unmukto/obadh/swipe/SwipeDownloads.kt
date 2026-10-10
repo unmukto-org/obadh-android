@@ -83,7 +83,7 @@ class SwipeDownloads(context: Context) {
             check(!destination.exists() || destination.delete())
             val request = DownloadManager.Request(Uri.parse(binary.url))
                 .setTitle("Obadh swipe typing")
-                .setDescription("Downloading English swipe typing")
+                .setDescription("Downloading Bangla and English swipe typing")
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
                 .setAllowedOverMetered(true)
                 .setAllowedOverRoaming(false)
