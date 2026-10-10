@@ -71,6 +71,7 @@ android {
         ndk { abiFilters += "arm64-v8a" }
     }
     sourceSets["main"].jniLibs.setSrcDirs(emptyList<String>())
+    packaging.resources.excludes += "DebugProbesKt.bin"
 
     signingConfigs {
         if (keystoreProps.isNotEmpty()) {

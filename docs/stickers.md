@@ -52,3 +52,12 @@ ANDROID_SERIAL=emulator-5554 python3 scripts/test-cross-app-media.py
 Production excludes all debug probe components and the independent recipient. Emulator verification is useful evidence, not certification of every receiving app, physical device or provider service state.
 
 Local verification on October 9, 2026 passed 49 app and 10 keyboard unit tests, Android lint, optimized release compilation and 16 KiB native/ZIP alignment. The original same-APK framework editor accepted animated GIF and WebP with scoped URI grants while preserving composing Bangla/English text. Subsequent separate-APK testing exposed task reuse and non-seekable pipe failures, fixed in 0.2.2; the earlier editor checks did not cover those faults. Checks covered recent-item resend, process-restarted offline previews, rejected insertion feedback, password/incognito/unsupported-field guards, enable/disable and confirmed/canceled cache clearing. Phone/tablet portrait and landscape, light/dark and larger-text layouts were reviewed. Focused search retained its query and visible keyboard through rotation and a system night-mode change without fullscreen extraction or inserting the query into the recipient. Toolbar checks covered both languages, composing suggestions, switching, comma/emoji, ABC restoration and sensitive fields. Provider imagery in local screenshots is not committed.
+
+
+Version 0.2.2 verification on the existing API 35 emulator passed all 60 app/keyboard unit tests, Android lint and the separate-UID suite above. GIF delivery survived a deliberately blocked 6.5-second recipient resume; WebP delivery survived a delayed 6.5-second asynchronous read. Native decoders reopened and sought through the scoped, read-only URI while composing English/Bangla text remained intact. Back/cancel restored the caller, and unsupported recipients stayed disabled. In the installed [QKSMS 3.10.1](https://github.com/moezbhatti/qksms/releases/tag/v3.10.1) SMS client, both a sticker and a GIF created distinct attachments in the same local draft without replacing its text or opening Obadh settings:
+
+```sh
+ANDROID_SERIAL=emulator-5554 python3 scripts/test-sms-media.py
+```
+
+This checks attachment import into the SMS draft, without sending a message. It does not establish carrier MMS delivery or compatibility with the exact Samsung Messages/Meta Messenger versions on the user's physical phone; those still need a device retest. The stock AOSP SMS editor on this emulator advertises no GIF/WebP content MIME types, so media controls correctly stay disabled there.

@@ -39,6 +39,7 @@ public final class MediaRecipientActivity extends Activity {
         boolean dark=(getResources().getConfiguration().uiMode&android.content.res.Configuration.UI_MODE_NIGHT_MASK)==android.content.res.Configuration.UI_MODE_NIGHT_YES;
         setTheme(dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);
         super.onCreate(state);
+        getWindow().getDecorView().setSystemUiVisibility(dark?0:android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         LinearLayout body=new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(24,96,24,24);

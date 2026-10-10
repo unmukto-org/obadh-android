@@ -22,8 +22,12 @@ def start(types='image/gif,image/webp',language='en',compose='',delay=400,resume
     n.command('configure',**{'native.always_incognito_mode':False,'native.next_word_prediction':False,'native.suggest_clipboard_content':False})
     n.shell('am','start','-n',n.PACKAGE+'/.app.MainActivity')
     n.shell('am','start','-n',ACTIVITY,'-f','0x10008000','--es','types',types,'--ei','readDelay',delay,'--ei','resumeDelay',resume_delay)
-    root=m.nodes()
-    field=next(x for x in root if x.get('resource-id')=='android:id/edit' and x.get('package')==HOST)
+    deadline=time.monotonic()+40
+    while time.monotonic()<deadline:
+        field=next((x for x in m.nodes() if x.get('resource-id')=='android:id/edit' and x.get('package')==HOST),None)
+        if field is not None:break
+        time.sleep(.1)
+    else:raise AssertionError('Recipient editor did not become ready')
     x0,y0,x1,y1=m.bounds(field)
     for _ in range(3):
         n.shell('input','tap',(x0+x1)//2,(y0+y1)//2);n.screen()
