@@ -310,6 +310,14 @@ def apply(main, replace):
         '        final boolean preserveGestureSpace = mSpaceState == SpaceState.PHANTOM;\n'
         '        finishInput();\n        startInput(combiningSpec, settingsValues);\n'
         '        if (preserveGestureSpace) mSpaceState = SpaceState.PHANTOM;')
+    # Dependent vowel signs end Bangla words but are Unicode marks, not letters.
+    replace(logic,
+        '        if (Character.isLetterOrDigit(codePointBeforeCursor)\n'
+        '                || settingsValues.isUsuallyFollowedBySpace(codePointBeforeCursor)) {',
+        '        if (Character.isLetterOrDigit(codePointBeforeCursor)\n'
+        '                || Character.getType(codePointBeforeCursor) == Character.COMBINING_SPACING_MARK\n'
+        '                || Character.getType(codePointBeforeCursor) == Character.NON_SPACING_MARK\n'
+        '                || settingsValues.isUsuallyFollowedBySpace(codePointBeforeCursor)) {')
     # A single host transaction prepares rich content, preserving literal Bangla composition.
     replace(logic, '    public void finishInput() {',
         '    public void prepareObadhContentInput() {\n'

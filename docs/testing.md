@@ -70,6 +70,8 @@ checks actual Bangla native decoding, phonetic aliases, continuous spacing,
 tap/glide transitions, punctuation, whole-word deletion, bilingual switching,
 protected fields, incognito and resized phone/tablet layouts in both orientations.
 See [Bangla glide](bangla-glide.md) for model regeneration and accuracy limits.
+The same guide includes the touch-only optimized APK smoke test with an independent
+recipient, covering both word-glide languages and media handoff without debug probes.
 
 ## Gboard geometry and theme comparison
 

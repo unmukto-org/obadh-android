@@ -21,6 +21,11 @@ incorrectly searching for them as Roman keys. Language changes preserve the
 gesture's pending automatic space, so alternating Bangla and English swipe words
 does not join them together.
 
+The gesture boundary check also recognizes Unicode combining marks, so Bangla
+words ending in a dependent vowel sign receive the same automatic word separation
+as words ending in letters. Tap → glide and glide → tap transitions both preserve
+word boundaries, including across language changes.
+
 Tap transliteration, correction, personal learning, prediction and field policy
 remain in Obadh's existing engine C ABI v2. The adapter returns no tap candidates.
 Gesture commits use the existing editor and learning path. The main model is
@@ -93,6 +98,28 @@ ARM64 AVD. Across 25 debug decode-and-mapping samples, median was 833 µs, p95
 measurements on an emulator, not an end-to-end physical-device latency guarantee.
 The model contributes 1,049,443 compressed bytes to the APK, plus one 2,441,868-byte
 private extracted copy for native access. No new emulator image was installed.
+
+All 62 existing native editor regressions also passed with the new dictionary
+adapter: C ABI/engine version, loanwords, correction calibration, personal/model-only
+prediction, shortcuts, pairs, emoji, cursor edits, shared controls and clipboard
+privacy. Use clean learned-word fixtures on the QA AVD for the calibration suite;
+its later manual-spelling test deliberately protects `মানুস`.
+
+To test the exact optimized APK without Obadh debug components, first build/install
+the tiny independent recipient with `scripts/build-media-recipient.sh`. Record the
+normal phone renderer coordinates while debug is installed, then install release:
+
+```sh
+ANDROID_SERIAL=emulator-5554 python3 scripts/test-release-keyboard.py --record-geometry
+adb -s emulator-5554 install -r app/build/outputs/apk/release/app-release.apk
+ANDROID_SERIAL=emulator-5554 python3 scripts/test-release-keyboard.py
+```
+
+The smoke path uses actual language-picker/toolbar/key touches and a separate
+recipient UID/task. It verifies continuous Bangla/English word glide plus GIF and
+WebP sticker decoding, read-only seekable delivery and return to the same editor
+without changing the text. No messages are sent. It requires the existing opted-in
+swipe decoder and a privately configured KLIPY testing build; no API key is committed.
 
 This is a phonetic word-glide vocabulary, not a trained Bangla gesture language
 model with contextual n-grams or exhaustive spelling coverage. Arbitrary names,

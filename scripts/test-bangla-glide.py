@@ -24,12 +24,14 @@ def run():
     density = re.search(r'Override density: (\d+)', n.shell('wm', 'density'))
     rotation = n.shell('settings', 'get', 'system', 'user_rotation').strip()
     auto_rotate = n.shell('settings', 'get', 'system', 'accelerometer_rotation').strip()
+    previous_incognito = False
     try:
         n.shell('ime', 'set', n.PACKAGE + '/.keyboard.ObadhInputMethodService')
         n.shell('settings', 'put', 'system', 'accelerometer_rotation', 0)
         n.shell('settings', 'put', 'system', 'user_rotation', 0)
         n.start('bn')
         n.command('configure')
+        previous_incognito = n.inspect()['controls']['incognito']
         assert n.inspect()['controls']['bangla_gesture'], 'Enable Swipe typing and finish its download first'
         n.adb('logcat', '-c')
         n.command('gesture_dictionary')
@@ -59,6 +61,24 @@ def run():
         n.expect('আমি ভালো আছি ', 'Continuous Bangla swipe spacing')
         n.type_text('ami ')
         n.expect('আমি ভালো আছি আমি ', 'Phonetic taps immediately after glide')
+
+        n.start('bn')
+        n.type_text('ami')
+        t.glide('bhalo')
+        n.command('key', code=32)
+        n.expect('আমি ভালো ', 'Tap-to-glide space after a Bangla dependent vowel sign')
+        n.start('bn')
+        n.type_text('ami')
+        t.tap(t.positions([-227])[-227])
+        n.screen()
+        t.glide('world')
+        n.command('key', code=32)
+        n.expect('আমি world ', 'Bangla taps then English glide across a language change')
+        n.start('en')
+        n.type_text('hello')
+        t.glide('world')
+        n.command('key', code=32)
+        n.expect('hello world ', 'English tap-to-glide word boundary')
 
         n.start('bn')
         t.glide('kemon')
@@ -111,7 +131,7 @@ def run():
         t.glide('tumi')
         n.expect('তুমি', 'Incognito retains model-only Bangla glide')
         assert n.inspect()['controls']['incognito'], n.inspect()
-        n.command('configure')
+        n.command('configure', **{'native.always_incognito_mode': False})
 
         for code, field in [(-10002, 'one_handed'), (-109, 'floating')]:
             n.start('bn')
@@ -129,10 +149,13 @@ def run():
             if tablet:
                 n.shell('wm', 'size', '1800x2560')
                 n.shell('wm', 'density', 320)
+                n.screen()  # Let both configuration changes finish before replacing the editor.
             for direction in (0, 1):
                 n.shell('settings', 'put', 'system', 'user_rotation', direction)
                 time.sleep(.5)
+                n.screen()
                 n.start('bn')
+                assert n.text() == '', 'Fresh geometry fixture editor did not become empty'
                 t.glide('tumi')
                 n.expect('তুমি', ('Tablet' if tablet else 'Phone') + (' landscape' if direction else ' portrait') + ' glide')
         n.shell('wm', 'size', size.group(1) if size else 'reset')
@@ -169,7 +192,7 @@ def run():
         n.shell('wm', 'density', density.group(1) if density else 'reset')
         n.shell('settings', 'put', 'system', 'user_rotation', rotation)
         n.shell('settings', 'put', 'system', 'accelerometer_rotation', auto_rotate)
-        n.command('configure')
+        n.command('configure', **{'native.always_incognito_mode': previous_incognito})
     print('Bangla native glide regressions passed.', flush=True)
 
 
