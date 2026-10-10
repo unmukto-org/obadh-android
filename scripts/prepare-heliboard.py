@@ -59,7 +59,7 @@ def main():
     # A tiny pristine source cache makes preparation deterministic even when an owned hook changes.
     # No Git history or duplicate project/build tree. Expected-string checks still fail on upstream drift.
     patched_sources = [
-        "event/CombinerChain.kt", "latin/WordComposer.java", "latin/Suggest.kt",
+        "event/CombinerChain.kt", "latin/WordComposer.java", "latin/Suggest.kt", "latin/common/StringUtils.java",
         "latin/inputlogic/InputLogic.java", "latin/LatinIME.java", "latin/SuggestedWords.java",
         "latin/ClipboardHistoryManager.kt", "latin/database/ClipboardDao.kt",
         "keyboard/emoji/EmojiSearchActivity.kt", "latin/settings/SettingsValues.java",

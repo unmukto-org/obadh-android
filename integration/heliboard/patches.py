@@ -1,6 +1,22 @@
 """Small checked integration points, reapplied to every pinned upstream checkout."""
 def apply(main, replace):
     base = main / 'java/helium314/keyboard'
+    replace(base / 'latin/common/StringUtils.java',
+        '        if (label == null || !ScriptUtils.scriptSupportsUppercase(locale)) {\n'
+        '            return label;\n'
+        '        }',
+        '        if (label == null) return null;\n'
+        '        // Obadh uses Latin QWERTY keys for Bengali phonetics. Manual Shift must\n'
+        '        // uppercase their ASCII labels and codes even though Bengali has no case.\n'
+        '        // Keep automatic sentence capitalization disabled for Bengali.\n'
+        '        if (!ScriptUtils.scriptSupportsUppercase(locale)) {\n'
+        '            if ("bn".equals(locale.getLanguage())\n'
+        '                    && helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent() != null\n'
+        '                    && label.length() == 1 && label.charAt(0) >= \'a\' && label.charAt(0) <= \'z\') {\n'
+        '                return label.toUpperCase(Locale.ROOT);\n'
+        '            }\n'
+        '            return label;\n'
+        '        }')
     replace(base / 'latin/dictionary/DictionaryFactory.kt',
         '        val dictList = LinkedList<Dictionary>()',
         '        helium314.keyboard.latin.obadh.ObadhExtensions.current?.mainDictionary(context, locale)?.let { return listOf(it) }\n'

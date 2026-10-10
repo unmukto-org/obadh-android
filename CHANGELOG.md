@@ -6,6 +6,10 @@ annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 
 ## Unreleased
 
+- Bangla's phonetic QWERTY now passes manually shifted Latin letters to the engine:
+  `t` → `ত`, Shift + `t` → `ট`. One-shot Shift, Caps Lock and shifted key labels
+  agree, while Bangla sentence auto-capitalization stays off.
+
 ## v0.2.3 — 2026-10-09
 
 - Added Bangla phonetic swipe typing using the existing optional native decoder,

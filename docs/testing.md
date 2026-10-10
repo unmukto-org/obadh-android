@@ -69,6 +69,9 @@ switch. Touch fixtures use the same debug editor and do not add an emulator imag
 checks actual Bangla native decoding, phonetic aliases, continuous spacing,
 tap/glide transitions, punctuation, whole-word deletion, bilingual switching,
 protected fields, incognito and resized phone/tablet layouts in both orientations.
+`ANDROID_SERIAL=emulator-5554 python3 scripts/test-native-shift.py` checks actual
+Shift and Caps Lock touches: `t` → `ত`, Shift + `t` → `ট`, one-shot release,
+locked `R` → `ড়`, unchanged English casing and literal password input.
 See [Bangla glide](bangla-glide.md) for model regeneration and accuracy limits.
 The same guide includes the touch-only optimized APK smoke test with an independent
 recipient, covering both word-glide languages and media handoff without debug probes.
