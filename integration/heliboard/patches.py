@@ -664,3 +664,76 @@ def apply(main, replace):
         '            if (key.isLongPressEnabled() && mHasMultipleEnabledIMEsOrSubtypes && Settings.getValues().mSpaceForLangChange) {',
         '            if (false) { // Obadh: no hint, the globe key opens the language picker')
 
+    # Swiping the space bar to change language slides the language name out and the new one in,
+    # in the direction of the swipe.
+    main_view = base / 'keyboard/MainKeyboardView.java'
+    replace(main_view, '    private void drawLanguageOnSpacebar(final Key key, final Canvas canvas, final Paint paint) {',
+        '    // Obadh: set by a language swipe on the space bar; consumed when the label next changes.\n'
+        '    public static int sObadhLanguageSlide = 0;\n'
+        '    public static long sObadhLanguageSlideTime = 0;\n'
+        '    private String mObadhLabel;\n'
+        '    private String mObadhPrevLabel;\n'
+        '    private float mObadhSlide = 1f;\n'
+        '    private int mObadhSlideDirection = 1;\n'
+        '    private android.animation.ValueAnimator mObadhSlideAnimator;\n'
+        '\n'
+        '    private void obadhDrawSpaceLabel(final Canvas canvas, final String text, final int width,\n'
+        '            final int height, final float y, final Paint paint) {\n'
+        '        final boolean fresh = sObadhLanguageSlide != 0\n'
+        '                && android.os.SystemClock.uptimeMillis() - sObadhLanguageSlideTime < 1000;\n'
+        '        if (mObadhLabel != null && !text.equals(mObadhLabel) && fresh && isAttachedToWindow()) {\n'
+        '            mObadhPrevLabel = mObadhLabel;\n'
+        '            mObadhSlideDirection = sObadhLanguageSlide;\n'
+        '            sObadhLanguageSlide = 0;\n'
+        '            if (mObadhSlideAnimator != null) mObadhSlideAnimator.cancel();\n'
+        '            mObadhSlide = 0f;\n'
+        '            final var animator = android.animation.ValueAnimator.ofFloat(0f, 1f);\n'
+        '            mObadhSlideAnimator = animator;\n'
+        '            animator.setDuration(220);\n'
+        '            animator.setInterpolator(new android.view.animation.DecelerateInterpolator());\n'
+        '            animator.addUpdateListener(a -> {\n'
+        '                mObadhSlide = (Float) a.getAnimatedValue();\n'
+        '                if (mSpaceKey != null) invalidateKey(mSpaceKey);\n'
+        '            });\n'
+        '            animator.addListener(new android.animation.AnimatorListenerAdapter() {\n'
+        '                @Override public void onAnimationEnd(final android.animation.Animator a) {\n'
+        '                    if (mObadhSlideAnimator == animator) mObadhPrevLabel = null;\n'
+        '                    if (mSpaceKey != null) invalidateKey(mSpaceKey);\n'
+        '                }\n'
+        '            });\n'
+        '            animator.start();\n'
+        '        }\n'
+        '        mObadhLabel = text;\n'
+        '        final float p = mObadhSlide;\n'
+        '        if (mObadhPrevLabel == null || p >= 1f) {\n'
+        '            canvas.drawText(text, width / 2f, y, paint);\n'
+        '            return;\n'
+        '        }\n'
+        '        final int alpha = paint.getAlpha();\n'
+        '        final float shift = width * 0.3f;\n'
+        '        canvas.save();\n'
+        '        canvas.clipRect(0, 0, width, height);\n'
+        '        paint.setAlpha(Math.round(alpha * (1f - p)));\n'
+        '        canvas.drawText(mObadhPrevLabel, width / 2f + mObadhSlideDirection * p * shift, y, paint);\n'
+        '        paint.setAlpha(Math.round(alpha * p));\n'
+        '        canvas.drawText(text, width / 2f - mObadhSlideDirection * (1f - p) * shift, y, paint);\n'
+        '        paint.setAlpha(alpha);\n'
+        '        canvas.restore();\n'
+        '    }\n'
+        '\n'
+        '    private void drawLanguageOnSpacebar(final Key key, final Canvas canvas, final Paint paint) {')
+    replace(main_view, '        canvas.drawText(spaceText, width / 2f, baseline - descent, paint);\n',
+        '        obadhDrawSpaceLabel(canvas, spaceText, width, height, baseline - descent, paint);\n')
+    replace(impl,
+        '        if (abs(steps) < settings.current.mLanguageSwipeDistance) return false\n'
+        '        val subtypes = SubtypeSettings.getEnabledSubtypes(true)',
+        '        if (abs(steps) < settings.current.mLanguageSwipeDistance) return false\n'
+        '        helium314.keyboard.keyboard.MainKeyboardView.sObadhLanguageSlide = if (steps > 0) 1 else -1\n'
+        '        helium314.keyboard.keyboard.MainKeyboardView.sObadhLanguageSlideTime = android.os.SystemClock.uptimeMillis()\n'
+        '        val subtypes = SubtypeSettings.getEnabledSubtypes(true)')
+
+    # With Bangla selected the QWERTY number row, and the hints on the top letter row, show Bangla
+    # digits. The latin digit stays on a long press (the number row keeps it as a popup).
+    replace(main / 'assets/locale_key_texts/bn-BD.txt', '[popup_keys]\n',
+        '[number_row]\n\u09e7 \u09e8 \u09e9 \u09ea \u09eb \u09ec \u09ed \u09ee \u09ef \u09e6\n\n[popup_keys]\n')
+

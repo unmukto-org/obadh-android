@@ -70,6 +70,8 @@ def main():
         "latin/suggestions/SuggestionStripLayoutHelper.java", "latin/suggestions/SuggestionStripView.kt",
         "keyboard/internal/KeyboardIconsSet.kt", "keyboard/KeyboardView.java", "keyboard/internal/keyboard_parser/floris/TextKeyData.kt",
         "latin/personalization/PersonalizationHelper.java", "latin/dictionary/ExpandableBinaryDictionary.java",
+        "keyboard/PointerTracker.java", "keyboard/KeyboardActionListener.java", "keyboard/MainKeyboardView.java",
+        "latin/RichInputConnection.java",
     ]
     def restore_source(relative):
         source = main_dir / "java/helium314/keyboard" / relative
