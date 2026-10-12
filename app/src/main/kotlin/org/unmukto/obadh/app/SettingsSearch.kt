@@ -25,6 +25,7 @@ internal object SettingsIndex {
     val all: List<SettingEntry> = listOf(
         // Top-level categories.
         entry("Languages", "Bangla and English keyboards", AppScreen.Languages, keywords = "bangla bengali english language"),
+        entry("Learn to type", "Writing guide and a typing game", AppScreen.Learn, keywords = "guide tutorial lesson practice game phonetic how to write"),
         entry("Preferences", "Layout and key press", AppScreen.Preferences, keywords = "layout keys"),
         entry("Theme", "Colors, gradients and keyboard photo", AppScreen.Appearance, keywords = "appearance color colour dark light mode gradient photo background wallpaper"),
         entry("Corrections & suggestions", "Auto-correction, spelling and learning", AppScreen.Correction, keywords = "autocorrect typo spell"),

@@ -56,6 +56,7 @@ fun RootScreen(startScreen: String?) {
                 AppScreen.About -> AboutScreen(back)
                 AppScreen.Shortcuts -> ShortcutsScreen(prefs, back)
                 AppScreen.Clipboard -> ClipboardScreen(prefs, back)
+                AppScreen.Learn -> LearnScreen(keyboard, back)
                 else -> KeyboardOptionsScreen(current, prefs, back)
             }
         }

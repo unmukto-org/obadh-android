@@ -33,7 +33,7 @@ import org.unmukto.obadh.settings.KeyboardState
 internal enum class AppScreen(val title: String) {
     Settings("Obadh settings"), Preferences("Preferences"), Appearance("Theme"), Languages("Languages"), Correction("Corrections & suggestions"),
     Gestures("Glide typing"), Clipboard("Clipboard"), Emoji("Emoji"),
-    Shortcuts("Text shortcuts"), Privacy("Privacy"), About("About"), Advanced("Advanced"),
+    Shortcuts("Text shortcuts"), Privacy("Privacy"), About("About"), Advanced("Advanced"), Learn("Learn to type"),
 }
 
 /** A Gboard-style category index. Power-user controls are in the overflow menu. */
@@ -82,6 +82,7 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
             Spacer(Modifier.height(12.dp))
         }
         CategoryRow("Languages", "বাংলা (Obadh phonetic)\nEnglish (US) (QWERTY)", helium314.keyboard.latin.R.drawable.obadh_ic_translate) { onOpen(AppScreen.Languages) }
+        CategoryRow("Learn to type", "Writing guide and a typing game", helium314.keyboard.latin.R.drawable.obadh_ic_book) { onOpen(AppScreen.Learn) }
         CategoryRow("Preferences", null, helium314.keyboard.latin.R.drawable.obadh_ic_tune) { onOpen(AppScreen.Preferences) }
         CategoryRow("Theme", null, helium314.keyboard.latin.R.drawable.obadh_ic_palette) { onOpen(AppScreen.Appearance) }
         CategoryRow("Corrections & suggestions", null, helium314.keyboard.latin.R.drawable.obadh_ic_spellcheck) { onOpen(AppScreen.Correction) }
