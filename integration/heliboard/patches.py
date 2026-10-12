@@ -216,10 +216,18 @@ def apply(main, replace):
     replace(base / 'latin/utils/PopupKeysUtils.kt',
         '    if (!popupKeysDelegate.isInitialized() || popupKeys.isEmpty())',
         '    if (params.mId.element.isAlphabet && helium314.keyboard.latin.obadh.ObadhExtensions.current?.clipboardKeys == true) {\n'
-        '        when (label.lowercase()) {\n'
-        '            "x" -> popupKeys.add("!icon/cut|!code/-32")\n'
-        '            "c" -> popupKeys.add("!icon/copy|!code/-31")\n'
-        '            "v" -> popupKeys.add("!icon/paste|!code/-33")\n'
+        '        // First, so holding the key and lifting picks the clipboard action, not an apostrophe or c-cedilla.\n'
+        '        val clipboardAction = when (label.lowercase()) {\n'
+        '            "x" -> "!icon/cut|!code/-32"\n'
+        '            "c" -> "!icon/copy|!code/-31"\n'
+        '            "v" -> "!icon/paste|!code/-33"\n'
+        '            else -> null\n'
+        '        }\n'
+        '        if (clipboardAction != null) {\n'
+        '            val others = popupKeys.toList()\n'
+        '            popupKeys.clear()\n'
+        '            popupKeys.add(clipboardAction)\n'
+        '            popupKeys.addAll(others)\n'
         '        }\n'
         '    }\n'
         '    if (!popupKeysDelegate.isInitialized() || popupKeys.isEmpty())')
@@ -353,3 +361,47 @@ def apply(main, replace):
         '        final var obadh = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();\n'
         '        if (obadh != null) obadh.inputViewStarted();\n'
         '        if (TRACE) Debug.startMethodTracing("/data/trace/latinime");')
+
+    # Cut/copy/paste: cut acts on the whole field when nothing is selected, as copy already does,
+    # and each successful action pops a badge at the right edge of the strip.
+    rich = base / 'latin/RichInputConnection.java'
+    replace(rich, '    public void copyText(final boolean getSelection) {',
+        '    public boolean copyText(final boolean getSelection) {')
+    replace(rich, '            if (et == null) return;\n', '            if (et == null) return false;\n')
+    replace(rich, '        if (text == null || text.length() == 0) return;\n        final ClipboardManager cm',
+        '        if (text == null || text.length() == 0) return false;\n        final ClipboardManager cm')
+    replace(rich,
+        '            KeyboardSwitcher.getInstance().showToast(mParent.getString(R.string.toast_msg_clipboard_copy), true);\n        }\n    }',
+        '            KeyboardSwitcher.getInstance().showToast(mParent.getString(R.string.toast_msg_clipboard_copy), true);\n        }\n        return true;\n    }')
+    badge = 'helium314.keyboard.latin.obadh.ClipboardBadgeView'
+    replace(logic, '            case KeyCode.CLIPBOARD_COPY:\n                mConnection.copyText(true);\n                break;',
+        '            case KeyCode.CLIPBOARD_COPY:\n'
+        '                if (mConnection.copyText(true)) ' + badge + '.flash(' + badge + '.Action.COPY);\n'
+        '                break;')
+    replace(logic,
+        '            case KeyCode.CLIPBOARD_CUT:\n                if (mConnection.hasSelection()) {\n                    mConnection.copyText(true);\n',
+        '            case KeyCode.CLIPBOARD_CUT:\n'
+        '                // A composing word is part of the text being cut: commit it first.\n'
+        '                if (mWordComposer.isComposingWord()) {\n'
+        '                    mConnection.finishComposingText();\n'
+        '                    resetComposingState(true);\n'
+        '                }\n'
+        '                if (!mConnection.hasSelection()) {\n'
+        '                    // Nothing selected: cut the whole field, matching copy.\n'
+        '                    final CharSequence beforeCursor = mConnection.getTextBeforeCursor(100000, 0);\n'
+        '                    final CharSequence afterCursor = mConnection.getTextAfterCursor(100000, 0);\n'
+        '                    final int cursor = mConnection.getExpectedSelectionStart();\n'
+        '                    final int before = beforeCursor == null ? 0 : beforeCursor.length();\n'
+        '                    final int after = afterCursor == null ? 0 : afterCursor.length();\n'
+        '                    if (before + after > 0 && cursor >= before) mConnection.setSelection(cursor - before, cursor + after);\n'
+        '                }\n'
+        '                if (mConnection.hasSelection()) {\n'
+        '                    if (mConnection.copyText(true)) ' + badge + '.flash(' + badge + '.Action.CUT);\n')
+    replace(logic,
+        '            mConnection.commitText(primaryClip, 1);\n            return;\n        }\n        Log.d(TAG, "pasting non-text content");',
+        '            mConnection.commitText(primaryClip, 1);\n'
+        '            ' + badge + '.flash(' + badge + '.Action.PASTE);\n'
+        '            return;\n        }\n        Log.d(TAG, "pasting non-text content");')
+    replace(logic, '        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);\n    }',
+        '        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);\n'
+        '        ' + badge + '.flash(' + badge + '.Action.PASTE);\n    }')

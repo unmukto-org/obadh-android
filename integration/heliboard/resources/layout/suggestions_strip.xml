@@ -22,4 +22,7 @@
             android:layout_height="match_parent" android:scaleType="center"
             android:contentDescription="Voice typing" android:background="@android:color/transparent" />
     </LinearLayout>
+    <!-- Over the strip: the badge that confirms cut, copy and paste. It never takes a touch. -->
+    <helium314.keyboard.latin.obadh.ClipboardBadgeView android:layout_width="match_parent"
+        android:layout_height="match_parent" android:paddingBottom="@dimen/obadh_strip_bottom_gap" />
 </merge>
