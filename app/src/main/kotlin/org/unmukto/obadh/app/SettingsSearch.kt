@@ -60,7 +60,7 @@ internal object SettingsIndex {
 
         // Glide typing
         entry("Swipe typing", "Slide across letters to write words", AppScreen.Gestures, keywords = "glide download decoder"),
-        entry("Gesture cursor control", "Swipe up on the space bar to open the touchpad", AppScreen.Gestures, keywords = "trackpad touchpad move cursor"),
+        entry("Gesture cursor control", "Hold the space bar, then slide to move the cursor", AppScreen.Gestures, keywords = "trackpad touchpad move cursor hold"),
         entry("Gesture delete", "Slide left from backspace to select and delete words", AppScreen.Gestures, keywords = "backspace"),
 
         // Emoji

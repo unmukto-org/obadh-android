@@ -51,6 +51,7 @@ object NativePreferences {
             putBoolean("obadh.volume_cursor", flag("f_volume_cursor", false))
             putBoolean("obadh.emoji_bangla", flag("emoji_search_bangla", false))
             putBoolean("obadh.clipboard_keys", flag("f_clip_keys"))
+            putBoolean("obadh.space_cursor", flag("f_trackpad"))
             putBoolean("obadh.return_actions", flag("f_return_action"))
             putString("obadh.shortcuts", context.getSharedPreferences("obadh_shortcuts", Context.MODE_PRIVATE).getString("items", "[]"))
             putBoolean(Settings.PREF_VIBRATE_ON, strength > 0)
@@ -66,7 +67,8 @@ object NativePreferences {
             putBoolean(Settings.PREF_KEY_USE_DOUBLE_SPACE_PERIOD, flag("f_double_space"))
             putBoolean(Settings.PREF_DELETE_SWIPE, flag("f_swipe_delete"))
             putString(Settings.PREF_SPACE_HORIZONTAL_SWIPE, if (flag("f_space_swipe_lang")) "SWITCH_LANGUAGE" else "NONE")
-            putString(Settings.PREF_SPACE_VERTICAL_SWIPE, if (flag("f_trackpad")) "TOUCHPAD_MODE" else "NONE")
+            // The cursor trackpad is a hold on the space bar now, not a swipe up.
+            putString(Settings.PREF_SPACE_VERTICAL_SWIPE, "NONE")
             putBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, flag("clipboard_history"))
             putBoolean(Settings.PREF_ABC_AFTER_SYMBOL_SPACE, flag("f_space_leaves_symbols"))
             putBoolean(Settings.PREF_ABC_AFTER_NUMPAD_SPACE, flag("f_space_leaves_symbols"))

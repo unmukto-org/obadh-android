@@ -576,3 +576,91 @@ def apply(main, replace):
         '            sListener.onObadhClipboardSelect(3, mObadhClipCut, 0, 0);\n'
         '        }\n')
 
+    # Holding the space bar turns the keys into a cursor trackpad: one character per step across,
+    # one line per step down, no acceleration. The language picker lives on the globe key only.
+    replace(tracker, '    private boolean mKeySwipeAllowed = false;\n',
+        '    private boolean mKeySwipeAllowed = false;\n'
+        '    // Space held: the finger moves the cursor, 1:1.\n'
+        '    private boolean mObadhCursorActive = false;\n'
+        '    private int mObadhCursorX, mObadhCursorY, mObadhCursorAccX, mObadhCursorAccY;\n'
+        '    private static final int OBADH_CURSOR_CHAR_STEP = KtxKt.dpToPx(10, Resources.getSystem());\n'
+        '    private static final int OBADH_CURSOR_LINE_STEP = KtxKt.dpToPx(24, Resources.getSystem());\n')
+    replace(tracker,
+        '    private boolean onObadhClipboardMove(final int x, final int y, final long eventTime) {\n',
+        '    private void onObadhCursorMove(final int x, final int y) {\n'
+        '        mObadhCursorAccX += x - mObadhCursorX;\n'
+        '        mObadhCursorAccY += y - mObadhCursorY;\n'
+        '        mObadhCursorX = x;\n'
+        '        mObadhCursorY = y;\n'
+        '        boolean movedX = false, movedY = false;\n'
+        '        while (abs(mObadhCursorAccX) >= OBADH_CURSOR_CHAR_STEP) {\n'
+        '            final boolean right = mObadhCursorAccX > 0;\n'
+        '            sListener.onCodeInput(right ? KeyCode.ARROW_RIGHT : KeyCode.ARROW_LEFT,\n'
+        '                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);\n'
+        '            mObadhCursorAccX -= right ? OBADH_CURSOR_CHAR_STEP : -OBADH_CURSOR_CHAR_STEP;\n'
+        '            movedX = true;\n'
+        '        }\n'
+        '        while (abs(mObadhCursorAccY) >= OBADH_CURSOR_LINE_STEP) {\n'
+        '            final boolean down = mObadhCursorAccY > 0;\n'
+        '            sListener.onCodeInput(down ? KeyCode.ARROW_DOWN : KeyCode.ARROW_UP,\n'
+        '                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);\n'
+        '            mObadhCursorAccY -= down ? OBADH_CURSOR_LINE_STEP : -OBADH_CURSOR_LINE_STEP;\n'
+        '            movedY = true;\n'
+        '        }\n'
+        '        // A mostly horizontal drag must not leak into lines, nor the other way round.\n'
+        '        if (movedX && abs(mObadhCursorAccY) < OBADH_CURSOR_LINE_STEP / 2) mObadhCursorAccY = 0;\n'
+        '        if (movedY && abs(mObadhCursorAccX) < OBADH_CURSOR_CHAR_STEP / 2) mObadhCursorAccX = 0;\n'
+        '    }\n'
+        '\n'
+        '    private boolean onObadhClipboardMove(final int x, final int y, final long eventTime) {\n')
+    replace(tracker,
+        '        if (mObadhClipArmed && mCurrentKey != null && !sInGesture && onObadhClipboardMove(x, y, eventTime)) return;\n',
+        '        if (mObadhCursorActive) { onObadhCursorMove(x, y); return; }\n'
+        '        if (mObadhClipArmed && mCurrentKey != null && !sInGesture && onObadhClipboardMove(x, y, eventTime)) return;\n')
+    replace(tracker,
+        '        mObadhClipArmed = false;\n        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(2,',
+        '        mObadhClipArmed = false;\n'
+        '        if (mObadhCursorActive) {\n'
+        '            mObadhCursorActive = false;\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.TOUCHPAD_OFF);\n'
+        '            setReleasedKeyGraphics(mCurrentKey, true);\n'
+        '            mCurrentKey = null;\n'
+        '            resetKeySelectionByDraggingFinger();\n'
+        '            return;\n'
+        '        }\n'
+        '        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(2,')
+    replace(tracker,
+        '        mObadhClipArmed = false;\n        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(3,',
+        '        mObadhClipArmed = false;\n'
+        '        if (mObadhCursorActive) {\n'
+        '            mObadhCursorActive = false;\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.TOUCHPAD_OFF);\n'
+        '        }\n'
+        '        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(3,')
+    replace(tracker,
+        '        final int code = key.getCode();\n        sListener.onLongPressKey(code);\n',
+        '        final int code = key.getCode();\n'
+        '        final var obadhCursor = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();\n'
+        '        if (code == Constants.CODE_SPACE && !sInGesture && obadhCursor != null && obadhCursor.getSpaceCursor()) {\n'
+        '            mObadhCursorActive = true;\n'
+        '            mObadhCursorX = mLastX;\n'
+        '            mObadhCursorY = mLastY;\n'
+        '            mObadhCursorAccX = 0;\n'
+        '            mObadhCursorAccY = 0;\n'
+        '            mKeySwipeAllowed = false;\n'
+        '            sInKeySwipe = false;\n'
+        '            sTimerProxy.cancelKeyTimersOf(this);\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.TOUCHPAD_ON);\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.PERFORM_HAPTIC);\n'
+        '            return;\n'
+        '        }\n'
+        '        sListener.onLongPressKey(code);\n')
+    replace(tracker,
+        '        if (code == KeyCode.LANGUAGE_SWITCH\n'
+        '                || (code == Constants.CODE_SPACE && key.getPopupKeys() == null && Settings.getValues().mSpaceForLangChange)\n'
+        '        ) {',
+        '        if (code == KeyCode.LANGUAGE_SWITCH) {')
+    replace(base / 'keyboard/MainKeyboardView.java',
+        '            if (key.isLongPressEnabled() && mHasMultipleEnabledIMEsOrSubtypes && Settings.getValues().mSpaceForLangChange) {',
+        '            if (false) { // Obadh: no hint, the globe key opens the language picker')
+

@@ -253,7 +253,7 @@ internal fun KeyboardOptionsScreen(screen: AppScreen, prefs: KeyboardPreferences
             AppScreen.Gestures -> {
                 SwipeTypingPreference()
                 PrefToggle("Swipe to switch language", "Swipe the space bar for Bangla or English", prefs.spaceSwipeLanguage) { prefs.spaceSwipeLanguage = it }
-                PrefToggle("Gesture cursor control", "Swipe up on the space bar to open the touchpad", prefs.spaceTrackpad) { prefs.spaceTrackpad = it }
+                PrefToggle("Gesture cursor control", "Hold the space bar, then slide to move the cursor", prefs.spaceTrackpad) { prefs.spaceTrackpad = it }
                 PrefToggle("Gesture delete", "Slide left from backspace to select and delete words", prefs.swipeToDelete) { prefs.swipeToDelete = it }
             }
             AppScreen.Emoji -> {
