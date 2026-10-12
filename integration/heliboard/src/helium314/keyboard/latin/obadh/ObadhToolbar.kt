@@ -14,6 +14,8 @@ import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.ScrollView
 import android.view.Gravity
+import helium314.keyboard.keyboard.KeyboardElement
+import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -58,6 +60,11 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
             button("GIFs", R.drawable.obadh_ic_gif) { ObadhExtensions.current?.openOnlineMedia(true) }
         }
         button("Clipboard", R.drawable.obadh_ic_assignment) { send(getCodeForToolbarKey(ToolbarKey.CLIPBOARD)) }
+        // One switch both ways: the upstream code toggles, and the icon shows where a tap goes.
+        button("Numbers", R.drawable.obadh_ic_numpad) {
+            send(getCodeForToolbarKey(ToolbarKey.NUMPAD))
+            strip.post { syncNumbersSwitch() }
+        }
         button("Settings", R.drawable.obadh_ic_settings) { open("org.unmukto.obadh.app.MainActivity") }
         button("Theme", R.drawable.obadh_ic_palette) { open("org.unmukto.obadh.app.ThemeActivity") }
         grid.setImageResource(R.drawable.obadh_ic_tools)
@@ -72,6 +79,14 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         strip.addOnLayoutChangeListener { _,_,_,_,_,_,_,_,_ -> compact() }
         strip.post { compact() }
         strip.findViewById<View>(R.id.pinned_keys).isVisible = false
+    }
+
+    private fun syncNumbersSwitch() {
+        val numpad = KeyboardSwitcher.getInstance().keyboard?.mId?.element == KeyboardElement.NUMPAD
+        home.findViewWithTag<ImageButton>("Numbers")?.apply {
+            setImageResource(if (numpad) R.drawable.obadh_ic_keyboard else R.drawable.obadh_ic_numpad)
+            contentDescription = if (numpad) "Letters" else "Numbers"
+        }
     }
 
     private fun voiceNotice() {
@@ -92,7 +107,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
                 home.findViewWithTag<View>(label)?.isVisible=false;hidden.add(label);count--
             }
         }
-        for(label in listOf("Voice typing","Clipboard","GIFs","Stickers")) {
+        for(label in listOf("Voice typing","Clipboard","GIFs","Stickers","Numbers")) {
             if(count<=capacity)break
             val control=if(label=="Voice typing")voice else home.findViewWithTag<View>(label)
             if(control?.isVisible==true) { control.isVisible=false;hidden.add(label);count-- }
@@ -131,6 +146,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         }
         home.findViewWithTag<View>("Clipboard").apply { isEnabled = !sensitive; alpha = if (sensitive) .38f else 1f }
         if (!showHome || sensitive || external) menu?.dismiss()
+        syncNumbersSwitch()
         compact()
     }
 
@@ -175,6 +191,7 @@ class ObadhToolbar(private val strip: SuggestionStripView, private val send: (In
         if("Theme" in hidden)tools.add(Tool("Theme",icon=R.drawable.obadh_ic_palette,action={ open("org.unmukto.obadh.app.ThemeActivity") }))
         if("Voice typing" in hidden)tools.add(Tool("Voice typing",icon=R.drawable.obadh_ic_mic,action={ voiceNotice() }))
         if("Clipboard" in hidden)tools.add(Tool("Clipboard",ToolbarKey.CLIPBOARD,icon=R.drawable.obadh_ic_assignment))
+        if("Numbers" in hidden)tools.add(Tool("Numbers",ToolbarKey.NUMPAD,icon=R.drawable.obadh_ic_numpad))
         for((label,gifs) in listOf("Stickers" to false,"GIFs" to true))if(label in hidden && ObadhExtensions.current?.onlineMediaAllowed==true && ObadhExtensions.current?.onlineMediaSupported==true)
             tools.add(Tool(label,icon=if(gifs)R.drawable.obadh_ic_gif else R.drawable.obadh_ic_sticker,action={ ObadhExtensions.current?.openOnlineMedia(gifs) }))
         val columns=((keyboard.width-dp(40))/dp(64)).coerceIn(1,4)
