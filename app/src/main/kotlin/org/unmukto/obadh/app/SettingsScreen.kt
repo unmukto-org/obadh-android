@@ -1,6 +1,11 @@
 package org.unmukto.obadh.app
 
 import android.view.SoundEffectConstants
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
@@ -28,7 +33,7 @@ import org.unmukto.obadh.settings.KeyboardState
 internal enum class AppScreen(val title: String) {
     Settings("Obadh settings"), Preferences("Preferences"), Appearance("Theme"), Languages("Languages"), Correction("Corrections & suggestions"),
     Gestures("Glide typing"), Clipboard("Clipboard"), Emoji("Emoji"),
-    Shortcuts("Text shortcuts"), Privacy("Privacy"), About("About"), Advanced("Advanced"),
+    Shortcuts("Text shortcuts"), Privacy("Privacy"), About("About"), Advanced("Advanced"), Learn("Learn to type"),
 }
 
 /** A Gboard-style category index. Power-user controls are in the overflow menu. */
@@ -36,7 +41,15 @@ internal enum class AppScreen(val title: String) {
 internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
-    SettingsScaffold("Obadh settings", onBack = { (context as? android.app.Activity)?.finish() }, actions = {
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val closeSearch = { searching = false; query = "" }
+    BackHandler(enabled = searching, onBack = closeSearch)
+    SettingsScaffold(if (searching) "Search settings" else "Obadh settings",
+        onBack = { if (searching) closeSearch() else (context as? android.app.Activity)?.finish() }, actions = {
+        if (!searching) IconButton(onClick = { searching = true }) {
+            Symbol(helium314.keyboard.latin.R.drawable.obadh_ic_search, "Search settings")
+        }
         Box {
             IconButton(onClick = { menu = true }) { Symbol(R.drawable.ic_more_vert, "More options") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -47,6 +60,13 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
             }
         }
     }) {
+        if (searching) {
+            SettingsSearchPane(query, { query = it }) { entry ->
+                if (entry.screen != null) onOpen(entry.screen)
+                else context.startActivity(android.content.Intent(context, org.unmukto.obadh.media.MediaSettingsActivity::class.java))
+            }
+            return@SettingsScaffold
+        }
         if (!state.ready) {
             PreferenceItem(
                 content = { Text(if (!state.enabled) "Enable Obadh" else "Choose Obadh") },
@@ -62,6 +82,7 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
             Spacer(Modifier.height(12.dp))
         }
         CategoryRow("Languages", "বাংলা (Obadh phonetic)\nEnglish (US) (QWERTY)", helium314.keyboard.latin.R.drawable.obadh_ic_translate) { onOpen(AppScreen.Languages) }
+        CategoryRow("Learn to type", "Writing guide and a typing game", helium314.keyboard.latin.R.drawable.obadh_ic_book) { onOpen(AppScreen.Learn) }
         CategoryRow("Preferences", null, helium314.keyboard.latin.R.drawable.obadh_ic_tune) { onOpen(AppScreen.Preferences) }
         CategoryRow("Theme", null, helium314.keyboard.latin.R.drawable.obadh_ic_palette) { onOpen(AppScreen.Appearance) }
         CategoryRow("Corrections & suggestions", null, helium314.keyboard.latin.R.drawable.obadh_ic_spellcheck) { onOpen(AppScreen.Correction) }
@@ -77,6 +98,34 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
         CategoryRow("Emoji", null, helium314.keyboard.latin.R.drawable.obadh_ic_sentiment_satisfied) { onOpen(AppScreen.Emoji) }
         CategoryRow("Privacy", null, helium314.keyboard.latin.R.drawable.obadh_ic_shield) { onOpen(AppScreen.Privacy) }
         CategoryRow("About", "Obadh ${AppBuildInfo.version}", helium314.keyboard.latin.R.drawable.obadh_ic_info) { onOpen(AppScreen.About) }
+    }
+}
+
+@Composable
+private fun SettingsSearchPane(query: String, onQuery: (String) -> Unit, onOpen: (SettingEntry) -> Unit) {
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    OutlinedTextField(
+        value = query, onValueChange = onQuery, singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(focus),
+        placeholder = { Text("Search settings") },
+        leadingIcon = { Symbol(helium314.keyboard.latin.R.drawable.obadh_ic_search) },
+        trailingIcon = if (query.isEmpty()) null else ({
+            IconButton(onClick = { onQuery("") }) { Symbol(helium314.keyboard.latin.R.drawable.obadh_ic_close, "Clear search") }
+        }),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, capitalization = KeyboardCapitalization.None),
+    )
+    val results = remember(query) { searchSettings(query) }
+    when {
+        query.isBlank() -> PreferenceNote("Search by name, description or related words, like vibration, clipboard or swipe.")
+        results.isEmpty() -> PreferenceNote("No settings match \u201C${query.trim()}\u201D.")
+        else -> results.forEach { e ->
+            PreferenceItem(
+                content = { Text(e.title) },
+                supportingContent = { Text("${e.path}\n${e.summary}") },
+                onClick = { onOpen(e) },
+            )
+        }
     }
 }
 
@@ -205,7 +254,7 @@ internal fun KeyboardOptionsScreen(screen: AppScreen, prefs: KeyboardPreferences
             AppScreen.Gestures -> {
                 SwipeTypingPreference()
                 PrefToggle("Swipe to switch language", "Swipe the space bar for Bangla or English", prefs.spaceSwipeLanguage) { prefs.spaceSwipeLanguage = it }
-                PrefToggle("Gesture cursor control", "Swipe up on the space bar to open the touchpad", prefs.spaceTrackpad) { prefs.spaceTrackpad = it }
+                PrefToggle("Gesture cursor control", "Hold the space bar, then slide to move the cursor", prefs.spaceTrackpad) { prefs.spaceTrackpad = it }
                 PrefToggle("Gesture delete", "Slide left from backspace to select and delete words", prefs.swipeToDelete) { prefs.swipeToDelete = it }
             }
             AppScreen.Emoji -> {

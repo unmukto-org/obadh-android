@@ -26,6 +26,8 @@ interface ObadhExtension {
     fun pairsEnabled(settings: SettingsValues): Boolean
     fun transformCodePoint(codePoint: Int, settings: SettingsValues): Int
     val clipboardKeys: Boolean
+    /** Holding the space bar turns the keys into a cursor trackpad. */
+    val spaceCursor: Boolean get() = true
     val returnActions: Boolean
     val emojiSearchBangla: Boolean
 }

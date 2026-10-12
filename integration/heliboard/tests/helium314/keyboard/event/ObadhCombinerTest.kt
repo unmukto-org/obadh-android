@@ -81,4 +81,19 @@ class ObadhCombinerTest {
         combiner.processEvent(arrayListOf(), key(KeyCode.DELETE))
         assertEquals("t", combiner.combiningStateFeedback)
     }
+
+    @Test fun backtickAndCaretStayInTheWord() {
+        val combiner = ObadhCombiner { it }
+        type(combiner, "t``")
+        assertEquals("t``", combiner.combiningStateFeedback)
+        combiner.processEvent(arrayListOf(), key(' '.code))
+        type(combiner, "cA^d")
+        assertEquals("cA^d", combiner.combiningStateFeedback)
+    }
+
+    @Test fun backtickAloneIsNotAWord() {
+        val combiner = ObadhCombiner { it }
+        val event = key('`'.code)
+        assertSame(event, combiner.processEvent(arrayListOf(), event))
+    }
 }

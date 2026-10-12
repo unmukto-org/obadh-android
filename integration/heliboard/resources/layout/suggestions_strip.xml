@@ -3,7 +3,8 @@
 <merge xmlns:android="http://schemas.android.com/apk/res/android">
     <LinearLayout android:id="@+id/suggestions_strip_wrapper" android:orientation="horizontal"
         android:layout_width="match_parent" android:layout_height="match_parent"
-        android:gravity="center_vertical" android:hapticFeedbackEnabled="false" android:soundEffectsEnabled="false">
+        android:gravity="center_vertical" android:paddingBottom="@dimen/obadh_strip_bottom_gap"
+        android:hapticFeedbackEnabled="false" android:soundEffectsEnabled="false">
         <ImageButton android:id="@+id/suggestions_strip_toolbar_key" android:layout_width="48dp"
             android:layout_height="match_parent" android:background="@android:color/transparent"
             android:contentDescription="Keyboard tools" android:scaleType="center" />
@@ -21,4 +22,7 @@
             android:layout_height="match_parent" android:scaleType="center"
             android:contentDescription="Voice typing" android:background="@android:color/transparent" />
     </LinearLayout>
+    <!-- Over the strip: the badge that confirms cut, copy and paste. It never takes a touch. -->
+    <helium314.keyboard.latin.obadh.ClipboardBadgeView android:layout_width="match_parent"
+        android:layout_height="match_parent" android:paddingBottom="@dimen/obadh_strip_bottom_gap" />
 </merge>

@@ -56,7 +56,7 @@ object NativeObadhFeatures : ObadhExtension {
         val shortcutsEnabled: Boolean = true, val smartFields: Boolean = true,
         val clipboardKeys: Boolean = true, val returnActions: Boolean = true,
         val volumeCursor: Boolean = false, val emojiBangla: Boolean = false,
-        val shortcuts: Map<String, String> = emptyMap(),
+        val shortcuts: Map<String, String> = emptyMap(), val spaceCursor: Boolean = true,
     )
 
     fun configure(values: Bundle) {
@@ -67,7 +67,8 @@ object NativeObadhFeatures : ObadhExtension {
         options = Options(values.getBoolean("obadh.auto_insert"), values.getBoolean("obadh.pairs", true),
             values.getBoolean("obadh.shortcuts_enabled", true), values.getBoolean("obadh.smart_fields", true),
             values.getBoolean("obadh.clipboard_keys", true), values.getBoolean("obadh.return_actions", true),
-            values.getBoolean("obadh.volume_cursor"), values.getBoolean("obadh.emoji_bangla"), shortcuts)
+            values.getBoolean("obadh.volume_cursor"), values.getBoolean("obadh.emoji_bangla"), shortcuts,
+            values.getBoolean("obadh.space_cursor", true))
     }
 
     @Synchronized fun initialize(context: Context) {
@@ -109,6 +110,7 @@ object NativeObadhFeatures : ObadhExtension {
     override fun combiningSpec(spec: String?, settings: SettingsValues) = if (literal(settings)) "" else spec.orEmpty()
     override fun pairsEnabled(settings: SettingsValues) = options.pairs && !literal(settings)
     override val clipboardKeys get() = options.clipboardKeys
+    override val spaceCursor get() = options.spaceCursor
     override val returnActions get() = options.returnActions
     override val emojiSearchBangla get() = options.emojiBangla
     val volumeCursor get() = options.volumeCursor

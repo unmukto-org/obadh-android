@@ -35,7 +35,12 @@ class ObadhCombiner(
             return Event.createConsumedEvent(event)
         }
         val cp = event.codePoint
-        if (!event.isFunctionalKeyEvent && (cp in 'a'.code..'z'.code || cp in 'A'.code..'Z'.code)) {
+        // ` writes khanda ta after t (t`` = ৎ) and ^ writes chandrabindu. Neither is prose punctuation,
+        // so they stay in the word. , and : are left alone: they would turn every "word," into a hasant
+        // and every "word:" into a bisarga.
+        val letter = cp in 'a'.code..'z'.code || cp in 'A'.code..'Z'.code
+        val modifier = roman.isNotEmpty() && (cp == '`'.code || cp == '^'.code)
+        if (!event.isFunctionalKeyEvent && (letter || modifier)) {
             roman.appendCodePoint(cp)
             romanInput = roman.toString()
             rendered = convert(RomanInputRules.engineInput(roman.toString()))

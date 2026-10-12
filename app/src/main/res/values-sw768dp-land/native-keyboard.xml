@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <fraction name="config_key_letter_ratio_lxx">56%</fraction>
-    <dimen name="config_suggestions_strip_height">48dp</dimen>
+    <dimen name="config_suggestions_strip_height">52dp</dimen>
+    <dimen name="obadh_strip_bottom_gap">4dp</dimen>
     <dimen name="config_suggestions_strip_edge_key_width">48dp</dimen>
     <dimen name="config_default_keyboard_height">226dp</dimen>
     <fraction name="config_keyboard_left_padding">5%p</fraction>

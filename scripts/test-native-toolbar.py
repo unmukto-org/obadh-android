@@ -31,7 +31,7 @@ def run(languages=('bn','en')):
     for language in languages:
         start(language);home=controls()
         media='Stickers' in home
-        expected=['Keyboard tools']+(['Stickers','GIFs'] if media else [])+['Clipboard','Settings','Theme','Voice typing']
+        expected=['Keyboard tools']+(['Stickers','GIFs'] if media else [])+['Clipboard','Numbers','Settings','Theme','Voice typing']
         assert list(home)==expected,home
         if media: assert not home['Stickers']['enabled'] and not home['GIFs']['enabled'],home
         tap('Keyboard tools');grid=controls()

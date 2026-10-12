@@ -216,10 +216,18 @@ def apply(main, replace):
     replace(base / 'latin/utils/PopupKeysUtils.kt',
         '    if (!popupKeysDelegate.isInitialized() || popupKeys.isEmpty())',
         '    if (params.mId.element.isAlphabet && helium314.keyboard.latin.obadh.ObadhExtensions.current?.clipboardKeys == true) {\n'
-        '        when (label.lowercase()) {\n'
-        '            "x" -> popupKeys.add("!icon/cut|!code/-32")\n'
-        '            "c" -> popupKeys.add("!icon/copy|!code/-31")\n'
-        '            "v" -> popupKeys.add("!icon/paste|!code/-33")\n'
+        '        // First, so holding the key and lifting picks the clipboard action, not an apostrophe or c-cedilla.\n'
+        '        val clipboardAction = when (label.lowercase()) {\n'
+        '            "x" -> "!icon/cut|!code/-32"\n'
+        '            "c" -> "!icon/copy|!code/-31"\n'
+        '            "v" -> "!icon/paste|!code/-33"\n'
+        '            else -> null\n'
+        '        }\n'
+        '        if (clipboardAction != null) {\n'
+        '            val others = popupKeys.toList()\n'
+        '            popupKeys.clear()\n'
+        '            popupKeys.add(clipboardAction)\n'
+        '            popupKeys.addAll(others)\n'
         '        }\n'
         '    }\n'
         '    if (!popupKeysDelegate.isInitialized() || popupKeys.isEmpty())')
@@ -353,3 +361,379 @@ def apply(main, replace):
         '        final var obadh = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();\n'
         '        if (obadh != null) obadh.inputViewStarted();\n'
         '        if (TRACE) Debug.startMethodTracing("/data/trace/latinime");')
+
+    # Cut/copy/paste: cut acts on the whole field when nothing is selected, as copy already does,
+    # and each successful action pops a badge at the right edge of the strip.
+    rich = base / 'latin/RichInputConnection.java'
+    replace(rich, '    public void copyText(final boolean getSelection) {',
+        '    public boolean copyText(final boolean getSelection) {')
+    replace(rich, '            if (et == null) return;\n', '            if (et == null) return false;\n')
+    replace(rich, '        if (text == null || text.length() == 0) return;\n        final ClipboardManager cm',
+        '        if (text == null || text.length() == 0) return false;\n        final ClipboardManager cm')
+    replace(rich,
+        '            KeyboardSwitcher.getInstance().showToast(mParent.getString(R.string.toast_msg_clipboard_copy), true);\n        }\n    }',
+        '            KeyboardSwitcher.getInstance().showToast(mParent.getString(R.string.toast_msg_clipboard_copy), true);\n        }\n        return true;\n    }')
+    badge = 'helium314.keyboard.latin.obadh.ClipboardBadgeView'
+    replace(logic, '            case KeyCode.CLIPBOARD_COPY:\n                mConnection.copyText(true);\n                break;',
+        '            case KeyCode.CLIPBOARD_COPY:\n'
+        '                if (mConnection.copyText(true)) ' + badge + '.flash(' + badge + '.Action.COPY);\n'
+        '                break;')
+    replace(logic,
+        '            case KeyCode.CLIPBOARD_CUT:\n                if (mConnection.hasSelection()) {\n                    mConnection.copyText(true);\n',
+        '            case KeyCode.CLIPBOARD_CUT:\n'
+        '                // A composing word is part of the text being cut: commit it first.\n'
+        '                if (mWordComposer.isComposingWord()) {\n'
+        '                    mConnection.finishComposingText();\n'
+        '                    resetComposingState(true);\n'
+        '                }\n'
+        '                if (!mConnection.hasSelection()) {\n'
+        '                    // Nothing selected: cut the whole field, matching copy.\n'
+        '                    final CharSequence beforeCursor = mConnection.getTextBeforeCursor(100000, 0);\n'
+        '                    final CharSequence afterCursor = mConnection.getTextAfterCursor(100000, 0);\n'
+        '                    final int cursor = mConnection.getExpectedSelectionStart();\n'
+        '                    final int before = beforeCursor == null ? 0 : beforeCursor.length();\n'
+        '                    final int after = afterCursor == null ? 0 : afterCursor.length();\n'
+        '                    if (before + after > 0 && cursor >= before) mConnection.setSelection(cursor - before, cursor + after);\n'
+        '                }\n'
+        '                if (mConnection.hasSelection()) {\n'
+        '                    if (mConnection.copyText(true)) ' + badge + '.flash(' + badge + '.Action.CUT);\n')
+    replace(logic,
+        '            mConnection.commitText(primaryClip, 1);\n            return;\n        }\n        Log.d(TAG, "pasting non-text content");',
+        '            mConnection.commitText(primaryClip, 1);\n'
+        '            ' + badge + '.flash(' + badge + '.Action.PASTE);\n'
+        '            return;\n        }\n        Log.d(TAG, "pasting non-text content");')
+    replace(logic, '        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);\n    }',
+        '        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);\n'
+        '        ' + badge + '.flash(' + badge + '.Action.PASTE);\n    }')
+
+    # Number pads: a smaller vertical gap gives taller keys and a near-symmetric grid, as Gboard's pad.
+    replace(base / 'keyboard/internal/KeyboardParams.java',
+        '            mRelativeVerticalGap = keyboardAttr.getFraction(\n'
+        '                    R.styleable.Keyboard_verticalGap, 1, 1, 0) * sv.mKeyGapScale;\n',
+        '            mRelativeVerticalGap = keyboardAttr.getFraction(\n'
+        '                    R.styleable.Keyboard_verticalGap, 1, 1, 0) * sv.mKeyGapScale;\n'
+        '            if (mId.getElement().isNumberLayout()) mRelativeVerticalGap *= 0.67f;\n')
+
+    # Hold X or C a little, then slide: left/right select words, up/down whole lines; lifting
+    # cuts (X) or copies (C). A tap or a plain hold keeps the key and its popup as they were.
+    listener = base / 'keyboard/KeyboardActionListener.java'
+    replace(listener, '    void onMoveDeletePointer(int steps);',
+        '    void onMoveDeletePointer(int steps);\n'
+        '    /** phase 0 start, 1 select (words xor lines), 2 lift and apply, 3 cancel and restore the caret. */\n'
+        '    default void onObadhClipboardSelect(int phase, boolean cut, int words, int lines) {}')
+    impl = base / 'keyboard/KeyboardActionListenerImpl.kt'
+    replace(impl, '    override fun onMoveDeletePointer(steps: Int) {',
+        '    private var obadhCaret = -1\n'
+        '    private var obadhBefore = ""\n'
+        '    private var obadhAfter = ""\n'
+        '    private var obadhStart = 0\n'
+        '    private var obadhEnd = 0\n'
+        '\n'
+        '    override fun onObadhClipboardSelect(phase: Int, cut: Boolean, words: Int, lines: Int) {\n'
+        '        when (phase) {\n'
+        '            0 -> {\n'
+        '                inputLogic.finishInput()\n'
+        '                // An existing selection is acted on as it is when the finger lifts.\n'
+        '                obadhCaret = if (connection.hasSelection()) -1 else connection.expectedSelectionStart\n'
+        '                obadhBefore = connection.getTextBeforeCursor(4000, 0)?.toString().orEmpty()\n'
+        '                obadhAfter = connection.getTextAfterCursor(4000, 0)?.toString().orEmpty()\n'
+        '                obadhStart = obadhCaret; obadhEnd = obadhCaret\n'
+        '            }\n'
+        '            1 -> {\n'
+        '                if (obadhCaret < 0) return\n'
+        '                var start = obadhCaret\n'
+        '                var end = obadhCaret\n'
+        '                if (words < 0) {\n'
+        '                    var i = obadhBefore.length\n'
+        '                    repeat(-words) {\n'
+        '                        while (i > 0 && obadhBefore[i - 1].isWhitespace()) i--\n'
+        '                        while (i > 0 && !obadhBefore[i - 1].isWhitespace()) i--\n'
+        '                    }\n'
+        '                    start = obadhCaret - (obadhBefore.length - i)\n'
+        '                } else if (words > 0) {\n'
+        '                    var i = 0\n'
+        '                    repeat(words) {\n'
+        '                        while (i < obadhAfter.length && obadhAfter[i].isWhitespace()) i++\n'
+        '                        while (i < obadhAfter.length && !obadhAfter[i].isWhitespace()) i++\n'
+        '                    }\n'
+        '                    end = obadhCaret + i\n'
+        '                } else if (lines < 0) {\n'
+        '                    // From the start of the line n above, through the caret.\n'
+        '                    var i = obadhBefore.lastIndexOf(\'\\n\') + 1\n'
+        '                    repeat(-lines) { if (i > 0) i = obadhBefore.lastIndexOf(\'\\n\', i - 2) + 1 }\n'
+        '                    start = obadhCaret - (obadhBefore.length - i)\n'
+        '                } else if (lines > 0) {\n'
+        '                    // From the caret, to the end of the line n below.\n'
+        '                    var j = obadhAfter.indexOf(\'\\n\').let { if (it < 0) obadhAfter.length else it }\n'
+        '                    repeat(lines) {\n'
+        '                        if (j < obadhAfter.length) {\n'
+        '                            val next = obadhAfter.indexOf(\'\\n\', j + 1)\n'
+        '                            j = if (next < 0) obadhAfter.length else next\n'
+        '                        }\n'
+        '                    }\n'
+        '                    end = obadhCaret + j\n'
+        '                }\n'
+        '                if (start == obadhStart && end == obadhEnd) return\n'
+        '                obadhStart = start; obadhEnd = end\n'
+        '                gestureMoveBackHaptics()\n'
+        '                connection.setSelection(start, end)\n'
+        '            }\n'
+        '            else -> {\n'
+        '                val caret = obadhCaret\n'
+        '                obadhCaret = -1\n'
+        '                if (phase == 2 && connection.hasSelection() && connection.copyText(true)) {\n'
+        '                    helium314.keyboard.latin.obadh.ClipboardBadgeView.flash(\n'
+        '                        if (cut) helium314.keyboard.latin.obadh.ClipboardBadgeView.Action.CUT\n'
+        '                        else helium314.keyboard.latin.obadh.ClipboardBadgeView.Action.COPY)\n'
+        '                    if (cut) {\n'
+        '                        connection.commitText("", 1)\n'
+        '                        latinIME.requestObadhSuggestions()\n'
+        '                    }\n'
+        '                } else if (caret >= 0) connection.setSelection(caret, caret)\n'
+        '            }\n'
+        '        }\n'
+        '    }\n'
+        '\n'
+        '    override fun onMoveDeletePointer(steps: Int) {')
+
+    tracker = base / 'keyboard/PointerTracker.java'
+    replace(tracker, '    private boolean mKeySwipeAllowed = false;\n',
+        '    private boolean mKeySwipeAllowed = false;\n'
+        '    // Held X or C, then slid: select text, act on lift.\n'
+        '    private boolean mObadhClipArmed = false;\n'
+        '    private boolean mObadhClipSelecting = false;\n'
+        '    private boolean mObadhClipCut = false;\n'
+        '    private int mObadhClipX, mObadhClipY, mObadhClipWords, mObadhClipLines;\n'
+        '    private long mObadhClipTime;\n'
+        '    private static final long OBADH_CLIP_HOLD_MS = 150;\n'
+        '    private static final int OBADH_CLIP_START = KtxKt.dpToPx(14, Resources.getSystem());\n'
+        '    private static final int OBADH_CLIP_WORD_STEP = KtxKt.dpToPx(30, Resources.getSystem());\n'
+        '    private static final int OBADH_CLIP_LINE_STEP = KtxKt.dpToPx(26, Resources.getSystem());\n')
+    replace(tracker, '            startRepeatKey(key);\n            startLongPressTimer(key);\n',
+        '            startRepeatKey(key);\n            startLongPressTimer(key);\n'
+        '            mObadhClipSelecting = false;\n'
+        '            final int obadhCode = Character.toLowerCase(key.getCode());\n'
+        '            mObadhClipArmed = !sInGesture && (obadhCode == \'x\' || obadhCode == \'c\')\n'
+        '                    && mKeyboard.mId.getElement().isAlphabet()\n'
+        '                    && helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent() != null\n'
+        '                    && helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent().getClipboardKeys();\n'
+        '            if (mObadhClipArmed) {\n'
+        '                mObadhClipCut = obadhCode == \'x\';\n'
+        '                mObadhClipX = x; mObadhClipY = y; mObadhClipTime = eventTime;\n'
+        '            }\n')
+    replace(tracker,
+        '    private void onMoveEventInternal(final int x, final int y, final long eventTime) {\n        final Key oldKey = mCurrentKey;\n',
+        '    private boolean onObadhClipboardMove(final int x, final int y, final long eventTime) {\n'
+        '        final int dx = x - mObadhClipX;\n'
+        '        final int dy = y - mObadhClipY;\n'
+        '        if (!mObadhClipSelecting) {\n'
+        '            if (isShowingPopupKeysPanel()) { mObadhClipArmed = false; return false; }\n'
+        '            if (eventTime - mObadhClipTime < OBADH_CLIP_HOLD_MS) return false;\n'
+        '            if (abs(dx) <= OBADH_CLIP_START && abs(dy) <= OBADH_CLIP_START) return false;\n'
+        '            mObadhClipSelecting = true;\n'
+        '            mObadhClipWords = 0; mObadhClipLines = 0;\n'
+        '            sTimerProxy.cancelKeyTimersOf(this); // no popup, no key repeat\n'
+        '            setReleasedKeyGraphics(mCurrentKey, true);\n'
+        '            sListener.onObadhClipboardSelect(0, mObadhClipCut, 0, 0);\n'
+        '        }\n'
+        '        int words = 0, lines = 0;\n'
+        '        if (abs(dx) >= abs(dy)) {\n'
+        '            if (abs(dx) > OBADH_CLIP_START) words = (dx < 0 ? -1 : 1) * ((abs(dx) - OBADH_CLIP_START) / OBADH_CLIP_WORD_STEP + 1);\n'
+        '        } else if (abs(dy) > OBADH_CLIP_START) {\n'
+        '            lines = (dy < 0 ? -1 : 1) * ((abs(dy) - OBADH_CLIP_START) / OBADH_CLIP_LINE_STEP + 1);\n'
+        '        }\n'
+        '        if (words != mObadhClipWords || lines != mObadhClipLines) {\n'
+        '            mObadhClipWords = words; mObadhClipLines = lines;\n'
+        '            sListener.onObadhClipboardSelect(1, mObadhClipCut, words, lines);\n'
+        '        }\n'
+        '        return true;\n'
+        '    }\n'
+        '\n'
+        '    private void onMoveEventInternal(final int x, final int y, final long eventTime) {\n'
+        '        if (mObadhClipArmed && mCurrentKey != null && !sInGesture && onObadhClipboardMove(x, y, eventTime)) return;\n'
+        '        final Key oldKey = mCurrentKey;\n')
+    replace(tracker,
+        '    private void onUpEventInternal(final int x, final int y, final long eventTime) {\n        sTimerProxy.cancelKeyTimersOf(this);\n',
+        '    private void onUpEventInternal(final int x, final int y, final long eventTime) {\n'
+        '        sTimerProxy.cancelKeyTimersOf(this);\n'
+        '        mObadhClipArmed = false;\n'
+        '        if (mObadhClipSelecting) {\n'
+        '            mObadhClipSelecting = false;\n'
+        '            sListener.onObadhClipboardSelect(2, mObadhClipCut, 0, 0);\n'
+        '            if (mCurrentKey != null) callListenerOnRelease(mCurrentKey, mCurrentKey.getCode(), false);\n'
+        '            setReleasedKeyGraphics(mCurrentKey, true);\n'
+        '            mCurrentKey = null;\n'
+        '            resetKeySelectionByDraggingFinger();\n'
+        '            return;\n'
+        '        }\n')
+    replace(tracker,
+        '    private void onCancelEventInternal() {\n        sTimerProxy.cancelKeyTimersOf(this);\n',
+        '    private void onCancelEventInternal() {\n'
+        '        sTimerProxy.cancelKeyTimersOf(this);\n'
+        '        mObadhClipArmed = false;\n'
+        '        if (mObadhClipSelecting) {\n'
+        '            mObadhClipSelecting = false;\n'
+        '            sListener.onObadhClipboardSelect(3, mObadhClipCut, 0, 0);\n'
+        '        }\n')
+
+    # Holding the space bar turns the keys into a cursor trackpad: one character per step across,
+    # one line per step down, no acceleration. The language picker lives on the globe key only.
+    replace(tracker, '    private boolean mKeySwipeAllowed = false;\n',
+        '    private boolean mKeySwipeAllowed = false;\n'
+        '    // Space held: the finger moves the cursor, 1:1.\n'
+        '    private boolean mObadhCursorActive = false;\n'
+        '    private int mObadhCursorX, mObadhCursorY, mObadhCursorAccX, mObadhCursorAccY;\n'
+        '    private static final int OBADH_CURSOR_CHAR_STEP = KtxKt.dpToPx(10, Resources.getSystem());\n'
+        '    private static final int OBADH_CURSOR_LINE_STEP = KtxKt.dpToPx(24, Resources.getSystem());\n')
+    replace(tracker,
+        '    private boolean onObadhClipboardMove(final int x, final int y, final long eventTime) {\n',
+        '    private void onObadhCursorMove(final int x, final int y) {\n'
+        '        mObadhCursorAccX += x - mObadhCursorX;\n'
+        '        mObadhCursorAccY += y - mObadhCursorY;\n'
+        '        mObadhCursorX = x;\n'
+        '        mObadhCursorY = y;\n'
+        '        boolean movedX = false, movedY = false;\n'
+        '        while (abs(mObadhCursorAccX) >= OBADH_CURSOR_CHAR_STEP) {\n'
+        '            final boolean right = mObadhCursorAccX > 0;\n'
+        '            sListener.onCodeInput(right ? KeyCode.ARROW_RIGHT : KeyCode.ARROW_LEFT,\n'
+        '                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);\n'
+        '            mObadhCursorAccX -= right ? OBADH_CURSOR_CHAR_STEP : -OBADH_CURSOR_CHAR_STEP;\n'
+        '            movedX = true;\n'
+        '        }\n'
+        '        while (abs(mObadhCursorAccY) >= OBADH_CURSOR_LINE_STEP) {\n'
+        '            final boolean down = mObadhCursorAccY > 0;\n'
+        '            sListener.onCodeInput(down ? KeyCode.ARROW_DOWN : KeyCode.ARROW_UP,\n'
+        '                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);\n'
+        '            mObadhCursorAccY -= down ? OBADH_CURSOR_LINE_STEP : -OBADH_CURSOR_LINE_STEP;\n'
+        '            movedY = true;\n'
+        '        }\n'
+        '        // A mostly horizontal drag must not leak into lines, nor the other way round.\n'
+        '        if (movedX && abs(mObadhCursorAccY) < OBADH_CURSOR_LINE_STEP / 2) mObadhCursorAccY = 0;\n'
+        '        if (movedY && abs(mObadhCursorAccX) < OBADH_CURSOR_CHAR_STEP / 2) mObadhCursorAccX = 0;\n'
+        '    }\n'
+        '\n'
+        '    private boolean onObadhClipboardMove(final int x, final int y, final long eventTime) {\n')
+    replace(tracker,
+        '        if (mObadhClipArmed && mCurrentKey != null && !sInGesture && onObadhClipboardMove(x, y, eventTime)) return;\n',
+        '        if (mObadhCursorActive) { onObadhCursorMove(x, y); return; }\n'
+        '        if (mObadhClipArmed && mCurrentKey != null && !sInGesture && onObadhClipboardMove(x, y, eventTime)) return;\n')
+    replace(tracker,
+        '        mObadhClipArmed = false;\n        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(2,',
+        '        mObadhClipArmed = false;\n'
+        '        if (mObadhCursorActive) {\n'
+        '            mObadhCursorActive = false;\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.TOUCHPAD_OFF);\n'
+        '            setReleasedKeyGraphics(mCurrentKey, true);\n'
+        '            mCurrentKey = null;\n'
+        '            resetKeySelectionByDraggingFinger();\n'
+        '            return;\n'
+        '        }\n'
+        '        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(2,')
+    replace(tracker,
+        '        mObadhClipArmed = false;\n        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(3,',
+        '        mObadhClipArmed = false;\n'
+        '        if (mObadhCursorActive) {\n'
+        '            mObadhCursorActive = false;\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.TOUCHPAD_OFF);\n'
+        '        }\n'
+        '        if (mObadhClipSelecting) {\n            mObadhClipSelecting = false;\n            sListener.onObadhClipboardSelect(3,')
+    replace(tracker,
+        '        final int code = key.getCode();\n        sListener.onLongPressKey(code);\n',
+        '        final int code = key.getCode();\n'
+        '        final var obadhCursor = helium314.keyboard.latin.obadh.ObadhExtensions.getCurrent();\n'
+        '        if (code == Constants.CODE_SPACE && !sInGesture && obadhCursor != null && obadhCursor.getSpaceCursor()) {\n'
+        '            mObadhCursorActive = true;\n'
+        '            mObadhCursorX = mLastX;\n'
+        '            mObadhCursorY = mLastY;\n'
+        '            mObadhCursorAccX = 0;\n'
+        '            mObadhCursorAccY = 0;\n'
+        '            mKeySwipeAllowed = false;\n'
+        '            sInKeySwipe = false;\n'
+        '            sTimerProxy.cancelKeyTimersOf(this);\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.TOUCHPAD_ON);\n'
+        '            sListener.onCustomRequest(KeyboardActionListener.CustomAction.PERFORM_HAPTIC);\n'
+        '            return;\n'
+        '        }\n'
+        '        sListener.onLongPressKey(code);\n')
+    replace(tracker,
+        '        if (code == KeyCode.LANGUAGE_SWITCH\n'
+        '                || (code == Constants.CODE_SPACE && key.getPopupKeys() == null && Settings.getValues().mSpaceForLangChange)\n'
+        '        ) {',
+        '        if (code == KeyCode.LANGUAGE_SWITCH) {')
+    replace(base / 'keyboard/MainKeyboardView.java',
+        '            if (key.isLongPressEnabled() && mHasMultipleEnabledIMEsOrSubtypes && Settings.getValues().mSpaceForLangChange) {',
+        '            if (false) { // Obadh: no hint, the globe key opens the language picker')
+
+    # Swiping the space bar to change language slides the language name out and the new one in,
+    # in the direction of the swipe.
+    main_view = base / 'keyboard/MainKeyboardView.java'
+    replace(main_view, '    private void drawLanguageOnSpacebar(final Key key, final Canvas canvas, final Paint paint) {',
+        '    // Obadh: set by a language swipe on the space bar; consumed when the label next changes.\n'
+        '    public static int sObadhLanguageSlide = 0;\n'
+        '    public static long sObadhLanguageSlideTime = 0;\n'
+        '    private String mObadhLabel;\n'
+        '    private String mObadhPrevLabel;\n'
+        '    private float mObadhSlide = 1f;\n'
+        '    private int mObadhSlideDirection = 1;\n'
+        '    private android.animation.ValueAnimator mObadhSlideAnimator;\n'
+        '\n'
+        '    private void obadhDrawSpaceLabel(final Canvas canvas, final String text, final int width,\n'
+        '            final int height, final float y, final Paint paint) {\n'
+        '        final boolean fresh = sObadhLanguageSlide != 0\n'
+        '                && android.os.SystemClock.uptimeMillis() - sObadhLanguageSlideTime < 1000;\n'
+        '        if (mObadhLabel != null && !text.equals(mObadhLabel) && fresh && isAttachedToWindow()) {\n'
+        '            mObadhPrevLabel = mObadhLabel;\n'
+        '            mObadhSlideDirection = sObadhLanguageSlide;\n'
+        '            sObadhLanguageSlide = 0;\n'
+        '            if (mObadhSlideAnimator != null) mObadhSlideAnimator.cancel();\n'
+        '            mObadhSlide = 0f;\n'
+        '            final var animator = android.animation.ValueAnimator.ofFloat(0f, 1f);\n'
+        '            mObadhSlideAnimator = animator;\n'
+        '            animator.setDuration(220);\n'
+        '            animator.setInterpolator(new android.view.animation.DecelerateInterpolator());\n'
+        '            animator.addUpdateListener(a -> {\n'
+        '                mObadhSlide = (Float) a.getAnimatedValue();\n'
+        '                if (mSpaceKey != null) invalidateKey(mSpaceKey);\n'
+        '            });\n'
+        '            animator.addListener(new android.animation.AnimatorListenerAdapter() {\n'
+        '                @Override public void onAnimationEnd(final android.animation.Animator a) {\n'
+        '                    if (mObadhSlideAnimator == animator) mObadhPrevLabel = null;\n'
+        '                    if (mSpaceKey != null) invalidateKey(mSpaceKey);\n'
+        '                }\n'
+        '            });\n'
+        '            animator.start();\n'
+        '        }\n'
+        '        mObadhLabel = text;\n'
+        '        final float p = mObadhSlide;\n'
+        '        if (mObadhPrevLabel == null || p >= 1f) {\n'
+        '            canvas.drawText(text, width / 2f, y, paint);\n'
+        '            return;\n'
+        '        }\n'
+        '        final int alpha = paint.getAlpha();\n'
+        '        final float shift = width * 0.3f;\n'
+        '        canvas.save();\n'
+        '        canvas.clipRect(0, 0, width, height);\n'
+        '        paint.setAlpha(Math.round(alpha * (1f - p)));\n'
+        '        canvas.drawText(mObadhPrevLabel, width / 2f + mObadhSlideDirection * p * shift, y, paint);\n'
+        '        paint.setAlpha(Math.round(alpha * p));\n'
+        '        canvas.drawText(text, width / 2f - mObadhSlideDirection * (1f - p) * shift, y, paint);\n'
+        '        paint.setAlpha(alpha);\n'
+        '        canvas.restore();\n'
+        '    }\n'
+        '\n'
+        '    private void drawLanguageOnSpacebar(final Key key, final Canvas canvas, final Paint paint) {')
+    replace(main_view, '        canvas.drawText(spaceText, width / 2f, baseline - descent, paint);\n',
+        '        obadhDrawSpaceLabel(canvas, spaceText, width, height, baseline - descent, paint);\n')
+    replace(impl,
+        '        if (abs(steps) < settings.current.mLanguageSwipeDistance) return false\n'
+        '        val subtypes = SubtypeSettings.getEnabledSubtypes(true)',
+        '        if (abs(steps) < settings.current.mLanguageSwipeDistance) return false\n'
+        '        helium314.keyboard.keyboard.MainKeyboardView.sObadhLanguageSlide = if (steps > 0) 1 else -1\n'
+        '        helium314.keyboard.keyboard.MainKeyboardView.sObadhLanguageSlideTime = android.os.SystemClock.uptimeMillis()\n'
+        '        val subtypes = SubtypeSettings.getEnabledSubtypes(true)')
+
+    # With Bangla selected the QWERTY number row, and the hints on the top letter row, show Bangla
+    # digits. The latin digit stays on a long press (the number row keeps it as a popup).
+    replace(main / 'assets/locale_key_texts/bn-BD.txt', '[popup_keys]\n',
+        '[number_row]\n\u09e7 \u09e8 \u09e9 \u09ea \u09eb \u09ec \u09ed \u09ee \u09ef \u09e6\n\n[popup_keys]\n')
+
