@@ -405,3 +405,11 @@ def apply(main, replace):
     replace(logic, '        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);\n    }',
         '        else sendDownUpKeyEvent(KeyEvent.KEYCODE_PASTE);\n'
         '        ' + badge + '.flash(' + badge + '.Action.PASTE);\n    }')
+
+    # Number pads: a smaller vertical gap gives taller keys and a near-symmetric grid, as Gboard's pad.
+    replace(base / 'keyboard/internal/KeyboardParams.java',
+        '            mRelativeVerticalGap = keyboardAttr.getFraction(\n'
+        '                    R.styleable.Keyboard_verticalGap, 1, 1, 0) * sv.mKeyGapScale;\n',
+        '            mRelativeVerticalGap = keyboardAttr.getFraction(\n'
+        '                    R.styleable.Keyboard_verticalGap, 1, 1, 0) * sv.mKeyGapScale;\n'
+        '            if (mId.getElement().isNumberLayout()) mRelativeVerticalGap *= 0.67f;\n')
