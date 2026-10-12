@@ -62,6 +62,9 @@ object NativePreferences {
             putBoolean("obadh.secondary_hints", flag("f_long_press", false))
             putBoolean(Settings.PREF_AUTO_CAP, flag("f_auto_caps"))
             putBoolean(Settings.PREF_SHOW_SUGGESTIONS, true)
+            // Editors such as Google Keep flag ordinary notes "no suggestions"; Bangla typing needs
+            // the strip. Passwords and web text fields still honor the flag.
+            putBoolean(Settings.PREF_ALWAYS_SHOW_SUGGESTIONS, true)
             putBoolean("obadh.english_suggestions", flag("f_spelling"))
             putBoolean(Settings.PREF_AUTO_CORRECTION, flag("english_autocorrect"))
             putBoolean(Settings.PREF_KEY_USE_DOUBLE_SPACE_PERIOD, flag("f_double_space"))
