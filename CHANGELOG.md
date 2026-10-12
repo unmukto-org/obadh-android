@@ -4,11 +4,26 @@ All notable changes. Dates are 2026-10-07 unless stated. A release is an
 annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 ([docs/build-and-release.md](docs/build-and-release.md#releasing)).
 
-## Unreleased
+## v0.2.4 — 2026-10-12
 
 - Bangla's phonetic QWERTY now passes manually shifted Latin letters to the engine:
   `t` → `ত`, Shift + `t` → `ট`. One-shot Shift, Caps Lock and shifted key labels
   agree, while Bangla sentence auto-capitalization stays off.
+- Added Learn to type in settings: the writing guide from obadh.unmukto.org/guide
+  and seven typing lessons that use the real keyboard, with hints and saved stars.
+- Added settings search by name, description or related words.
+- Added a Numbers button to the toolbar row that switches the number pad on and off.
+- Hold X or C and slide to select words or lines; lifting cuts or copies.
+- Hold the space bar, then slide to move the cursor by character or line.
+- The language name on the space bar slides with the language swipe; the QWERTY
+  top-row hints show Bangla digits.
+- Fixed cut/copy/paste shortcuts: the clipboard popup is first on X/C/V, cut with
+  no selection cuts the whole field, and the action badge is back.
+- Fixed thumb slips onto Settings with a dead gap below the suggestion strip and
+  toolbar, and tightened vertical key gaps toward Gboard.
+- Suggestions now show in fields that set NO_SUGGESTIONS; passwords and web text
+  fields still honor the flag.
+- Fixed `` t`` `` (ৎ) and `^` (ঁ), which ended the word instead of composing.
 
 ## v0.2.3 — 2026-10-09
 
