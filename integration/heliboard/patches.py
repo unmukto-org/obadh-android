@@ -397,6 +397,13 @@ def apply(main, replace):
         '                }\n'
         '                if (mConnection.hasSelection()) {\n'
         '                    if (mConnection.copyText(true)) ' + badge + '.flash(' + badge + '.Action.CUT);\n')
+    # Multi-line text goes through the app's own paste so list editors (Google Keep) split it into items;
+    # committed text arrives as one line.
+    replace(logic, '        if (primaryClip != null) {\n            mConnection.commitText(primaryClip, 1);',
+        '        final boolean appHandlesPaste = primaryClip != null && primaryClip.indexOf(\'\\n\') >= 0\n'
+        '                && !AppWorkarounds.INSTANCE.doesntCareAboutKeycodePaste(packageName)\n'
+        '                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;\n'
+        '        if (primaryClip != null && !appHandlesPaste) {\n            mConnection.commitText(primaryClip, 1);')
     replace(logic,
         '            mConnection.commitText(primaryClip, 1);\n            return;\n        }\n        Log.d(TAG, "pasting non-text content");',
         '            mConnection.commitText(primaryClip, 1);\n'
