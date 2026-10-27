@@ -17,6 +17,8 @@ import androidx.core.graphics.ColorUtils
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.common.Colors
 import helium314.keyboard.latin.common.DefaultColors
+import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.utils.prefs
 
 /** One palette for native drawing and Compose previews. Theme work occurs only on reload/layout. */
 object ObadhColors {
@@ -64,16 +66,28 @@ object ObadhColors {
         return Palette(background, keys, functional, text, functional, functionalText = functionalText, actionText = functionalText)
     }
 
+    /**
+     * The stored choices a built theme depends on. Compared on each keyboard load, so a switch is
+     * never missed when its one-shot reload request found no running keyboard to receive it.
+     */
+    private fun selection(context: Context): List<Any?> = context.prefs().let { p ->
+        listOf(p.getString(Settings.PREF_THEME_COLORS, null), p.getString(Settings.PREF_THEME_COLORS_NIGHT, null),
+            p.getString("obadh.theme_mode", null), p.getBoolean(Settings.PREF_THEME_KEY_BORDERS, true),
+            p.getString(Settings.PREF_THEME_STYLE, null), p.getLong("obadh.photo_revision", 0))
+    }
+
     @JvmStatic
     fun create(context: Context, name: String, style: String, borders: Boolean, night: Boolean): Colors {
         val p = if (name == "dynamic") dynamicPalette(context, night) else palette(name, night)
         val theme = catalog.firstOrNull { it.id == (aliases[name] ?: name) }
         val image = if (name == "photo") helium314.keyboard.latin.settings.Settings.readUserBackgroundImage(context, false)?.let(::CropDrawable)
             else if (theme?.mesh != null) MeshDrawable(theme.mesh) else theme?.gradient?.let { StopsDrawable(it, theme.positions!!) }
+        val built = selection(context)
         val base = DefaultColors(style, borders, p.accent, p.background, p.keys, p.functional, p.space,
             p.text, p.text, spaceBarText = p.text, keyboardBackground = image)
         return object : Colors by base {
-            override fun haveColorsChanged(context: Context) = name == "dynamic" && dynamicPalette(context, night) != p
+            override fun haveColorsChanged(context: Context) =
+                selection(context) != built || name == "dynamic" && dynamicPalette(context, night) != p
             override fun get(color: ColorType): Int = when (color) {
                 ColorType.FUNCTIONAL_KEY_TEXT, ColorType.SHIFT_KEY_ICON -> p.functionalText
                 ColorType.ACTION_KEY_ICON -> p.actionText
