@@ -117,6 +117,9 @@ object NativeObadhFeatures : ObadhExtension {
 
     override fun transformCodePoint(codePoint: Int, settings: SettingsValues): Int {
         if (settings.mLocale.language != "bn" || literal(settings)) return codePoint
+        // Symbol pages type what their keys show; only the letter pages localize digits and the full stop.
+        val page = helium314.keyboard.keyboard.KeyboardSwitcher.getInstance().keyboard?.mId?.element
+        if (page != null && !page.isAlphabet) return codePoint
         return when (codePoint) {
             in '0'.code..'9'.code -> codePoint + ('০'.code - '0'.code)
             '.'.code -> '।'.code
