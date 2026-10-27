@@ -244,6 +244,8 @@ def apply(main, replace):
         '    public void reloadObadhSettings() {\n'
         '        KeyboardLayoutSet.Companion.onKeyboardThemeChanged();\n'
         '        loadSettings();\n'
+        '        // The open field keeps the combining rules it started with; restart so a changed field policy applies now.\n'
+        '        if (isInputViewShown()) mInputLogic.onSubtypeChanged(mRichImm.getCombiningRulesExtraValueOfCurrentSubtype(), mSettings.getCurrent());\n'
         '        if (isInputViewShown()) mKeyboardSwitcher.reloadKeyboard();\n'
         '        mHandler.postUpdateSuggestionStrip(SuggestedWords.INPUT_STYLE_TYPING);\n'
         '    }\n'
