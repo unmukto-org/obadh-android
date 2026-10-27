@@ -518,6 +518,14 @@ def apply(main, replace):
         '    private static final int OBADH_CLIP_START = KtxKt.dpToPx(14, Resources.getSystem());\n'
         '    private static final int OBADH_CLIP_WORD_STEP = KtxKt.dpToPx(30, Resources.getSystem());\n'
         '    private static final int OBADH_CLIP_LINE_STEP = KtxKt.dpToPx(26, Resources.getSystem());\n')
+    # Space slide: a deliberate sideways slide counts even right after typing, and vertical drift
+    # cannot lock out the horizontal slide when no vertical action is set.
+    replace(tracker, '        if (code != KeyCode.DELETE && SystemClock.elapsedRealtime() < mStartTime + fastTypingTimeout && sTypingTimeRecorder.isInFastTyping(eventTime))\n            return;',
+        '        final boolean deliberateSlide = code == Constants.CODE_SPACE && abs(x - mStartX) >= 3 * sPointerStep;\n'
+        '        if (code != KeyCode.DELETE && !deliberateSlide && SystemClock.elapsedRealtime() < mStartTime + fastTypingTimeout && sTypingTimeRecorder.isInFastTyping(eventTime))\n            return;')
+    replace(tracker, '            if (stepsY != 0 && abs(dX) < abs(dY) && !mInHorizontalSwipe) {',
+        '            if (stepsY != 0 && abs(dX) < abs(dY) && !mInHorizontalSwipe\n'
+        '                    && sv.mSpaceSwipeVertical != KeyboardActionListener.SwipeAction.NONE) {')
     replace(tracker, '            startRepeatKey(key);\n            startLongPressTimer(key);\n',
         '            startRepeatKey(key);\n            startLongPressTimer(key);\n'
         '            mObadhClipSelecting = false;\n'
