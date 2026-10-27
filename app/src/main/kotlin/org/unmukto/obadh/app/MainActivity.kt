@@ -45,6 +45,7 @@ fun RootScreen(startScreen: String?) {
         }
         return
     }
+    ExpireSettingHighlight()
     val back = { route = AppScreen.Settings }
     BackHandler(enabled = route != AppScreen.Settings, onBack = back)
     Crossfade(targetState = route, label = "settings page") { current ->

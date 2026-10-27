@@ -30,6 +30,8 @@ private fun MediaSettings(onBack: ()->Unit) {
             scope.launch { snackbar.showSnackbar("No browser is available to open this link.") }
         }
     }
+    LaunchedEffect(Unit) { SettingHighlight.target=(context as? android.app.Activity)?.intent?.getStringExtra("highlight") }
+    ExpireSettingHighlight()
     LaunchedEffect(Unit) { MediaPreferences.load(context);enabled=MediaPreferences.enabled;loaded=true }
     SettingsScaffold("GIFs & stickers",onBack,snackbar=snackbar) {
         if(loaded && KlipyClient.configured) {
@@ -38,7 +40,7 @@ private fun MediaSettings(onBack: ()->Unit) {
         PreferenceNote("Your media searches and accepted shares go to KLIPY with a random identifier for this installation. Ordinary typing, surrounding text and clipboard content stay on your device. Password and incognito fields cannot use online media. Ads are disabled for Obadh.")
         PreferenceHeading("Recents & storage")
         PreferenceNote("Recents keep references and small preview thumbnails on this device. Original animations download each time you send them; they are never saved to disk. The thumbnail cache is limited to 6 MB and clears automatically as needed. Previews follow Android's reduced-motion setting.")
-        PreferenceItem(content={ Text("Clear local recents & thumbnails",color=MaterialTheme.colorScheme.error) },onClick={ if(loaded)confirm=true })
+        PreferenceItem(content={ Text("Clear local recents & thumbnails",color=MaterialTheme.colorScheme.error) },onClick={ if(loaded)confirm=true },highlightKey="Clear local recents & thumbnails")
         PreferenceHeading("Provider")
         PreferenceItem(content={ Text("Powered by KLIPY") },supportingContent={ Text("GIF and sticker content is supplied by KLIPY. Obadh is independently developed by Unmukto.") })
         PreferenceItem(content={ Text("KLIPY privacy policy") },onClick={ openLink("https://klipy.com/support/privacy-policy") })

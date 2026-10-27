@@ -62,8 +62,11 @@ internal fun SettingsScreen(state: KeyboardState, onOpen: (AppScreen) -> Unit) {
     }) {
         if (searching) {
             SettingsSearchPane(query, { query = it }) { entry ->
-                if (entry.screen != null) onOpen(entry.screen)
-                else context.startActivity(android.content.Intent(context, org.unmukto.obadh.media.MediaSettingsActivity::class.java))
+                if (entry.screen != null) {
+                    SettingHighlight.target = entry.title
+                    onOpen(entry.screen)
+                } else context.startActivity(android.content.Intent(context, org.unmukto.obadh.media.MediaSettingsActivity::class.java)
+                    .putExtra("highlight", entry.title))
             }
             return@SettingsScaffold
         }
@@ -157,6 +160,7 @@ fun ToggleRow(title: String, checked: Boolean, subtitle: String? = null, onChang
         supportingContent = subtitle?.let { { Text(it) } },
         trailingContent = { Switch(checked = checked, onCheckedChange = null) },
         modifier = Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        highlightKey = title,
     )
 }
 
@@ -176,6 +180,7 @@ fun ChoiceRow(title: String, options: List<String>, initial: Int, enabled: Boole
     PreferenceItem(
         content = { Text(title) }, supportingContent = { Text(options.getOrNull(selected) ?: options.getOrNull(initial).orEmpty()) },
         onClick = if (enabled) ({ choosing = true }) else null,
+        highlightKey = title,
     )
     if (choosing) {
         AlertDialog(
@@ -295,8 +300,9 @@ fun PreferenceItem(
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     supportingColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     minHeight: Dp = 72.dp,
+    highlightKey: String? = null,
 ) {
-    Surface(modifier = modifier.fillMaxWidth(), color = containerColor, contentColor = contentColor) {
+    Surface(modifier = modifier.settingHighlight(highlightKey).fillMaxWidth(), color = containerColor, contentColor = contentColor) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = minHeight)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)

@@ -101,6 +101,7 @@ fun AboutScreen(onBack: () -> Unit) {
             content = { Text("Build details") },
             supportingContent = { Text(if (details) "Tap to hide" else "Technical information for support") },
             onClick = { details = !details },
+            highlightKey = "Build details",
         )
         PreferenceHeading("Online media")
         PreferenceItem(content={ Text("KLIPY") },supportingContent={ Text("Optional GIFs and stickers are provided by KLIPY. Obadh is independently developed by Unmukto. The provider's artwork and trademarks retain their own rights.") },onClick={
@@ -153,6 +154,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
             content = { Text("Delete learned words", color = MaterialTheme.colorScheme.error) },
             supportingContent = { Text("Reset personal suggestions. Built-in suggestions stay available.") },
             onClick = { confirming = true },
+            highlightKey = "Delete learned words",
         )
     }
     if (confirming) {
@@ -180,6 +182,7 @@ fun ClipboardScreen(prefs: KeyboardPreferences, onBack: () -> Unit) {
             content = { Text("Delete clipboard history", color = MaterialTheme.colorScheme.error) },
             supportingContent = { Text("Remove all items stored by Obadh") },
             onClick = { confirming = true },
+            highlightKey = "Delete clipboard history",
         )
     }
     if (confirming) {
