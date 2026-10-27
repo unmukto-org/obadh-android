@@ -4,6 +4,19 @@ All notable changes. Dates are 2026-10-07 unless stated. A release is an
 annotated `v<version>` tag; pushing it builds, signs and publishes the APK
 ([docs/build-and-release.md](docs/build-and-release.md#releasing)).
 
+## v0.2.5 — 2026-10-28
+
+- Search results in settings now scroll to the setting and flash it.
+- Pasting multi-line text goes through the app's own paste, so list editors such as
+  Google Keep split it into one item per line.
+- Turning off Adapt to input fields now applies to the open field at once, so Bangla
+  types in Chrome without leaving and re-entering the field.
+- Fixed theme changes sometimes not applying until the keyboard restarted.
+- Fixed the full stop, digits and `$` turning into `।`, Bangla digits and `৳` on the
+  symbols pages; they now type what the keys show.
+- Made the space bar language slide more reliable: vertical drift no longer blocks it,
+  and a deliberate slide right after typing is no longer ignored.
+
 ## v0.2.4 — 2026-10-12
 
 - Bangla's phonetic QWERTY now passes manually shifted Latin letters to the engine:
