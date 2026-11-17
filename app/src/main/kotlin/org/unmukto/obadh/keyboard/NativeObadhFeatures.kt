@@ -103,7 +103,12 @@ object NativeObadhFeatures : ObadhExtension {
 
     fun isBanglaLexiconWord(word: String) = modelsReady && engine.isLexiconWord(word)
     fun banglaGestureAllowed(settings: SettingsValues) = settings.mGestureInputEnabled &&
-        settings.mLocale.language == "bn" && !literal(settings)
+        settings.mLocale.language == "bn" && !literal(settings) && banglishSubtype()
+    /** Swipe decodes roman QWERTY keys, so only the Obadh (Banglish) subtype may use it. */
+    private fun banglishSubtype() = runCatching {
+        helium314.keyboard.latin.RichInputMethodManager.getInstance().currentSubtype.rawSubtype.extraValue
+            .contains("CombiningRules=bn_obadh")
+    }.getOrDefault(false)
     override fun mainDictionary(context: Context, locale: java.util.Locale) =
         org.unmukto.obadh.swipe.BanglaGestureDictionary.load(context, locale)
 

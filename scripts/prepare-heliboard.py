@@ -211,7 +211,13 @@ def main():
     replace(defaults, 'KeyboardActionListener.SwipeAction.MOVE_CURSOR.name',
             'KeyboardActionListener.SwipeAction.SWITCH_LANGUAGE.name')
     replace(defaults, 'const val PREF_ENABLED_SUBTYPES = ""',
-            'const val PREF_ENABLED_SUBTYPES = "bn-BD${Separators.SET}CombiningRules=bn_obadh,KeyboardLayoutSet=MAIN:qwerty${Separators.SETS}en-US${Separators.SET}SupportTouchPositionCorrection,TrySuppressingImeSwitcher"')
+            'const val PREF_ENABLED_SUBTYPES = "bn-BD${Separators.SET}CombiningRules=bn_obadh,KeyboardLayoutSet=MAIN:qwerty${Separators.SETS}bn-BD${Separators.SET}KeyboardLayoutSet=MAIN:bangla_letters${Separators.SETS}en-US${Separators.SET}SupportTouchPositionCorrection,TrySuppressingImeSwitcher"')
+    # Bangla (letters) and Banglish (Obadh) share bn-BD; give Banglish its own space-bar name.
+    rich = main_dir / "java/helium314/keyboard/latin/RichInputMethodSubtype.kt"
+    replace(rich, 'val fullDisplayName: String get() = SubtypeLocaleUtils.getSubtypeLocaleDisplayName(locale)',
+            'val fullDisplayName: String get() = if (rawSubtype.extraValue.contains("CombiningRules=bn_obadh")) "Banglish" else SubtypeLocaleUtils.getSubtypeLocaleDisplayName(locale)')
+    replace(rich, 'val middleDisplayName: String get() = SubtypeLocaleUtils.getSubtypeLanguageDisplayName(locale)',
+            'val middleDisplayName: String get() = if (rawSubtype.extraValue.contains("CombiningRules=bn_obadh")) "Banglish" else SubtypeLocaleUtils.getSubtypeLanguageDisplayName(locale)')
     replace(main_dir / "res/xml/method.xml", 'CombiningRules=bn_khipro', 'CombiningRules=bn_obadh')
     replace(main_dir / "res/xml/method.xml", 'MAIN:qwerty|FUNCTIONAL:functional_keys_khipro', 'MAIN:qwerty')
     replace(main_dir / "res/values/strings.xml", '%s (Khipro)</string>', '%s (Obadh)</string>')

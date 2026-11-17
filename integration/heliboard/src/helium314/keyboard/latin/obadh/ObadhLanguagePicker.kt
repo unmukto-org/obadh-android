@@ -13,9 +13,15 @@ import helium314.keyboard.latin.utils.getPlatformDialogThemeContext
 
 /** Languages first, Android's full IME picker available explicitly rather than mixed into the list. */
 fun createObadhLanguagePicker(ime: LatinIME, imm: RichInputMethodManager, token: IBinder): AlertDialog {
-    val subtypes = SubtypeSettings.getEnabledSubtypes().sortedBy { if (it.languageTag.startsWith("bn")) 0 else 1 }
+    // English, Bangla (letter layout), Banglish (Obadh phonetic)
+    fun kind(s: android.view.inputmethod.InputMethodSubtype) = when {
+        !s.languageTag.startsWith("bn") -> 0
+        s.extraValue.contains("CombiningRules=bn_obadh") -> 2
+        else -> 1
+    }
+    val subtypes = SubtypeSettings.getEnabledSubtypes().sortedBy(::kind)
     val selected = subtypes.indexOf(imm.currentSubtype.rawSubtype).coerceAtLeast(0)
-    val labels = subtypes.map { if (it.languageTag.startsWith("bn")) "বাংলা · Obadh" else "English · QWERTY" }
+    val labels = subtypes.map { when (kind(it)) { 0 -> "English"; 1 -> "Bangla · বাংলা"; else -> "Banglish · Obadh" } }
     val appearance = ime.prefs().getString("obadh.theme_mode", "system")
     val themedContext = if (appearance == "system") ime else ime.createConfigurationContext(Configuration(ime.resources.configuration).apply {
         uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
