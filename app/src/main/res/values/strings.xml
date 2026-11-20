@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">Obadh</string>
     <string name="clipboard_provider_authority" translatable="false">org.unmukto.obadh.clipprovider</string>
+    <string name="subtype_obadh_banglish" translatable="false">Banglish</string>
+    <string name="subtype_obadh_bangla" translatable="false">Bangla</string>
 </resources>

@@ -211,7 +211,29 @@ def main():
     replace(defaults, 'KeyboardActionListener.SwipeAction.MOVE_CURSOR.name',
             'KeyboardActionListener.SwipeAction.SWITCH_LANGUAGE.name')
     replace(defaults, 'const val PREF_ENABLED_SUBTYPES = ""',
-            'const val PREF_ENABLED_SUBTYPES = "bn-BD${Separators.SET}CombiningRules=bn_obadh,KeyboardLayoutSet=MAIN:qwerty${Separators.SETS}en-US${Separators.SET}SupportTouchPositionCorrection,TrySuppressingImeSwitcher"')
+            'const val PREF_ENABLED_SUBTYPES = "bn-BD${Separators.SET}CombiningRules=bn_obadh,KeyboardLayoutSet=MAIN:qwerty${Separators.SETS}bn-BD${Separators.SET}KeyboardLayoutSet=MAIN:bangla_letters${Separators.SETS}en-US${Separators.SET}SupportTouchPositionCorrection,TrySuppressingImeSwitcher"')
+    # Bangla (letters) and Banglish (Obadh) share bn-BD; give Banglish its own space-bar name.
+    rich = main_dir / "java/helium314/keyboard/latin/RichInputMethodSubtype.kt"
+    replace(rich, 'val fullDisplayName: String get() = SubtypeLocaleUtils.getSubtypeLocaleDisplayName(locale)',
+            'val fullDisplayName: String get() = if (rawSubtype.extraValue.contains("CombiningRules=bn_obadh")) "Banglish" else SubtypeLocaleUtils.getSubtypeLocaleDisplayName(locale)')
+    replace(rich, 'val middleDisplayName: String get() = SubtypeLocaleUtils.getSubtypeLanguageDisplayName(locale)',
+            'val middleDisplayName: String get() = if (rawSubtype.extraValue.contains("CombiningRules=bn_obadh")) "Banglish" else SubtypeLocaleUtils.getSubtypeLanguageDisplayName(locale)')
+    # bangla_letters has a built-in 5th (number) row; give it the same extra height as the number-row setting.
+    replace(main_dir / "java/helium314/keyboard/latin/utils/ResourceUtils.java",
+            'int defaultKeyboardHeight = getDefaultKeyboardHeight(res, settingsValues.mShowsNumberRow);',
+            'int defaultKeyboardHeight = getDefaultKeyboardHeight(res, settingsValues.mShowsNumberRow || isBanglaLetters());')
+    replace(main_dir / "java/helium314/keyboard/latin/utils/ResourceUtils.java",
+            '    public static int getDefaultKeyboardHeight(final Resources res, final boolean showsNumberRow) {',
+            '''    private static boolean isBanglaLetters() {
+        try {
+            return "bangla_letters".equals(helium314.keyboard.latin.RichInputMethodManager.getInstance()
+                    .getCurrentSubtype().getMainLayoutName());
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    public static int getDefaultKeyboardHeight(final Resources res, final boolean showsNumberRow) {''')
     replace(main_dir / "res/xml/method.xml", 'CombiningRules=bn_khipro', 'CombiningRules=bn_obadh')
     replace(main_dir / "res/xml/method.xml", 'MAIN:qwerty|FUNCTIONAL:functional_keys_khipro', 'MAIN:qwerty')
     replace(main_dir / "res/values/strings.xml", '%s (Khipro)</string>', '%s (Obadh)</string>')
